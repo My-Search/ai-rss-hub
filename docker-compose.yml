@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  ai-rss-hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-rss-hub
+    ports:
+      - "2799:8080"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_MAIL_HOST=smtp.qq.com
+      - SPRING_MAIL_PORT=587
+      - SPRING_MAIL_USERNAME=
+      - SPRING_MAIL_PASSWORD=
+      - EMAIL_ENABLE=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

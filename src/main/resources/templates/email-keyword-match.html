@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            margin: -30px -30px 30px -30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .notice {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .notice strong {
+            color: #856404;
+        }
+        .item {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #fafafa;
+        }
+        .item:last-child {
+            margin-bottom: 0;
+        }
+        .item-title {
+            color: #f5576c;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+        }
+        .item-title a {
+            color: #f5576c;
+            text-decoration: none;
+        }
+        .item-title a:hover {
+            text-decoration: underline;
+        }
+        .item-summary {
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .item-meta {
+            color: #999;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #999;
+            font-size: 12px;
+        }
+        .dashboard-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #f093fb;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .dashboard-link:hover {
+            background-color: #f5576c;
+        }
+        .keyword-highlight {
+            background-color: #ffe2e7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #f5576c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔑 关键词匹配提醒</h1>
+            <p th:text="${date}"></p>
+        </div>
+
+        <div class="notice">
+            你订阅的关键字 <span class="keyword-highlight" th:text="${keywords}"></span> 有 <strong th:text="${count}"></strong> 条更新
+        </div>
+
+        <div th:each="item : ${items}" class="item">
+            <h2 class="item-title">
+                <a th:href="${item.link}" th:text="${item.title}" target="_blank"></a>
+            </h2>
+            <div class="item-summary" th:if="${item.description != null}">
+                <span th:text="${#strings.substring(item.description, 0, 150)}"></span>
+                <span th:if="${#strings.length(item.description) > 150}">...</span>
+            </div>
+            <div class="item-meta">
+                <span th:if="${item.pubDate != null}" th:text="'发布时间：' + ${#temporals.format(item.pubDate, 'yyyy-MM-dd HH:mm')}"></span>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <a href="#" class="dashboard-link">查看更多</a>
+        </div>
+
+        <div class="footer">
+            <p>此邮件由 AI RSS Hub 自动发送</p>
+            <p>如果您不想再接收此类邮件，请在设置中关闭邮件订阅功能</p>
+        </div>
+    </div>
+</body>
+</html>

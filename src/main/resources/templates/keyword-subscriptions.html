@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关键词订阅管理 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+
+    <div class="container">
+        <div th:if="${message}" class="alert" th:classappend="${message.contains('成功') or message.contains('触发')} ? 'alert-success' : 'alert-danger'">
+            <span th:text="${message}"></span>
+        </div>
+
+        <div class="page-header">
+            <h1>关键词订阅管理</h1>
+            <button class="btn btn-primary" onclick="showAddModal()">添加关键词订阅</button>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="info-hint">
+                    <p>提示：每条以空格分隔进行and条件，每当符合一条时就向用户发送邮件</p>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>编号</th>
+                                <th>关键词</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="subscription, stat : ${keywordSubscriptions}">
+                                <td th:text="${stat.index + 1}"></td>
+                                <td th:text="${subscription.keywords}"></td>
+                                <td>
+                                    <span class="badge" th:classappend="${subscription.enabled} ? 'badge-success' : 'badge-secondary'"
+                                          th:text="${subscription.enabled} ? '启用' : '禁用'"></span>
+                                </td>
+                                <td th:text="${subscription.createdAt != null ? #temporals.format(subscription.createdAt, 'yyyy-MM-dd HH:mm') : ''}"></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary"
+                                            th:attr="data-id=${subscription.id},data-keywords=${subscription.keywords}"
+                                            onclick="showEditModalFromData(this)">编辑</button>
+                                    <form th:action="@{/keyword-subscriptions/{id}/toggle(id=${subscription.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm" th:text="${subscription.enabled} ? '禁用' : '启用'"></button>
+                                    </form>
+                                    <form th:action="@{/keyword-subscriptions/{id}/delete(id=${subscription.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除?')">删除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div th:if="${#lists.isEmpty(keywordSubscriptions)}" class="empty-state">
+                    <p>暂无关键词订阅，点击上方按钮添加</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <h2>添加关键词订阅</h2>
+            <form th:action="@{/keyword-subscriptions}" method="post">
+                <div class="form-group">
+                    <label>关键词</label>
+                    <input type="text" name="keywords" required placeholder="例如：glm 最新模型">
+                </div>
+                <div class="info-hint">
+                    <p>提示：关键词之间用空格分隔，使用AND逻辑匹配。例如："glm 最新模型" 表示文章必须同时包含"glm"和"最新模型"</p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="hideAddModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h2>编辑关键词订阅</h2>
+            <form id="editForm" method="post">
+                <input type="hidden" id="editId" name="id">
+                <div class="form-group">
+                    <label>关键词</label>
+                    <input type="text" id="editKeywords" name="keywords" required>
+                </div>
+                <div class="info-hint">
+                    <p>提示：关键词之间用空格分隔，使用AND逻辑匹配。例如："glm 最新模型" 表示文章必须同时包含"glm"和"最新模型"</p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="hideEditModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+        function hideAddModal() { document.getElementById('addModal').style.display = 'none'; }
+
+        function showEditModalFromData(btn) {
+            var id = btn.getAttribute('data-id');
+            var keywords = btn.getAttribute('data-keywords');
+            showEditModal(id, keywords);
+        }
+
+        function showEditModal(id, keywords) {
+            document.getElementById('editId').value = id;
+            document.getElementById('editKeywords').value = keywords;
+            document.getElementById('editForm').action = '/keyword-subscriptions/' + id + '/update';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function hideEditModal() { document.getElementById('editModal').style.display = 'none'; }
+    </script>
+</body>
+</html>

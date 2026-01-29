@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1>创建账号</h1>
+            <p class="subtitle">开始使用AI智能筛选RSS</p>
+
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+            <form th:action="@{/register}" method="post" class="auth-form">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" name="username" th:value="${username}" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">邮箱</label>
+                    <input type="email" id="email" name="email" th:value="${email}" required placeholder="请输入邮箱">
+                </div>
+
+                <div class="form-group">
+                    <label for="verificationCode">验证码</label>
+                    <div class="verify-code-group">
+                        <input type="text" id="verificationCode" name="verificationCode" placeholder="请输入验证码" autocomplete="off">
+                        <button type="button" id="sendCodeBtn" onclick="sendVerificationCode()">发送验证码</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" name="password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">注册</button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>已有账号? <a th:href="@{/login}">立即登录</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        let countdown = 0;
+        let countdownTimer = null;
+
+        function sendVerificationCode() {
+            const email = document.getElementById('email').value;
+
+            if (!email) {
+                alert('请先输入邮箱');
+                return;
+            }
+
+            if (!validateEmail(email)) {
+                alert('请输入有效的邮箱地址');
+                return;
+            }
+
+            const btn = document.getElementById('sendCodeBtn');
+            btn.disabled = true;
+            btn.textContent = '发送中...';
+
+            $.post('/send-register-code', { email: email })
+                .done(function(response) {
+                    if (response.success) {
+                        alert('验证码已发送，请查收邮件');
+                        startCountdown();
+                    } else {
+                        alert(response.message || '发送失败，请稍后重试');
+                        btn.disabled = false;
+                        btn.textContent = '发送验证码';
+                    }
+                })
+                .fail(function(xhr, status, error) {
+                    let msg = '发送失败，请重试';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    alert(msg);
+                    btn.disabled = false;
+                    btn.textContent = '发送验证码';
+                });
+        }
+
+        function startCountdown() {
+            countdown = 60;
+            const btn = document.getElementById('sendCodeBtn');
+            btn.textContent = countdown + '秒后重发';
+
+            countdownTimer = setInterval(function() {
+                countdown--;
+                if (countdown <= 0) {
+                    clearInterval(countdownTimer);
+                    btn.disabled = false;
+                    btn.textContent = '发送验证码';
+                } else {
+                    btn.textContent = countdown + '秒后重发';
+                }
+            }, 1000);
+        }
+
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+    </script>
+</body>
+</html>

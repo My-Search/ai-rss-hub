@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>筛选日志 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <style>
+        .logs-page {
+            background: #0f172a;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .logs-page .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logs-page .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .logs-page .page-header h1 {
+            color: #e2e8f0;
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .logs-page .page-header p {
+            color: #94a3b8;
+        }
+
+        .logs-page .filter-bar {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .logs-page .filter-bar h2 {
+            color: #e2e8f0;
+            font-size: 1.125rem;
+            margin-bottom: 1rem;
+        }
+
+        .logs-page .filter-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .logs-page .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .logs-page .filter-group label {
+            display: block;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .logs-page .filter-group select,
+        .logs-page .filter-group input {
+            width: 100%;
+            padding: 0.75rem;
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            color: #e2e8f0;
+            font-size: 0.875rem;
+        }
+
+        .logs-page .filter-group select:focus,
+        .logs-page .filter-group input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .logs-page .filter-group select option {
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        .logs-page .btn-filter {
+            background: #6366f1;
+            color: #ffffff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .logs-page .btn-filter:hover {
+            background: #4f46e5;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .logs-page .logs-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .logs-page .logs-header {
+            background: #1e293b;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logs-page .logs-header h2 {
+            color: #e2e8f0;
+            font-size: 1.25rem;
+            margin: 0;
+        }
+
+        .logs-page .logs-stats {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .logs-page .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .logs-page .logs-body {
+            overflow-x: auto;
+        }
+
+        .logs-page .logs-table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .logs-page .logs-table {
+            min-width: 800px;
+        }
+
+        .logs-page .logs-table th {
+            background: #334155;
+            color: #e2e8f0;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border-bottom: 1px solid #475569;
+        }
+
+        .logs-page .logs-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #334155;
+            color: #cbd5e1;
+            font-size: 0.875rem;
+        }
+
+        .logs-page .logs-table tr:hover {
+            background: #334155;
+        }
+
+        .logs-page .logs-table .log-title {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .logs-page .logs-table .log-title a {
+            color: #818cf8;
+            text-decoration: none;
+        }
+
+        .logs-page .logs-table .log-title a:hover {
+            text-decoration: underline;
+        }
+
+        .logs-page .logs-table .log-source {
+            color: #a78bfa;
+        }
+
+        .logs-page .logs-table .log-time {
+            color: #94a3b8;
+            font-family: monospace;
+        }
+
+        .logs-page .badge-passed {
+            background: #10b981;
+            color: #ffffff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .logs-page .badge-rejected {
+            background: #ef4444;
+            color: #ffffff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .logs-page .log-reason {
+            color: #cbd5e1;
+            font-size: 0.8125rem;
+        }
+
+        .logs-page .logs-table .log-raw-response {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #64748b;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .logs-page .logs-table .log-result {
+            min-width: 80px;
+            white-space: nowrap;
+        }
+
+        .logs-page .logs-table .log-reason {
+            min-width: 150px;
+        }
+
+        .logs-page .pagination {
+            background: #1e293b;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logs-page .pagination-info {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .logs-page .pagination-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .logs-page .pagination .btn {
+            background: #0f172a;
+            color: #cbd5e1;
+            border: 1px solid #475569;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .logs-page .pagination .btn:hover:not([disabled]) {
+            background: #6366f1;
+            color: #ffffff;
+            border-color: #6366f1;
+        }
+
+        .logs-page .pagination .btn[disabled] {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .logs-page .pagination .btn-primary {
+            background: #6366f1;
+            color: #ffffff;
+            border-color: #6366f1;
+        }
+
+        .logs-page .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #64748b;
+        }
+
+        .logs-page .empty-state p {
+            font-size: 1.125rem;
+        }
+
+        @media (max-width: 768px) {
+            .logs-page {
+                padding: 1rem;
+            }
+
+            .logs-page .filter-row {
+                flex-direction: column;
+            }
+
+            .logs-page .logs-table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .logs-page .logs-table {
+                min-width: 800px;
+                font-size: 0.75rem;
+            }
+
+            .logs-page .logs-table th,
+            .logs-page .logs-table td {
+                padding: 0.5rem;
+            }
+
+            .logs-page .logs-table .log-result {
+                min-width: 60px;
+            }
+
+            .logs-page .logs-table .log-reason {
+                min-width: 100px;
+            }
+
+            .logs-page .pagination {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .logs-page .pagination-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    
+    <div class="logs-page">
+        <div class="container">
+            <div class="page-header">
+                <h1>筛选日志</h1>
+                <p>查看所有RSS消息的AI筛选记录</p>
+            </div>
+            
+            <div class="filter-bar">
+                <h2>筛选条件</h2>
+                <form th:action="@{/filter-logs}" method="get" class="filter-row">
+                    <div class="filter-group">
+                        <label>筛选结果</label>
+                        <select name="filtered">
+                            <option value="">全部</option>
+                            <option value="true" th:selected="${filtered == 'true'}">通过</option>
+                            <option value="false" th:selected="${filtered == 'false'}">未通过</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>RSS源</label>
+                        <select name="source">
+                            <option value="">全部</option>
+                            <option th:each="source : ${sources}" 
+                                    th:value="${source}" 
+                                    th:text="${source}"
+                                    th:selected="${source == currentSource}"></option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn-filter">查询</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="logs-container">
+                <div class="logs-header">
+                    <h2>日志列表</h2>
+                    <div class="logs-stats">
+                        共 <span th:text="${totalLogs}">0</span> 条记录
+                    </div>
+                </div>
+                
+                <div class="logs-body">
+                    <div class="logs-table-wrapper">
+                        <table class="logs-table" th:if="${!#lists.isEmpty(logs)}">
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>RSS源</th>
+                                    <th>标题</th>
+                                    <th class="log-result">结果</th>
+                                    <th class="log-reason">原因</th>
+                                    <th>AI响应</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="log : ${logs}">
+                                    <td class="log-time" th:text="${#temporals.format(log.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
+                                    <td class="log-source" th:text="${log.sourceName}"></td>
+                                    <td class="log-title">
+                                        <a th:if="${log.link != null}" th:href="${log.link}" target="_blank" th:text="${log.title}"></a>
+                                        <span th:if="${log.link == null}" th:text="${log.title}"></span>
+                                    </td>
+                                    <td class="log-result">
+                                        <span class="badge-passed" th:if="${log.aiFiltered}">通过</span>
+                                        <span class="badge-rejected" th:if="${!log.aiFiltered}">未通过</span>
+                                    </td>
+                                    <td class="log-reason" th:text="${log.aiReason}"></td>
+                                    <td class="log-raw-response" th:text="${log.aiRawResponse}" th:title="${log.aiRawResponse}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div th:if="${#lists.isEmpty(logs)}" class="empty-state">
+                        <p>暂无筛选日志</p>
+                    </div>
+                </div>
+                
+                <div class="pagination" th:if="${totalPages > 1}">
+                    <div class="pagination-info">
+                        共 <span th:text="${totalLogs}">0</span> 条，第 <span th:text="${currentPage}">1</span> / <span th:text="${totalPages}">1</span> 页
+                    </div>
+                    <div class="pagination-controls">
+                        <a th:href="@{/filter-logs(page=1, filtered=${filtered}, source=${currentSource})}" class="btn" th:disabled="${currentPage == 1}">首页</a>
+                        <a th:href="@{/filter-logs(page=${currentPage - 1}, filtered=${filtered}, source=${currentSource})}" class="btn" th:disabled="${currentPage == 1}">上一页</a>
+                        <span class="pagination-numbers">
+                            <a th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
+                               th:href="@{/filter-logs(page=${pageNum}, filtered=${filtered}, source=${currentSource})}"
+                               class="btn"
+                               th:classappend="${pageNum == currentPage} ? 'btn-primary' : ''"
+                               th:text="${pageNum}">1</a>
+                        </span>
+                        <a th:href="@{/filter-logs(page=${currentPage + 1}, filtered=${filtered}, source=${currentSource})}" class="btn" th:disabled="${currentPage == totalPages}">下一页</a>
+                        <a th:href="@{/filter-logs(page=${totalPages}, filtered=${filtered}, source=${currentSource})}" class="btn" th:disabled="${currentPage == totalPages}">末页</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

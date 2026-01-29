@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo-icon">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="48" height="48" rx="12" fill="#0f4c81"/>
+                        <path d="M14 16H20V32H14V16Z" fill="white"/>
+                        <path d="M22 20H28V32H22V20Z" fill="white"/>
+                        <path d="M30 24H36V32H30V24Z" fill="white"/>
+                    </svg>
+                </div>
+                <h1>AI RSS Hub</h1>
+                <p class="subtitle">智能RSS订阅管理平台</p>
+            </div>
+            
+            <form th:action="@{/login}" method="post" class="auth-form">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" name="username" required autofocus placeholder="请输入用户名">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" name="password" required placeholder="请输入密码">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">登录</button>
+            </form>
+            
+            <div class="auth-footer">
+                <p class="forgot-password-link"><a th:href="@{/forgot-password}">忘记密码？</a></p>
+                <p>还没有账号? <a th:href="@{/register}">立即注册</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

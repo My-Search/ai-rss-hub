@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body>
+    <nav th:fragment="header" class="navbar">
+        <div class="nav-container">
+            <a th:href="@{/dashboard}" class="nav-brand">AI RSS Hub</a>
+            <button class="hamburger" onclick="toggleMenu()" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="nav-menu" id="navMenu">
+                <a th:href="@{/dashboard}" class="nav-link">控制台</a>
+                <a th:href="@{/rss-sources}" class="nav-link">RSS源</a>
+                <a th:href="@{/ai-config}" class="nav-link">AI配置</a>
+                <a th:href="@{/feed}" class="nav-link">我的订阅</a>
+                <a th:href="@{/filter-logs}" class="nav-link">筛选日志</a>
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" id="themeToggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="sunIcon">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="moonIcon" style="display: none;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn btn-sm">退出</button>
+                </form>
+            </div>
+        </div>
+        <div class="nav-overlay" id="navOverlay" onclick="toggleMenu()"></div>
+        <script>
+            function toggleMenu() {
+                const menu = document.getElementById('navMenu');
+                const overlay = document.getElementById('navOverlay');
+                const hamburger = document.querySelector('.hamburger');
+                
+                menu.classList.toggle('active');
+                overlay.classList.toggle('active');
+                hamburger.classList.toggle('active');
+                
+                document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
+            }
+            
+            function toggleTheme() {
+                const html = document.documentElement;
+                const sunIcon = document.getElementById('sunIcon');
+                const moonIcon = document.getElementById('moonIcon');
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                html.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                
+                if (newTheme === 'dark') {
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                } else {
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                }
+            }
+            
+            document.addEventListener('DOMContentLoaded', function() {
+                const navLinks = document.querySelectorAll('.nav-link');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', function() {
+                        const menu = document.getElementById('navMenu');
+                        if (menu.classList.contains('active')) {
+                            toggleMenu();
+                        }
+                    });
+                });
+                
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const sunIcon = document.getElementById('sunIcon');
+                const moonIcon = document.getElementById('moonIcon');
+                
+                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                }
+            });
+        </script>
+    </nav>
+</body>
+</html>

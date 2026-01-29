@@ -1,0 +1,8 @@
+target/
+data/
+*.db
+*.log
+.idea/
+*.iml
+.DS_Store
+.opencode/

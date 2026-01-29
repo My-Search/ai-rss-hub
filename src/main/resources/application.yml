@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: ai-rss-hub
+  datasource:
+    url: jdbc:sqlite:data/rss.db
+    driver-class-name: org.sqlite.JDBC
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username:
+    password:
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+    default-encoding: UTF-8
+
+server:
+  port: 8080
+
+rss:
+  default-refresh-interval: 10
+
+email:
+  schedule:
+    cron: 0 * * * * ?
+  max-items: 50
+  batch-size: 100
+  enabled: true
+  from-alias: AI RSS HUB

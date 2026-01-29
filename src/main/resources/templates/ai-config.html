@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI配置 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    
+    <div class="container">
+        <div class="page-header">
+            <h1>AI配置</h1>
+            <p class="subtitle">配置AI模型用于智能筛选RSS内容</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>基础配置</h2>
+            </div>
+            <div class="card-body">
+                <form th:action="@{/ai-config}" method="post">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>API Base URL <span class="required">*</span></label>
+                            <input type="url" name="baseUrl" th:value="${config?.baseUrl}" 
+                                   placeholder="https://api.openai.com/v1" required>
+                            <small class="form-hint">OpenAI兼容的API地址</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>模型名称 <span class="required">*</span></label>
+                            <input type="text" name="model" th:value="${config?.model}" 
+                                   placeholder="gpt-3.5-turbo" required>
+                            <small class="form-hint">例如: gpt-3.5-turbo, gpt-4</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>API Key <span class="required">*</span></label>
+                        <input type="password" name="apiKey" th:value="${config?.apiKey}" 
+                               placeholder="sk-..." required>
+                        <small class="form-hint">你的API密钥，将被安全存储</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>默认刷新频率(分钟) <span class="required">*</span></label>
+                        <input type="number" name="refreshInterval" 
+                               th:value="${config?.refreshInterval != null ? config.refreshInterval : 10}" 
+                               min="1" max="1440" required>
+                        <small class="form-hint">RSS源的默认抓取间隔，范围1-1440分钟</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>系统提示词 <span class="required">*</span></label>
+                        <textarea name="systemPrompt" rows="8" required 
+                                  placeholder="你是一个RSS内容筛选助手，请根据以下规则筛选文章...">[[${config?.systemPrompt}]]</textarea>
+                        <small class="form-hint">描述你希望AI如何筛选文章，例如关注的主题、排除的内容等</small>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">💾 保存配置</button>
+                        <a th:href="@{/dashboard}" class="btn">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card info-card" th:if="${config != null}">
+            <div class="card-header">
+                <h2>✅ 配置状态</h2>
+            </div>
+            <div class="card-body">
+                <p>AI配置已保存！现在可以添加RSS源并获取你的订阅地址。</p>
+                <div class="button-group">
+                    <a th:href="@{/rss-sources}" class="btn btn-primary">📡 管理RSS源</a>
+                    <a th:href="@{/feed}" class="btn">📰 查看我的订阅</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card help-card">
+            <div class="card-header">
+                <h2>💡 配置说明</h2>
+            </div>
+            <div class="card-body">
+                <ul class="help-list">
+                    <li><strong>API Base URL:</strong> 支持OpenAI官方API或兼容的第三方服务</li>
+                    <li><strong>模型选择:</strong> 推荐使用gpt-3.5-turbo以获得更好的性价比</li>
+                    <li><strong>刷新频率:</strong> 建议设置10-60分钟，避免过于频繁的请求</li>
+                    <li><strong>系统提示词:</strong> 详细描述你的筛选需求，AI会根据此规则过滤内容</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

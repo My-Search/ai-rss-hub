@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS源管理 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    
+    <div class="container">
+        <div th:if="${message}" class="alert" th:classappend="${message.contains('成功') or message.contains('触发')} ? 'alert-success' : 'alert-danger'">
+            <span th:text="${message}"></span>
+        </div>
+        
+        <div class="page-header">
+            <h1>RSS源管理</h1>
+            <button class="btn btn-primary" onclick="showAddModal()">添加RSS源</button>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>URL</th>
+                                <th>刷新频率(分钟)</th>
+                                <th>状态</th>
+                                <th>最后抓取</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="source : ${sources}">
+                                <td th:text="${source.name}"></td>
+                                <td class="table-url"><a th:href="${source.url}" target="_blank" th:text="${source.url}"></a></td>
+                                <td th:text="${source.refreshInterval}"></td>
+                                <td>
+                                    <span class="badge" th:classappend="${source.enabled} ? 'badge-success' : 'badge-secondary'"
+                                          th:text="${source.enabled} ? '启用' : '禁用'"></span>
+                                </td>
+                                <td th:text="${source.lastFetchTime != null ? #temporals.format(source.lastFetchTime, 'yyyy-MM-dd HH:mm') : '未抓取'}"></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" 
+                                            th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval}"
+                                            onclick="showEditModalFromData(this)">编辑</button>
+                                    <form th:action="@{/rss-sources/{id}/toggle(id=${source.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm" th:text="${source.enabled} ? '禁用' : '启用'"></button>
+                                    </form>
+                                    <form th:action="@{/rss-sources/{id}/fetch(id=${source.id})}" method="post" style="display:inline;" th:if="${source.enabled}">
+                                        <button type="submit" class="btn btn-sm btn-primary">立即抓取</button>
+                                    </form>
+                                    <form th:action="@{/rss-sources/{id}/delete(id=${source.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除?')">删除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div th:if="${#lists.isEmpty(sources)}" class="empty-state">
+                    <p>暂无RSS源，点击上方按钮添加</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <h2>添加RSS源</h2>
+            <form th:action="@{/rss-sources}" method="post">
+                <div class="form-group">
+                    <label>名称</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>RSS URL</label>
+                    <input type="url" name="url" required>
+                </div>
+                <div class="form-group">
+                    <label>刷新频率(分钟)</label>
+                    <input type="number" name="refreshInterval" value="10" min="1">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="hideAddModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h2>编辑RSS源</h2>
+            <form id="editForm" method="post">
+                <input type="hidden" id="editId" name="id">
+                <div class="form-group">
+                    <label>名称</label>
+                    <input type="text" id="editName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>RSS URL</label>
+                    <input type="url" id="editUrl" name="url" required>
+                </div>
+                <div class="form-group">
+                    <label>刷新频率(分钟)</label>
+                    <input type="number" id="editRefreshInterval" name="refreshInterval" value="10" min="1">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="hideEditModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        function showAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+        function hideAddModal() { document.getElementById('addModal').style.display = 'none'; }
+        
+        function showEditModalFromData(btn) {
+            var id = btn.getAttribute('data-id');
+            var name = btn.getAttribute('data-name');
+            var url = btn.getAttribute('data-url');
+            var refreshInterval = btn.getAttribute('data-interval');
+            showEditModal(id, name, url, refreshInterval);
+        }
+        
+        function showEditModal(id, name, url, refreshInterval) {
+            document.getElementById('editId').value = id;
+            document.getElementById('editName').value = name;
+            document.getElementById('editUrl').value = url;
+            document.getElementById('editRefreshInterval').value = refreshInterval;
+            document.getElementById('editForm').action = '/rss-sources/' + id + '/update';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+        
+        function hideEditModal() { document.getElementById('editModal').style.display = 'none'; }
+    </script>
+</body>
+</html>

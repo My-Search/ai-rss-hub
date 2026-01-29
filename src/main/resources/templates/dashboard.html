@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>控制台 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    
+    <div class="container">
+        <div class="page-header">
+            <h1>控制台</h1>
+            <p>欢迎回来, <span th:text="${user.username}"></span></p>
+        </div>
+        
+        <div class="alert alert-warning" th:if="${aiConfig == null}">
+            <strong>提示:</strong> 请先配置AI设置才能使用RSS筛选功能。
+            <a th:href="@{/ai-config}" class="btn btn-sm">立即配置</a>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" th:text="${#lists.size(sources)}">0</div>
+                <div class="stat-label">RSS源</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" th:text="${totalItems}">0</div>
+                <div class="stat-label">筛选文章</div>
+            </div>
+        </div>
+
+
+        <div class="card">
+            <div class="card-header">
+                <h2>最新筛选文章</h2>
+            </div>
+            <div class="card-body">
+                <div class="rss-items">
+                    <div class="rss-item" th:each="item : ${items}">
+                        <h3><a th:href="${item.link}" target="_blank" th:text="${item.title}"></a></h3>
+                        <p class="item-desc" th:text="${item.description}"></p>
+                        <div class="item-meta">
+                            <span th:if="${item.pubDate != null}" th:text="${#temporals.format(item.pubDate, 'yyyy-MM-dd HH:mm')}"></span>
+                            <span th:if="${item.pubDate == null}">未知时间</span>
+                        </div>
+                    </div>
+                    <div th:if="${#lists.isEmpty(items)}" class="empty-state">
+                        <p>暂无筛选文章</p>
+                    </div>
+                </div>
+                
+                <div class="pagination" th:if="${totalPages > 1}">
+                    <div class="pagination-info">
+                        共 <span th:text="${totalItems}">0</span> 条，第 <span th:text="${currentPage}">1</span> / <span th:text="${totalPages}">1</span> 页
+                    </div>
+                    <div class="pagination-controls">
+                        <a th:href="@{/dashboard(page=1)}" class="btn btn-sm" th:disabled="${currentPage == 1}">首页</a>
+                        <a th:href="@{/dashboard(page=${currentPage - 1})}" class="btn btn-sm" th:disabled="${currentPage == 1}">上一页</a>
+                        <span class="pagination-numbers">
+                            <a th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
+                               th:href="@{/dashboard(page=${pageNum})}"
+                               class="btn btn-sm"
+                               th:classappend="${pageNum == currentPage} ? 'btn-primary' : ''"
+                               th:text="${pageNum}">1</a>
+                        </span>
+                        <a th:href="@{/dashboard(page=${currentPage + 1})}" class="btn btn-sm" th:disabled="${currentPage == totalPages}">下一页</a>
+                        <a th:href="@{/dashboard(page=${totalPages})}" class="btn btn-sm" th:disabled="${currentPage == totalPages}">末页</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    </script>
+</body>
+</html>

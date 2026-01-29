@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的RSS订阅 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    
+    <div class="container">
+        <div class="page-header">
+            <h1>我的RSS订阅</h1>
+            <p>复制下方地址到你的RSS阅读器</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <div class="form-group">
+                    <label>RSS订阅地址</label>
+                    <div class="rss-url-box">
+                        <code th:text="${feedUrl}"></code>
+                    </div>
+                    <small>将此地址添加到你的RSS阅读器（如Feedly、Inoreader等）</small>
+                </div>
+                
+                <button class="btn btn-primary" onclick="copyToClipboard()">复制地址</button>
+            </div>
+        </div>
+        
+        <div class="card" th:if="${user != null}">
+            <div class="card-header">
+                <h2>邮件订阅设置</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label>邮箱地址</label>
+                    <input type="email" class="form-control" th:value="${user.email}" disabled>
+                </div>
+                <div class="form-group">
+                    <label>每日摘要订阅</label>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="emailSubscription" th:checked="${user.emailSubscriptionEnabled}">
+                        <label for="emailSubscription">启用每日自动发送最新RSS摘要</label>
+                    </div>
+                </div>
+                <div class="form-group" id="digestTimeGroup">
+                    <label>通知时间</label>
+                    <input type="time" id="emailDigestTime" class="form-control" th:value="${user.emailDigestTime != null ? user.emailDigestTime : '19:00'}">
+                    <small>设置后，系统将在每天指定时间自动发送当天最新的最多50条RSS摘要到您的邮箱。</small>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" onclick="updateEmailSettings()">保存设置</button>
+                    <button type="button" class="btn btn-secondary" onclick="sendTestEmail()">发送测试邮件</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>关键词订阅</h2>
+            </div>
+            <div class="card-body">
+                <div class="info-hint">
+                    <p>提示：每条以空格分隔进行and条件，每当符合一条时就向用户发送邮件</p>
+                </div>
+                <button class="btn btn-primary mb-3 add-keyword-subscribe-btn" onclick="showAddModal()">添加关键词订阅</button>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>编号</th>
+                                <th>关键词</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="subscription, stat : ${keywordSubscriptions}">
+                                <td th:text="${stat.index + 1}"></td>
+                                <td th:text="${subscription.keywords}"></td>
+                                <td>
+                                    <span class="badge" th:classappend="${subscription.enabled} ? 'badge-success' : 'badge-secondary'"
+                                          th:text="${subscription.enabled} ? '启用' : '禁用'"></span>
+                                </td>
+                                <td th:text="${subscription.createdAt != null ? #temporals.format(subscription.createdAt, 'yyyy-MM-dd HH:mm') : ''}"></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary"
+                                            th:attr="data-id=${subscription.id},data-keywords=${subscription.keywords}"
+                                            onclick="showEditModalFromData(this)">编辑</button>
+                                    <form th:action="@{/keyword-subscriptions/{id}/toggle(id=${subscription.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm" th:text="${subscription.enabled} ? '禁用' : '启用'"></button>
+                                    </form>
+                                    <form th:action="@{/keyword-subscriptions/{id}/delete(id=${subscription.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除?')">删除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div th:if="${#lists.isEmpty(keywordSubscriptions)}" class="empty-state">
+                    <p>暂无关键词订阅，点击上方按钮添加</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <h2>添加关键词订阅</h2>
+            <form th:action="@{/keyword-subscriptions}" method="post">
+                <div class="form-group">
+                    <label>关键词</label>
+                    <input type="text" name="keywords" required placeholder="例如：glm 最新模型">
+                </div>
+                <div class="info-hint">
+                    <p>提示：关键词之间用空格分隔，使用AND逻辑匹配。例如："glm 最新模型" 表示文章必须同时包含"glm"和"最新模型"</p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="hideAddModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h2>编辑关键词订阅</h2>
+            <form id="editForm" method="post">
+                <input type="hidden" id="editId" name="id">
+                <div class="form-group">
+                    <label>关键词</label>
+                    <input type="text" id="editKeywords" name="keywords" required>
+                </div>
+                <div class="info-hint">
+                    <p>提示：关键词之间用空格分隔，使用AND逻辑匹配。例如："glm 最新模型" 表示文章必须同时包含"glm"和"最新模型"</p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="hideEditModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        function copyToClipboard() {
+            const text = document.querySelector('.rss-url-box code').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制到剪贴板');
+            });
+        }
+
+        function updateEmailSettings() {
+            const enabled = document.getElementById('emailSubscription').checked;
+            const digestTime = document.getElementById('emailDigestTime').value;
+
+            const formData = new FormData();
+            formData.append('enabled', enabled);
+
+            fetch('/email/subscription', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (enabled && digestTime) {
+                    const timeFormData = new FormData();
+                    timeFormData.append('digestTime', digestTime);
+                    return fetch('/email/digest-time', {
+                        method: 'POST',
+                        body: timeFormData
+                    });
+                }
+                return response;
+            })
+            .then(() => {
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('更新失败');
+            });
+        }
+
+        function sendTestEmail() {
+            fetch('/email/test', {
+                method: 'POST'
+            })
+            .then(response => response.redirected ? window.location.href : response.text())
+            .then(() => {
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('发送失败');
+            });
+        }
+
+        function showAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+        function hideAddModal() { document.getElementById('addModal').style.display = 'none'; }
+
+        function showEditModalFromData(btn) {
+            var id = btn.getAttribute('data-id');
+            var keywords = btn.getAttribute('data-keywords');
+            showEditModal(id, keywords);
+        }
+
+        function showEditModal(id, keywords) {
+            document.getElementById('editId').value = id;
+            document.getElementById('editKeywords').value = keywords;
+            document.getElementById('editForm').action = '/keyword-subscriptions/' + id + '/update';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function hideEditModal() { document.getElementById('editModal').style.display = 'none'; }
+    </script>
+</body>
+</html>
