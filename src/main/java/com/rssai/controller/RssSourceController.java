@@ -25,7 +25,7 @@ public class RssSourceController {
     @Autowired
     private RssFetchService rssFetchService;
 
-    @Value("${email.enabled:true}")
+    @Value("${email.enable:false}")
     private boolean emailEnabled;
 
     @GetMapping

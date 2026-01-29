@@ -28,7 +28,7 @@ public class DashboardController {
     @Autowired
     private AiConfigMapper aiConfigMapper;
 
-    @Value("${email.enabled:true}")
+    @Value("${email.enable:false}")
     private boolean emailEnabled;
 
     @GetMapping("/dashboard")

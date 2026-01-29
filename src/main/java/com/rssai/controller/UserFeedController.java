@@ -25,7 +25,7 @@ public class UserFeedController {
     @Autowired
     private KeywordSubscriptionMapper keywordSubscriptionMapper;
 
-    @Value("${email.enabled:true}")
+    @Value("${email.enable:false}")
     private boolean emailEnabled;
 
     @GetMapping

@@ -22,7 +22,7 @@ public class AiConfigController {
     @Autowired
     private UserMapper userMapper;
 
-    @Value("${email.enabled:true}")
+    @Value("${email.enable:false}")
     private boolean emailEnabled;
 
     @GetMapping

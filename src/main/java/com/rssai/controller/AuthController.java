@@ -31,7 +31,7 @@ public class AuthController {
     @Autowired
     private EmailService emailService;
     
-    @Value("${email.enabled:true}")
+    @Value("${email.enable:false}")
     private boolean emailEnabled;
 
     @Value("${system-config.allow-register:true}")

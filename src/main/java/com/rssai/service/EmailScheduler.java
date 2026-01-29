@@ -29,7 +29,7 @@ public class EmailScheduler {
     @Autowired
     private RssItemMapper rssItemMapper;
 
-    @Value("${email.enabled:true}")
+    @Value("${email.enable:false}")
     private boolean emailEnabled;
 
     @Value("${email.max-items:50}")

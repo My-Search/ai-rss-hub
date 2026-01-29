@@ -26,7 +26,7 @@ public class FilterLogController {
     @Autowired
     private RssSourceMapper rssSourceMapper;
 
-    @Value("${email.enabled:true}")
+    @Value("${email.enable:false}")
     private boolean emailEnabled;
 
     @GetMapping("/filter-logs")

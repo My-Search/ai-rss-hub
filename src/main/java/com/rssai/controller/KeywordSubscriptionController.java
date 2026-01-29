@@ -22,7 +22,7 @@ public class KeywordSubscriptionController {
     @Autowired
     private KeywordSubscriptionService keywordSubscriptionService;
 
-    @Value("${email.enabled:true}")
+    @Value("${email.enable:false}")
     private boolean emailEnabled;
 
     @PostMapping
