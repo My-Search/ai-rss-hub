@@ -1,6 +1,7 @@
 package com.rssai.model;
 
 import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Data

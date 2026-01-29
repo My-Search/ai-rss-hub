@@ -7,11 +7,10 @@ import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-
-import static org.apache.logging.log4j.message.MapMessage.MapFormat.JSON;
 
 @Service
 public class AiService {

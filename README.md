@@ -65,6 +65,7 @@
 ```bash
 git clone https://github.com/My-Search/ai-rss-hub.git
 cd ai-rss-hub
+docker build -t ai-rss-hub:1.0.0 .
 # 想要添加邮件相关功能，如订阅消息，注册需要验证码验证，请编辑docker-compose.yml 配置
 docker-compose up -d
 # 访问http://ip:2799

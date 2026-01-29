@@ -4,18 +4,9 @@ import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
-import com.rssai.mapper.AiConfigMapper;
-import com.rssai.mapper.KeywordMatchNotificationMapper;
-import com.rssai.mapper.RssItemMapper;
-import com.rssai.mapper.RssSourceMapper;
-import com.rssai.mapper.UserMapper;
-import com.rssai.model.AiConfig;
-import com.rssai.model.KeywordMatchNotification;
-import com.rssai.model.KeywordSubscription;
-import com.rssai.model.RssItem;
-import com.rssai.model.RssSource;
-import com.rssai.model.User;
-   import okhttp3.OkHttpClient;
+import com.rssai.mapper.*;
+import com.rssai.model.*;
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.slf4j.Logger;
@@ -24,15 +15,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class RssFetchService {
