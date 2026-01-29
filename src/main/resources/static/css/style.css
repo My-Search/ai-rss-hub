@@ -4,47 +4,6 @@
     box-sizing: border-box;
 }
 
-html {
-    -webkit-text-size-adjust: 100%;
-    -ms-text-size-adjust: 100%;
-    touch-action: manipulation;
-    font-size: 16px;
-}
-
-/* 移动端字体大小优化 */
-@media (max-width: 768px) {
-    html {
-        font-size: 18px;
-    }
-    
-    body {
-        line-height: 1.6;
-        letter-spacing: 0.01em;
-    }
-    
-    /* 提升移动端文本可读性 */
-    p, span, div, td, th {
-        -webkit-font-feature-settings: "kern" 1;
-        font-feature-settings: "kern" 1;
-    }
-}
-
-@media (max-width: 480px) {
-    html {
-        font-size: 17px;
-    }
-    
-    body {
-        line-height: 1.65;
-        letter-spacing: 0.02em;
-    }
-}
-
-/* 防止iOS上的点击高亮 */
-* {
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-}
-
 :root {
     --primary: #0f4c81;
     --primary-dark: #0a3d6b;
@@ -95,10 +54,6 @@ body {
     color: var(--gray-900);
     line-height: 1.6;
     padding-top: 70px;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    touch-action: manipulation;
-    font-size: 1rem;
 }
 
 .navbar {
@@ -194,13 +149,10 @@ body {
     color: var(--gray-700);
     border-radius: 8px;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 600;
     transition: all 0.2s ease;
     box-shadow: var(--shadow-sm);
-    -webkit-tap-highlight-color: transparent;
-    min-height: 44px;
-    min-width: 44px;
 }
 
 .btn:hover {
@@ -244,7 +196,7 @@ body {
 
 .btn-sm {
     padding: 0.375rem 0.75rem;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
 }
 
 .btn-block {
@@ -262,7 +214,7 @@ body {
     padding: 0.75rem;
     background: var(--gray-50);
     font-weight: 600;
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     color: var(--gray-700);
     border-bottom: 1px solid var(--gray-200);
 }
@@ -281,7 +233,7 @@ body {
     display: inline-block;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 500;
 }
 
@@ -295,6 +247,11 @@ body {
     color: var(--gray-700);
 }
 
+/* RSS源管理页面移动端卡片式布局 - 默认隐藏 */
+.rss-source-cards {
+    display: none;
+}
+
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -304,7 +261,7 @@ body {
     margin-bottom: 0.5rem;
     font-weight: 600;
     color: var(--gray-700);
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
 }
 
 .form-group input,
@@ -314,12 +271,9 @@ body {
     padding: 0.75rem 1rem;
     border: 1px solid var(--gray-300);
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     background: var(--gray-50);
     transition: all 0.2s ease;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
 }
 
 .form-group input:focus,
@@ -398,7 +352,6 @@ body {
     min-height: 100vh;
     background: linear-gradient(135deg, var(--gray-900) 0%, var(--gray-800) 50%, var(--primary-dark) 100%);
     position: relative;
-    overflow: hidden;
 }
 
 .auth-page::before {
@@ -826,9 +779,6 @@ body {
     cursor: pointer;
     padding: 0.5rem;
     z-index: 1001;
-    min-width: 44px;
-    min-height: 44px;
-    -webkit-tap-highlight-color: transparent;
 }
 
 .hamburger span {
@@ -853,23 +803,7 @@ body {
 }
 
 /* 移动端导航菜单 */
-@media (max-width: 768px) {
-    body {
-        padding-top: 60px;
-    }
-    
-    .navbar {
-        padding: 0;
-    }
-    
-    .nav-container {
-        padding: 0.75rem 1rem;
-    }
-    
-    .nav-brand {
-        font-size: 1.125rem;
-    }
-    
+@media (max-width: 1024px) {
     .hamburger {
         display: flex;
     }
@@ -960,8 +894,8 @@ body {
     }
     
     .page-header .btn {
-        width: 100%;
-        text-align: center;
+        width: auto;
+        align-self: flex-start;
     }
     
     /* 卡片优化 */
@@ -1021,6 +955,76 @@ body {
     .table td:last-child .btn {
         margin-bottom: 0.25rem;
         margin-right: 0.25rem;
+    }
+    
+    /* RSS源管理页面移动端卡片式布局 */
+    .rss-source-cards .source-card {
+        background: var(--gray-50);
+        border: 1px solid var(--gray-200);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .rss-source-cards .source-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--gray-200);
+    }
+    
+    .rss-source-cards .source-card-title {
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--gray-900);
+    }
+    
+    .rss-source-cards .source-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .rss-source-cards .source-card-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.875rem;
+    }
+    
+    .rss-source-cards .source-card-label {
+        color: var(--gray-600);
+    }
+    
+    .rss-source-cards .source-card-value {
+        color: var(--gray-900);
+        text-align: right;
+    }
+    
+    .rss-source-cards .source-card-value a {
+        color: var(--primary);
+        text-decoration: none;
+        word-break: break-all;
+        max-width: 200px;
+        display: inline-block;
+    }
+    
+    .rss-source-cards .source-card-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--gray-200);
+    }
+    
+    .rss-source-cards .source-card-actions .btn {
+        flex: 1;
+        min-width: 60px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
     }
     
     /* 表单优化 */
@@ -1143,17 +1147,12 @@ body {
         font-size: 1rem;
     }
     
-    .nav-container {
-        padding: 0.5rem 0.75rem;
-    }
-    
     .container {
         padding: 0.75rem;
     }
     
     .page-header h1 {
-        font-size: 1.3125rem;
-        line-height: 1.3;
+        font-size: 1.25rem;
     }
     
     .stat-value {
@@ -1162,47 +1161,28 @@ body {
     
     .card-header h2 {
         font-size: 1rem;
-        line-height: 1.4;
     }
     
     .btn {
-        padding: 0.625rem 0.875rem;
-        font-size: 0.9375rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
     }
     
     .table th,
     .table td {
         padding: 0.375rem;
-        font-size: 0.8125rem;
     }
     
-    /* 确保所有可点击元素有足够的触摸区域 */
-    a,
-    button,
-    input[type="submit"],
-    input[type="button"] {
-        min-height: 44px;
-        min-width: 44px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+    /* RSS源管理页面：移动端隐藏表格，显示卡片 */
+    .rss-sources-page .table-container {
+        display: none;
+    }
+    
+    .rss-sources-page .rss-source-cards {
+        display: block;
     }
 }
 
-/* 平板设备优化 (768px - 1024px) */
-@media (min-width: 769px) and (max-width: 1024px) {
-    .container {
-        padding: 1.5rem;
-    }
-    
-    .nav-menu {
-        gap: 1rem;
-    }
-    
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
 
 /* 横屏模式优化 */
 @media (max-height: 600px) and (orientation: landscape) {
@@ -1251,9 +1231,6 @@ body {
     justify-content: center;
     transition: all 0.2s ease;
     box-shadow: var(--shadow-sm);
-    min-width: 44px;
-    min-height: 44px;
-    -webkit-tap-highlight-color: transparent;
 }
 
 .theme-toggle:hover {
@@ -1262,8 +1239,8 @@ body {
 }
 
 .theme-toggle svg {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 20px;
+    height: 20px;
 }
 
 [data-theme="dark"] .theme-toggle {

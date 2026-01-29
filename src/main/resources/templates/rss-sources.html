@@ -7,8 +7,8 @@
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 </head>
-<body>
-    <div th:replace="fragments/header :: header"></div>
+<body class="rss-sources-page">
+    <div th:replace="fragments/header :: header(emailEnabled=${emailEnabled})"></div>
     
     <div class="container">
         <div th:if="${message}" class="alert" th:classappend="${message.contains('成功') or message.contains('触发')} ? 'alert-success' : 'alert-danger'">
@@ -22,6 +22,7 @@
         
         <div class="card">
             <div class="card-body">
+                <!-- 桌面端表格 -->
                 <div class="table-container">
                     <table class="table">
                         <thead>
@@ -45,7 +46,7 @@
                                 </td>
                                 <td th:text="${source.lastFetchTime != null ? #temporals.format(source.lastFetchTime, 'yyyy-MM-dd HH:mm') : '未抓取'}"></td>
                                 <td>
-                                    <button class="btn btn-sm btn-primary" 
+                                    <button class="btn btn-sm btn-primary"
                                             th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval}"
                                             onclick="showEditModalFromData(this)">编辑</button>
                                     <form th:action="@{/rss-sources/{id}/toggle(id=${source.id})}" method="post" style="display:inline;">
@@ -62,6 +63,46 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- 移动端卡片 -->
+                <div class="rss-source-cards">
+                    <div th:each="source : ${sources}" class="source-card">
+                        <div class="source-card-header">
+                            <span class="source-card-title" th:text="${source.name}"></span>
+                            <span class="badge" th:classappend="${source.enabled} ? 'badge-success' : 'badge-secondary'"
+                                  th:text="${source.enabled} ? '启用' : '禁用'"></span>
+                        </div>
+                        <div class="source-card-body">
+                            <div class="source-card-row">
+                                <span class="source-card-label">URL:</span>
+                                <span class="source-card-value">
+                                    <a th:href="${source.url}" target="_blank" th:text="${source.url}"></a>
+                                </span>
+                            </div>
+                            <div class="source-card-row">
+                                <span class="source-card-label">刷新频率:</span>
+                                <span class="source-card-value" th:text="${source.refreshInterval} + ' 分钟'"></span>
+                            </div>
+                            <div class="source-card-row">
+                                <span class="source-card-label">最后抓取:</span>
+                                <span class="source-card-value" th:text="${source.lastFetchTime != null ? #temporals.format(source.lastFetchTime, 'yyyy-MM-dd HH:mm') : '未抓取'}"></span>
+                            </div>
+                        </div>
+                        <div class="source-card-actions">
+                            <button class="btn btn-sm btn-primary"
+                                    th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval}"
+                                    onclick="showEditModalFromData(this)">编辑</button>
+                            <form th:action="@{/rss-sources/{id}/toggle(id=${source.id})}" method="post" style="display:inline;">
+                                <button type="submit" class="btn btn-sm" th:text="${source.enabled} ? '禁用' : '启用'"></button>
+                            </form>
+                            <form th:action="@{/rss-sources/{id}/fetch(id=${source.id})}" method="post" style="display:inline;" th:if="${source.enabled}">
+                                <button type="submit" class="btn btn-sm btn-primary">抓取</button>
+                            </form>
+                            <form th:action="@{/rss-sources/{id}/delete(id=${source.id})}" method="post" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除?')">删除</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 <div th:if="${#lists.isEmpty(sources)}" class="empty-state">
                     <p>暂无RSS源，点击上方按钮添加</p>
                 </div>
@@ -75,15 +116,11 @@
             <form th:action="@{/rss-sources}" method="post">
                 <div class="form-group">
                     <label>名称</label>
-                    <input type="text" name="name" required>
+                    <input type="text" name="name" placeholder="留空则自动从URL提取域名">
                 </div>
                 <div class="form-group">
                     <label>RSS URL</label>
                     <input type="url" name="url" required>
-                </div>
-                <div class="form-group">
-                    <label>刷新频率(分钟)</label>
-                    <input type="number" name="refreshInterval" value="10" min="1">
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn" onclick="hideAddModal()">取消</button>
@@ -100,15 +137,11 @@
                 <input type="hidden" id="editId" name="id">
                 <div class="form-group">
                     <label>名称</label>
-                    <input type="text" id="editName" name="name" required>
+                    <input type="text" id="editName" name="name" placeholder="留空则自动从URL提取域名">
                 </div>
                 <div class="form-group">
                     <label>RSS URL</label>
                     <input type="url" id="editUrl" name="url" required>
-                </div>
-                <div class="form-group">
-                    <label>刷新频率(分钟)</label>
-                    <input type="number" id="editRefreshInterval" name="refreshInterval" value="10" min="1">
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn" onclick="hideEditModal()">取消</button>
@@ -126,15 +159,13 @@
             var id = btn.getAttribute('data-id');
             var name = btn.getAttribute('data-name');
             var url = btn.getAttribute('data-url');
-            var refreshInterval = btn.getAttribute('data-interval');
-            showEditModal(id, name, url, refreshInterval);
+            showEditModal(id, name, url);
         }
-        
-        function showEditModal(id, name, url, refreshInterval) {
+
+        function showEditModal(id, name, url) {
             document.getElementById('editId').value = id;
             document.getElementById('editName').value = name;
             document.getElementById('editUrl').value = url;
-            document.getElementById('editRefreshInterval').value = refreshInterval;
             document.getElementById('editForm').action = '/rss-sources/' + id + '/update';
             document.getElementById('editModal').style.display = 'flex';
         }

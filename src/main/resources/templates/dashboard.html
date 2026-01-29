@@ -8,7 +8,7 @@
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 </head>
 <body>
-    <div th:replace="fragments/header :: header"></div>
+    <div th:replace="fragments/header :: header(emailEnabled=${emailEnabled})"></div>
     
     <div class="container">
         <div class="page-header">
@@ -60,11 +60,42 @@
                         <a th:href="@{/dashboard(page=1)}" class="btn btn-sm" th:disabled="${currentPage == 1}">首页</a>
                         <a th:href="@{/dashboard(page=${currentPage - 1})}" class="btn btn-sm" th:disabled="${currentPage == 1}">上一页</a>
                         <span class="pagination-numbers">
-                            <a th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
+                            <a th:if="${totalPages <= 7}"
+                               th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
                                th:href="@{/dashboard(page=${pageNum})}"
                                class="btn btn-sm"
                                th:classappend="${pageNum == currentPage} ? 'btn-primary' : ''"
                                th:text="${pageNum}">1</a>
+                            <span th:if="${totalPages > 7}">
+                                <a th:href="@{/dashboard(page=1)}"
+                                   class="btn btn-sm"
+                                   th:classappend="${currentPage == 1} ? 'btn-primary' : ''">1</a>
+                                <span th:if="${currentPage > 3}" class="btn btn-sm" style="cursor: default; border: none; background: transparent;">...</span>
+                                <a th:if="${currentPage > 2}"
+                                   th:href="@{/dashboard(page=${currentPage - 2})}"
+                                   class="btn btn-sm"
+                                   th:text="${currentPage - 2}"></a>
+                                <a th:if="${currentPage > 1}"
+                                   th:href="@{/dashboard(page=${currentPage - 1})}"
+                                   class="btn btn-sm"
+                                   th:text="${currentPage - 1}"></a>
+                                <a th:href="@{/dashboard(page=${currentPage})}"
+                                   class="btn btn-sm btn-primary"
+                                   th:text="${currentPage}"></a>
+                                <a th:if="${currentPage < totalPages}"
+                                   th:href="@{/dashboard(page=${currentPage + 1})}"
+                                   class="btn btn-sm"
+                                   th:text="${currentPage + 1}"></a>
+                                <a th:if="${currentPage < totalPages - 1}"
+                                   th:href="@{/dashboard(page=${currentPage + 2})}"
+                                   class="btn btn-sm"
+                                   th:text="${currentPage + 2}"></a>
+                                <span th:if="${currentPage < totalPages - 2}" class="btn btn-sm" style="cursor: default; border: none; background: transparent;">...</span>
+                                <a th:href="@{/dashboard(page=${totalPages})}"
+                                   class="btn btn-sm"
+                                   th:classappend="${currentPage == totalPages} ? 'btn-primary' : ''"
+                                   th:text="${totalPages}"></a>
+                            </span>
                         </span>
                         <a th:href="@{/dashboard(page=${currentPage + 1})}" class="btn btn-sm" th:disabled="${currentPage == totalPages}">下一页</a>
                         <a th:href="@{/dashboard(page=${totalPages})}" class="btn btn-sm" th:disabled="${currentPage == totalPages}">末页</a>

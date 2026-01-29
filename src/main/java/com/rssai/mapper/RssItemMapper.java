@@ -1,5 +1,6 @@
 package com.rssai.mapper;
 
+import com.rssai.config.TimezoneConfig;
 import com.rssai.model.RssItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,6 +17,9 @@ import java.util.List;
 public class RssItemMapper {
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TimezoneConfig timezoneConfig;
 
     private RowMapper<RssItem> rowMapper = new RowMapper<RssItem>() {
         @Override
@@ -99,7 +103,8 @@ public class RssItemMapper {
     }
 
     public void insert(RssItem item) {
-        jdbcTemplate.update("INSERT OR IGNORE INTO rss_items (source_id, title, link, description, content, pub_date, ai_filtered, ai_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
+        String timeClause = String.format("datetime('now', '%s')", timezoneConfig.getTimezoneModifier());
+        jdbcTemplate.update("INSERT OR IGNORE INTO rss_items (source_id, title, link, description, content, pub_date, ai_filtered, ai_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, " + timeClause + ")",
                 item.getSourceId(), item.getTitle(), item.getLink(), item.getDescription(), item.getContent(), item.getPubDate(), item.getAiFiltered(), item.getAiReason());
     }
 

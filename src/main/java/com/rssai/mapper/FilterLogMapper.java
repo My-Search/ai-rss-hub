@@ -1,5 +1,6 @@
 package com.rssai.mapper;
 
+import com.rssai.config.TimezoneConfig;
 import com.rssai.model.FilterLog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,6 +17,9 @@ import java.util.List;
 public class FilterLogMapper {
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TimezoneConfig timezoneConfig;
 
     private RowMapper<FilterLog> rowMapper = new RowMapper<FilterLog>() {
         @Override
@@ -86,10 +90,11 @@ public class FilterLogMapper {
     }
 
     public void insert(FilterLog log) {
+        String timeClause = String.format("datetime('now', '%s')", timezoneConfig.getTimezoneModifier());
         jdbcTemplate.update(
                 "INSERT INTO filter_logs (user_id, rss_item_id, title, link, ai_filtered, ai_reason, ai_raw_response, source_name, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
-                log.getUserId(), log.getRssItemId(), log.getTitle(), log.getLink(), 
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, " + timeClause + ")",
+                log.getUserId(), log.getRssItemId(), log.getTitle(), log.getLink(),
                 log.getAiFiltered(), log.getAiReason(), log.getAiRawResponse(), log.getSourceName());
     }
 

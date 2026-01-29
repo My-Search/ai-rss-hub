@@ -6,6 +6,7 @@ import com.rssai.mapper.UserRssFeedMapper;
 import com.rssai.model.User;
 import com.rssai.model.UserRssFeed;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -24,6 +25,9 @@ public class UserFeedController {
     @Autowired
     private KeywordSubscriptionMapper keywordSubscriptionMapper;
 
+    @Value("${email.enabled:true}")
+    private boolean emailEnabled;
+
     @GetMapping
     public String feedPage(Authentication auth, Model model, HttpServletRequest request) {
         User user = userMapper.findByUsername(auth.getName());
@@ -38,6 +42,7 @@ public class UserFeedController {
 
         model.addAttribute("user", user);
         model.addAttribute("keywordSubscriptions", keywordSubscriptionMapper.findByUserId(user.getId()));
+        model.addAttribute("emailEnabled", emailEnabled);
 
         return "feed";
     }

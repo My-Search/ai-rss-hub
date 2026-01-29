@@ -6,6 +6,17 @@
     <title>注册 - AI RSS Hub</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body class="auth-page">
     <div class="auth-container">
@@ -21,12 +32,12 @@
                     <input type="text" name="username" th:value="${username}" required autofocus>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" th:if="${emailEnabled}">
                     <label for="email">邮箱</label>
-                    <input type="email" id="email" name="email" th:value="${email}" required placeholder="请输入邮箱">
+                    <input type="email" id="email" name="email" th:value="${email}" th:required="${emailEnabled}" placeholder="请输入邮箱">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" th:if="${emailEnabled}">
                     <label for="verificationCode">验证码</label>
                     <div class="verify-code-group">
                         <input type="text" id="verificationCode" name="verificationCode" placeholder="请输入验证码" autocomplete="off">
@@ -42,7 +53,7 @@
                 <button type="submit" class="btn btn-primary btn-block">注册</button>
             </form>
             
-            <div class="auth-footer">
+            <div class="auth-footer" th:if="${emailEnabled}">
                 <p>已有账号? <a th:href="@{/login}">立即登录</a></p>
             </div>
         </div>

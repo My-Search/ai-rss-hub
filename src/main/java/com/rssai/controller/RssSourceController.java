@@ -6,10 +6,14 @@ import com.rssai.model.RssSource;
 import com.rssai.model.User;
 import com.rssai.service.RssFetchService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
+import java.net.URISyntaxException;
 
 @Controller
 @RequestMapping("/rss-sources")
@@ -21,25 +25,31 @@ public class RssSourceController {
     @Autowired
     private RssFetchService rssFetchService;
 
+    @Value("${email.enabled:true}")
+    private boolean emailEnabled;
+
     @GetMapping
     public String sourcesPage(Authentication auth, Model model) {
         User user = userMapper.findByUsername(auth.getName());
         model.addAttribute("sources", rssSourceMapper.findByUserId(user.getId()));
+        model.addAttribute("emailEnabled", emailEnabled);
         return "rss-sources";
     }
 
     @PostMapping
     public String addSource(Authentication auth,
-                           @RequestParam String name,
-                           @RequestParam String url,
-                           @RequestParam(defaultValue = "10") Integer refreshInterval) {
+                           @RequestParam(required = false) String name,
+                           @RequestParam String url) {
         User user = userMapper.findByUsername(auth.getName());
         RssSource source = new RssSource();
         source.setUserId(user.getId());
+        if (name == null || name.trim().isEmpty()) {
+            name = extractDomainFromUrl(url);
+        }
         source.setName(name);
         source.setUrl(url);
-        source.setRefreshInterval(refreshInterval);
         source.setEnabled(true);
+        source.setRefreshInterval(60);
         rssSourceMapper.insert(source);
         return "redirect:/rss-sources";
     }
@@ -82,19 +92,36 @@ public class RssSourceController {
     @PostMapping("/{id}/update")
     public String updateSource(@PathVariable Long id,
                               Authentication auth,
-                              @RequestParam String name,
-                              @RequestParam String url,
-                              @RequestParam Integer refreshInterval) {
+                              @RequestParam(required = false) String name,
+                              @RequestParam String url) {
         User user = userMapper.findByUsername(auth.getName());
         RssSource source = rssSourceMapper.findByUserId(user.getId()).stream()
                 .filter(s -> s.getId().equals(id))
                 .findFirst().orElse(null);
         if (source != null) {
+            if (name == null || name.trim().isEmpty()) {
+                name = extractDomainFromUrl(url);
+            }
             source.setName(name);
             source.setUrl(url);
-            source.setRefreshInterval(refreshInterval);
             rssSourceMapper.update(source);
         }
         return "redirect:/rss-sources";
+    }
+
+    private String extractDomainFromUrl(String url) {
+        try {
+            URI uri = new URI(url);
+            String host = uri.getHost();
+            if (host != null) {
+                String[] parts = host.split("\\.");
+                if (parts.length >= 2) {
+                    return parts[parts.length - 2];
+                }
+            }
+            return host != null ? host : url;
+        } catch (URISyntaxException e) {
+            return url;
+        }
     }
 }

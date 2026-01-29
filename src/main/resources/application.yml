@@ -2,7 +2,7 @@ spring:
   application:
     name: ai-rss-hub
   datasource:
-    url: jdbc:sqlite:data/rss.db
+    url: jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=30000&journal_mode=WAL&synchronous=NORMAL
     driver-class-name: org.sqlite.JDBC
   thymeleaf:
     cache: false
@@ -30,11 +30,15 @@ server:
 
 rss:
   default-refresh-interval: 10
+  timezone: GMT+8
 
 email:
   schedule:
     cron: 0 * * * * ?
   max-items: 50
   batch-size: 100
-  enabled: true
+  enabled: false
   from-alias: AI RSS HUB
+system-config:
+  allow-register: true
+

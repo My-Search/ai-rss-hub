@@ -5,6 +5,7 @@ import com.rssai.mapper.UserMapper;
 import com.rssai.model.AiConfig;
 import com.rssai.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,11 +22,15 @@ public class AiConfigController {
     @Autowired
     private UserMapper userMapper;
 
+    @Value("${email.enabled:true}")
+    private boolean emailEnabled;
+
     @GetMapping
     public String configPage(Authentication auth, Model model) {
         User user = userMapper.findByUsername(auth.getName());
         AiConfig config = aiConfigMapper.findByUserId(user.getId());
         model.addAttribute("config", config);
+        model.addAttribute("emailEnabled", emailEnabled);
         return "ai-config";
     }
 

@@ -49,12 +49,17 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "user_id INTEGER NOT NULL, " +
                 "name TEXT NOT NULL, " +
                 "url TEXT NOT NULL, " +
-                "refresh_interval INTEGER DEFAULT 10, " +
                 "enabled BOOLEAN DEFAULT 1, " +
+                "refresh_interval INTEGER DEFAULT 60, " +
                 "last_fetch_time TIMESTAMP, " +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "FOREIGN KEY (user_id) REFERENCES users(id))");
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE rss_sources ADD COLUMN refresh_interval INTEGER DEFAULT 60");
+        } catch (Exception e) {
+        }
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS rss_items (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +

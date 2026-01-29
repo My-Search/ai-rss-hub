@@ -2,9 +2,20 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body>
-    <nav th:fragment="header" class="navbar">
+    <nav th:fragment="header(emailEnabled)" class="navbar">
         <div class="nav-container">
             <a th:href="@{/dashboard}" class="nav-brand">AI RSS Hub</a>
             <button class="hamburger" onclick="toggleMenu()" aria-label="Toggle menu">

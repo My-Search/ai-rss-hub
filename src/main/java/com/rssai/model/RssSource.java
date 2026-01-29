@@ -10,8 +10,8 @@ public class RssSource {
     private Long userId;
     private String name;
     private String url;
-    private Integer refreshInterval;
     private Boolean enabled;
+    private Integer refreshInterval;
     private LocalDateTime lastFetchTime;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

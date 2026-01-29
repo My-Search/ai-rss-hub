@@ -8,6 +8,7 @@ import com.rssai.model.RssItem;
 import com.rssai.model.User;
 import com.rssai.util.HtmlUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -27,6 +28,9 @@ public class DashboardController {
     @Autowired
     private AiConfigMapper aiConfigMapper;
 
+    @Value("${email.enabled:true}")
+    private boolean emailEnabled;
+
     @GetMapping("/dashboard")
     public String dashboard(Authentication auth, Model model,
                             @RequestParam(defaultValue = "1") int page,
@@ -34,6 +38,7 @@ public class DashboardController {
         User user = userMapper.findByUsername(auth.getName());
         model.addAttribute("user", user);
         model.addAttribute("sources", rssSourceMapper.findByUserId(user.getId()));
+        model.addAttribute("emailEnabled", emailEnabled);
         
         int totalItems = rssItemMapper.countFilteredByUserId(user.getId());
         int totalPages = (int) Math.ceil((double) totalItems / pageSize);

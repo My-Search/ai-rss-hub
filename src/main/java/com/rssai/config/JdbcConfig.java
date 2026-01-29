@@ -1,5 +1,6 @@
 package com.rssai.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -9,12 +10,15 @@ import javax.sql.DataSource;
 
 @Configuration
 public class JdbcConfig {
-    
+
+    @Value("${spring.datasource.url}")
+    private String jdbcUrl;
+
     @Bean
     public DataSource dataSource() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.sqlite.JDBC");
-        dataSource.setUrl("jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=30000&journal_mode=WAL&synchronous=NORMAL");
+        dataSource.setUrl(jdbcUrl);
         return dataSource;
     }
 

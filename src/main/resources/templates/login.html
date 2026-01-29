@@ -6,6 +6,17 @@
     <title>登录 - AI RSS Hub</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body class="auth-page">
     <div class="auth-container">
@@ -38,8 +49,8 @@
             </form>
             
             <div class="auth-footer">
-                <p class="forgot-password-link"><a th:href="@{/forgot-password}">忘记密码？</a></p>
-                <p>还没有账号? <a th:href="@{/register}">立即注册</a></p>
+                <p class="forgot-password-link" th:if="${emailEnabled}"><a th:href="@{/forgot-password}">忘记密码？</a></p>
+                <p th:if="${allowRegister}">还没有账号? <a th:href="@{/register}">立即注册</a></p>
             </div>
         </div>
     </div>

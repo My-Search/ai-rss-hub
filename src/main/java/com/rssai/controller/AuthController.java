@@ -34,30 +34,45 @@ public class AuthController {
     @Value("${email.enabled:true}")
     private boolean emailEnabled;
 
+    @Value("${system-config.allow-register:true}")
+    private boolean allowRegister;
+
     @GetMapping("/")
     public String index() {
         return "redirect:/login";
     }
 
     @GetMapping("/login")
-    public String loginPage() {
+    public String loginPage(Model model) {
+        model.addAttribute("emailEnabled", emailEnabled);
+        model.addAttribute("allowRegister", allowRegister);
         return "login";
     }
 
     @GetMapping("/register")
-    public String registerPage() {
+    public String registerPage(Model model) {
+        if (!allowRegister) {
+            return "redirect:/login";
+        }
+        model.addAttribute("emailEnabled", emailEnabled);
         return "register";
     }
 
     @PostMapping("/register")
     public String register(@RequestParam String username, 
                           @RequestParam String password,
-                          @RequestParam String email,
+                          @RequestParam(required = false) String email,
                           @RequestParam(required = false) String verificationCode,
                           Model model) {
         try {
             // 检查是否配置了邮箱
             if (emailEnabled) {
+                if (email == null || email.trim().isEmpty()) {
+                    model.addAttribute("error", "请输入邮箱");
+                    model.addAttribute("username", username);
+                    return "register";
+                }
+                
                 // 验证邮箱验证码
                 if (verificationCode == null || verificationCode.trim().isEmpty()) {
                     model.addAttribute("error", "请输入验证码");
@@ -75,7 +90,7 @@ public class AuthController {
             }
             
             // 注册用户
-            userService.register(username, password, email);
+            userService.register(username, password, email != null ? email : "");
             return "redirect:/login?registered";
         } catch (Exception e) {
             logger.error("注册失败", e);
@@ -94,7 +109,12 @@ public class AuthController {
     public Map<String, Object> sendRegisterCode(@RequestParam String email) {
         Map<String, Object> result = new HashMap<>();
         
-        // 检查邮箱是否已注册
+        if (!allowRegister) {
+            result.put("success", false);
+            result.put("message", "注册功能已关闭");
+            return result;
+        }
+        
         User existingUser = userService.findByEmail(email);
         if (existingUser != null) {
             result.put("success", false);
@@ -103,13 +123,8 @@ public class AuthController {
         }
         
         try {
-            // 生成验证码
             String code = verificationCodeService.generateCode();
-            
-            // 存储验证码
             verificationCodeService.storeForRegister(email, code);
-            
-            // 发送验证码邮件
             emailService.sendVerificationCode(email, code, "register");
             
             result.put("success", true);

@@ -25,14 +25,14 @@ public class RssSourceMapper {
             source.setUserId(rs.getLong("user_id"));
             source.setName(rs.getString("name"));
             source.setUrl(rs.getString("url"));
-            source.setRefreshInterval(rs.getInt("refresh_interval"));
             source.setEnabled(rs.getBoolean("enabled"));
-            
+            source.setRefreshInterval(rs.getInt("refresh_interval"));
+
             String lastFetchStr = rs.getString("last_fetch_time");
             if (lastFetchStr != null && !lastFetchStr.isEmpty()) {
                 source.setLastFetchTime(parseDateTime(lastFetchStr));
             }
-            
+
             source.setCreatedAt(parseDateTime(rs.getString("created_at")));
             source.setUpdatedAt(parseDateTime(rs.getString("updated_at")));
             return source;
@@ -64,13 +64,13 @@ public class RssSourceMapper {
     }
 
     public void insert(RssSource source) {
-        jdbcTemplate.update("INSERT INTO rss_sources (user_id, name, url, refresh_interval, enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))",
-                source.getUserId(), source.getName(), source.getUrl(), source.getRefreshInterval(), source.getEnabled());
+        jdbcTemplate.update("INSERT INTO rss_sources (user_id, name, url, enabled, refresh_interval, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))",
+                source.getUserId(), source.getName(), source.getUrl(), source.getEnabled(), source.getRefreshInterval());
     }
 
     public void update(RssSource source) {
-        jdbcTemplate.update("UPDATE rss_sources SET name = ?, url = ?, refresh_interval = ?, enabled = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
-                source.getName(), source.getUrl(), source.getRefreshInterval(), source.getEnabled(), source.getId());
+        jdbcTemplate.update("UPDATE rss_sources SET name = ?, url = ?, enabled = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
+                source.getName(), source.getUrl(), source.getEnabled(), source.getId());
     }
 
     public void updateLastFetchTime(Long id) {

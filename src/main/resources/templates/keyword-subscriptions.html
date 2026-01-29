@@ -8,7 +8,7 @@
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 </head>
 <body>
-    <div th:replace="fragments/header :: header"></div>
+    <div th:replace="fragments/header :: header(emailEnabled=${emailEnabled})"></div>
 
     <div class="container">
         <div th:if="${message}" class="alert" th:classappend="${message.contains('成功') or message.contains('触发')} ? 'alert-success' : 'alert-danger'">

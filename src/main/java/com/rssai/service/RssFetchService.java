@@ -87,8 +87,14 @@ public class RssFetchService {
     }
 
     private boolean shouldFetch(RssSource source) {
+        AiConfig aiConfig = aiConfigMapper.findByUserId(source.getUserId());
+        if (aiConfig == null) {
+            logger.warn("用户 {} 未配置AI，跳过RSS源 {}", source.getUserId(), source.getName());
+            return false;
+        }
+
         if (source.getLastFetchTime() == null) return true;
-        LocalDateTime nextFetch = source.getLastFetchTime().plusMinutes(source.getRefreshInterval());
+        LocalDateTime nextFetch = source.getLastFetchTime().plusMinutes(aiConfig.getRefreshInterval());
         return LocalDateTime.now().isAfter(nextFetch);
     }
 

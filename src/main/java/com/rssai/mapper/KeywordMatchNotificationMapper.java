@@ -1,5 +1,6 @@
 package com.rssai.mapper;
 
+import com.rssai.config.TimezoneConfig;
 import com.rssai.model.KeywordMatchNotification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,6 +17,9 @@ import java.util.List;
 public class KeywordMatchNotificationMapper {
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TimezoneConfig timezoneConfig;
 
     private RowMapper<KeywordMatchNotification> rowMapper = new RowMapper<KeywordMatchNotification>() {
         @Override
@@ -55,8 +59,9 @@ public class KeywordMatchNotificationMapper {
     }
 
     public void insert(KeywordMatchNotification notification) {
+        String timeClause = String.format("datetime('now', '%s')", timezoneConfig.getTimezoneModifier());
         jdbcTemplate.update(
-                "INSERT INTO keyword_match_notifications (user_id, rss_item_id, subscription_id, matched_keyword, notified, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))",
+                "INSERT INTO keyword_match_notifications (user_id, rss_item_id, subscription_id, matched_keyword, notified, created_at) VALUES (?, ?, ?, ?, ?, " + timeClause + ")",
                 notification.getUserId(),
                 notification.getRssItemId(),
                 notification.getSubscriptionId(),

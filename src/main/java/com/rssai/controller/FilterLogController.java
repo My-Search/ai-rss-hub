@@ -6,6 +6,7 @@ import com.rssai.mapper.UserMapper;
 import com.rssai.model.FilterLog;
 import com.rssai.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -24,6 +25,9 @@ public class FilterLogController {
     private FilterLogMapper filterLogMapper;
     @Autowired
     private RssSourceMapper rssSourceMapper;
+
+    @Value("${email.enabled:true}")
+    private boolean emailEnabled;
 
     @GetMapping("/filter-logs")
     public String filterLogs(Authentication auth, Model model,
@@ -69,6 +73,7 @@ public class FilterLogController {
         model.addAttribute("filtered", filtered);
         model.addAttribute("currentSource", source);
         model.addAttribute("sources", sources);
+        model.addAttribute("emailEnabled", emailEnabled);
 
         return "filter-logs";
     }
