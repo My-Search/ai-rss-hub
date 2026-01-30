@@ -122,6 +122,11 @@
                     <label>RSS URL</label>
                     <input type="url" name="url" required>
                 </div>
+                <div class="form-group">
+                    <label>刷新频率(分钟)</label>
+                    <input type="number" name="refreshInterval" th:value="${defaultRefreshInterval}" min="1" max="1440" required>
+                    <small class="form-hint">留空则使用用户默认配置</small>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn" onclick="hideAddModal()">取消</button>
                     <button type="submit" class="btn btn-primary">添加</button>
@@ -143,6 +148,11 @@
                     <label>RSS URL</label>
                     <input type="url" id="editUrl" name="url" required>
                 </div>
+                <div class="form-group">
+                    <label>刷新频率(分钟)</label>
+                    <input type="number" id="editRefreshInterval" name="refreshInterval" min="1" max="1440" required>
+                    <small class="form-hint">RSS源的抓取间隔</small>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn" onclick="hideEditModal()">取消</button>
                     <button type="submit" class="btn btn-primary">保存</button>
@@ -159,13 +169,15 @@
             var id = btn.getAttribute('data-id');
             var name = btn.getAttribute('data-name');
             var url = btn.getAttribute('data-url');
-            showEditModal(id, name, url);
+            var interval = btn.getAttribute('data-interval');
+            showEditModal(id, name, url, interval);
         }
 
-        function showEditModal(id, name, url) {
+        function showEditModal(id, name, url, interval) {
             document.getElementById('editId').value = id;
             document.getElementById('editName').value = name;
             document.getElementById('editUrl').value = url;
+            document.getElementById('editRefreshInterval').value = interval || 60;
             document.getElementById('editForm').action = '/rss-sources/' + id + '/update';
             document.getElementById('editModal').style.display = 'flex';
         }

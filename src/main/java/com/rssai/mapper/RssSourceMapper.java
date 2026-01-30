@@ -69,8 +69,8 @@ public class RssSourceMapper {
     }
 
     public void update(RssSource source) {
-        jdbcTemplate.update("UPDATE rss_sources SET name = ?, url = ?, enabled = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
-                source.getName(), source.getUrl(), source.getEnabled(), source.getId());
+        jdbcTemplate.update("UPDATE rss_sources SET name = ?, url = ?, enabled = ?, refresh_interval = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
+                source.getName(), source.getUrl(), source.getEnabled(), source.getRefreshInterval(), source.getId());
     }
 
     public void updateLastFetchTime(Long id) {

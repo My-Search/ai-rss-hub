@@ -1,7 +1,9 @@
 package com.rssai.controller;
 
+import com.rssai.mapper.AiConfigMapper;
 import com.rssai.mapper.RssSourceMapper;
 import com.rssai.mapper.UserMapper;
+import com.rssai.model.AiConfig;
 import com.rssai.model.RssSource;
 import com.rssai.model.User;
 import com.rssai.service.RssFetchService;
@@ -24,6 +26,8 @@ public class RssSourceController {
     private UserMapper userMapper;
     @Autowired
     private RssFetchService rssFetchService;
+    @Autowired
+    private AiConfigMapper aiConfigMapper;
 
     @Value("${email.enable:false}")
     private boolean emailEnabled;
@@ -33,13 +37,21 @@ public class RssSourceController {
         User user = userMapper.findByUsername(auth.getName());
         model.addAttribute("sources", rssSourceMapper.findByUserId(user.getId()));
         model.addAttribute("emailEnabled", emailEnabled);
+
+        // 获取用户默认刷新间隔，用于添加RSS源时回显
+        AiConfig aiConfig = aiConfigMapper.findByUserId(user.getId());
+        Integer defaultRefreshInterval = (aiConfig != null && aiConfig.getRefreshInterval() != null)
+                ? aiConfig.getRefreshInterval() : 60;
+        model.addAttribute("defaultRefreshInterval", defaultRefreshInterval);
+
         return "rss-sources";
     }
 
     @PostMapping
     public String addSource(Authentication auth,
                            @RequestParam(required = false) String name,
-                           @RequestParam String url) {
+                           @RequestParam String url,
+                           @RequestParam(required = false) Integer refreshInterval) {
         User user = userMapper.findByUsername(auth.getName());
         RssSource source = new RssSource();
         source.setUserId(user.getId());
@@ -49,7 +61,15 @@ public class RssSourceController {
         source.setName(name);
         source.setUrl(url);
         source.setEnabled(true);
-        source.setRefreshInterval(60);
+
+        // 如果没有指定刷新间隔，使用用户默认配置
+        if (refreshInterval == null || refreshInterval <= 0) {
+            AiConfig aiConfig = aiConfigMapper.findByUserId(user.getId());
+            refreshInterval = (aiConfig != null && aiConfig.getRefreshInterval() != null)
+                    ? aiConfig.getRefreshInterval() : 60;
+        }
+        source.setRefreshInterval(refreshInterval);
+
         rssSourceMapper.insert(source);
         return "redirect:/rss-sources";
     }
@@ -93,7 +113,8 @@ public class RssSourceController {
     public String updateSource(@PathVariable Long id,
                               Authentication auth,
                               @RequestParam(required = false) String name,
-                              @RequestParam String url) {
+                              @RequestParam String url,
+                              @RequestParam(required = false) Integer refreshInterval) {
         User user = userMapper.findByUsername(auth.getName());
         RssSource source = rssSourceMapper.findByUserId(user.getId()).stream()
                 .filter(s -> s.getId().equals(id))
@@ -104,6 +125,12 @@ public class RssSourceController {
             }
             source.setName(name);
             source.setUrl(url);
+
+            // 如果指定了刷新间隔则更新，否则保持原值
+            if (refreshInterval != null && refreshInterval > 0) {
+                source.setRefreshInterval(refreshInterval);
+            }
+
             rssSourceMapper.update(source);
         }
         return "redirect:/rss-sources";

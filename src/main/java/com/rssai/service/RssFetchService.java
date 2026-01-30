@@ -94,7 +94,14 @@ public class RssFetchService {
         }
 
         if (source.getLastFetchTime() == null) return true;
-        LocalDateTime nextFetch = source.getLastFetchTime().plusMinutes(aiConfig.getRefreshInterval());
+
+        // 优先使用RSS源级配置，如果没有则使用用户级配置
+        Integer refreshInterval = source.getRefreshInterval();
+        if (refreshInterval == null || refreshInterval <= 0) {
+            refreshInterval = aiConfig.getRefreshInterval();
+        }
+
+        LocalDateTime nextFetch = source.getLastFetchTime().plusMinutes(refreshInterval);
         return LocalDateTime.now().isAfter(nextFetch);
     }
 
