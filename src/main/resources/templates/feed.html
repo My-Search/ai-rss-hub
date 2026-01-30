@@ -165,7 +165,8 @@
 
             fetch('/email/subscription', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                keepalive: true
             })
             .then(response => {
                 if (!response.ok) {
@@ -176,7 +177,8 @@
                     timeFormData.append('digestTime', digestTime);
                     return fetch('/email/digest-time', {
                         method: 'POST',
-                        body: timeFormData
+                        body: timeFormData,
+                        keepalive: true
                     });
                 }
                 return null;
