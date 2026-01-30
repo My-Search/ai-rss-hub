@@ -165,27 +165,26 @@
 
             fetch('/email/subscription', {
                 method: 'POST',
-                body: formData,
-                keepalive: true
+                body: formData
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('订阅状态更新失败');
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || '订阅状态更新失败');
                 }
                 if (enabled && digestTime) {
                     const timeFormData = new FormData();
                     timeFormData.append('digestTime', digestTime);
                     return fetch('/email/digest-time', {
                         method: 'POST',
-                        body: timeFormData,
-                        keepalive: true
-                    });
+                        body: timeFormData
+                    }).then(response => response.json());
                 }
                 return null;
             })
-            .then(response => {
-                if (response && !response.ok) {
-                    throw new Error('摘要时间更新失败');
+            .then(data => {
+                if (data && !data.success) {
+                    throw new Error(data.message || '摘要时间更新失败');
                 }
                 window.location.reload();
             })
@@ -199,13 +198,17 @@
             fetch('/email/test', {
                 method: 'POST'
             })
-            .then(response => response.redirected ? window.location.href : response.text())
-            .then(() => {
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || '发送失败');
+                }
+                alert(data.message);
                 window.location.reload();
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('发送失败');
+                alert('发送失败: ' + error.message);
             });
         }
 
