@@ -43,7 +43,7 @@
                         <h3><a th:href="${item.link}" target="_blank" th:text="${item.title}"></a></h3>
                         <p class="item-desc" th:text="${item.description}"></p>
                         <div class="item-meta">
-                            <span th:if="${item.pubDate != null}" th:text="${#temporals.format(item.pubDate, 'yyyy-MM-dd HH:mm')}"></span>
+                            <span th:if="${item.pubDate != null}" th:text="${#temporals.format(item.pubDate, 'yyyy-MM-dd')}" class="pub-date" th:data-time="${#temporals.format(item.pubDate, 'HH:mm')}"></span>
                             <span th:if="${item.pubDate == null}">未知时间</span>
                         </div>
                     </div>
@@ -106,6 +106,18 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelectorAll('.pub-date').forEach(function(el) {
+                const dateText = el.textContent.trim();
+                const timeText = el.getAttribute('data-time');
+                if (dateText === today) {
+                    el.textContent = dateText + '(今天) ' + timeText;
+                } else {
+                    el.textContent = dateText + ' ' + timeText;
+                }
+            });
+        });
     </script>
 </body>
 </html>

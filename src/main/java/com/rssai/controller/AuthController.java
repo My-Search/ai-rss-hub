@@ -94,7 +94,24 @@ public class AuthController {
             return "redirect:/login?registered";
         } catch (Exception e) {
             logger.error("注册失败", e);
-            model.addAttribute("error", "注册失败: " + e.getMessage());
+            String errorMessage = "注册失败，请稍后重试";
+            // 根据异常类型提供友好的错误提示
+            String exceptionMessage = e.getMessage();
+            if (exceptionMessage != null) {
+                if (exceptionMessage.contains("用户名已被注册")) {
+                    errorMessage = "该用户名已被注册，请更换用户名";
+                } else if (exceptionMessage.contains("SQLITE_CONSTRAINT_UNIQUE") || 
+                           exceptionMessage.contains("UNIQUE constraint failed")) {
+                    if (exceptionMessage.contains("users.username")) {
+                        errorMessage = "该用户名已被注册，请更换用户名";
+                    } else if (exceptionMessage.contains("users.email")) {
+                        errorMessage = "该邮箱已被注册，请更换邮箱或使用其他登录方式";
+                    } else {
+                        errorMessage = "注册信息已存在，请更换用户名或邮箱";
+                    }
+                }
+            }
+            model.addAttribute("error", errorMessage);
             model.addAttribute("username", username);
             model.addAttribute("email", email);
             return "register";

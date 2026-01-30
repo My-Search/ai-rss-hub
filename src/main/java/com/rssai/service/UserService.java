@@ -19,6 +19,12 @@ public class UserService {
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public User register(String username, String password, String email) {
+        // 检查用户名是否已存在
+        User existingUser = userMapper.findByUsername(username);
+        if (existingUser != null) {
+            throw new RuntimeException("用户名已被注册");
+        }
+        
         User user = new User();
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));

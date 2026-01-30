@@ -496,6 +496,7 @@ body {
 .rss-item {
     padding-bottom: 1.5rem;
     border-bottom: 1px solid var(--gray-200);
+    overflow: hidden;
 }
 
 .rss-item:last-child {
@@ -815,6 +816,7 @@ body {
         width: 280px;
         max-width: 85vw;
         height: 100vh;
+        max-height: 100vh;
         background: white;
         flex-direction: column;
         gap: 0;
@@ -824,6 +826,7 @@ body {
         z-index: 1000;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        display: flex;
     }
     
     .nav-menu.active {
@@ -843,16 +846,22 @@ body {
     .nav-link:active {
         background: var(--gray-50);
     }
-    
+
+    .nav-menu .theme-toggle {
+        margin: 0.5rem auto;
+        flex-shrink: 0;
+    }
+
     .nav-menu form {
         margin-top: auto;
         padding-top: 1rem;
         border-top: 1px solid var(--gray-100);
+        flex-shrink: 0;
     }
-    
+
     .nav-menu .btn {
         width: 100%;
-        margin-top: 1rem;
+        margin-top: 0.5rem;
     }
     
     /* 遮罩层 */
