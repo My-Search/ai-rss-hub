@@ -21,10 +21,13 @@ import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 public class RssFetchService {
@@ -142,38 +145,52 @@ public class RssFetchService {
                     newEntries.add(entry);
                 }
             }
-            
+
             if (newEntries.isEmpty()) {
                 logger.info("没有新消息需要处理");
                 rssSourceMapper.updateLastFetchTime(source.getId());
                 logger.info("========================================");
                 return;
             }
-            
-            logger.info("发现 {} 条新消息，准备批量筛选", newEntries.size());
+
+            // 过滤同一源下的重复标题
+            List<SyndEntry> filteredEntries = filterDuplicateTitles(newEntries, source.getId());
+            int duplicateCount = newEntries.size() - filteredEntries.size();
+            if (duplicateCount > 0) {
+                logger.info("过滤了 {} 条重复标题的消息", duplicateCount);
+            }
+
+            if (filteredEntries.isEmpty()) {
+                logger.info("过滤后没有新消息需要处理");
+                rssSourceMapper.updateLastFetchTime(source.getId());
+                logger.info("========================================");
+                return;
+            }
+
+            logger.info("发现 {} 条新消息，准备批量筛选", filteredEntries.size());
             
             // 准备批量筛选数据
             List<AiService.RssItemData> itemsToFilter = new ArrayList<>();
-            for (SyndEntry entry : newEntries) {
+            for (SyndEntry entry : filteredEntries) {
                 String description = entry.getDescription() != null ? entry.getDescription().getValue() : "";
                 itemsToFilter.add(new AiService.RssItemData(entry.getTitle(), description));
             }
-            
+
             // 批量AI筛选（带原始响应）
             long startTime = System.currentTimeMillis();
             AiService.BatchFilterResult filterResult = aiService.filterRssItemsBatchWithRawResponse(aiConfig, itemsToFilter, source.getName());
             Map<Integer, String> filterResults = filterResult.getFilterResults();
             Map<Integer, String> rawResponses = filterResult.getRawResponses();
             long duration = System.currentTimeMillis() - startTime;
-            logger.info("批量筛选完成，耗时: {}ms，平均每条: {}ms", duration, duration / newEntries.size());
-            
+            logger.info("批量筛选完成，耗时: {}ms，平均每条: {}ms", duration, duration / filteredEntries.size());
+
             // 保存结果
             int passedCount = 0;
             int rejectedCount = 0;
             List<RssItem> newRssItems = new ArrayList<>();
 
-            for (int i = 0; i < newEntries.size(); i++) {
-                SyndEntry entry = newEntries.get(i);
+            for (int i = 0; i < filteredEntries.size(); i++) {
+                SyndEntry entry = filteredEntries.get(i);
                 String aiReason = filterResults.getOrDefault(i, "未通过 - 处理失败");
                 String aiRawResponse = rawResponses.getOrDefault(i, "未找到响应");
                 boolean filtered = aiReason.startsWith("通过");
@@ -222,7 +239,7 @@ public class RssFetchService {
             
             logger.info("========================================");
             logger.info("抓取完成: {}", source.getName());
-            logger.info("统计: 新消息={}, 通过={}, 未通过={}", newEntries.size(), passedCount, rejectedCount);
+            logger.info("统计: 新消息={}, 重复标题={}, 通过={}, 未通过={}", newEntries.size(), duplicateCount, passedCount, rejectedCount);
             logger.info("========================================");
             
         } catch (Exception e) {
@@ -279,5 +296,48 @@ public class RssFetchService {
                 emailService.sendKeywordMatchNotification(user.getEmail(), subscription.getKeywords(), itemsToNotify);
             }
         }
+    }
+
+    /**
+     * 过滤同一RSS源下的重复标题条目
+     * 保留第一个出现的条目，后续重复的标题将被过滤掉
+     *
+     * @param entries  RSS条目列表
+     * @param sourceId RSS源ID
+     * @return 过滤后的RSS条目列表
+     */
+    private List<SyndEntry> filterDuplicateTitles(List<SyndEntry> entries, Long sourceId) {
+        if (entries == null || entries.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 使用LinkedHashMap保持插入顺序，同时去重
+        Map<String, SyndEntry> uniqueEntries = new LinkedHashMap<>();
+        List<String> duplicateTitles = new ArrayList<>();
+
+        for (SyndEntry entry : entries) {
+            String title = entry.getTitle();
+            if (title == null || title.trim().isEmpty()) {
+                // 空标题的条目保留，不进行过滤
+                uniqueEntries.put("__empty_" + System.identityHashCode(entry), entry);
+                continue;
+            }
+
+            // 标准化标题用于比较（去除首尾空格，统一大小写）
+            String normalizedTitle = title.trim();
+
+            if (uniqueEntries.containsKey(normalizedTitle)) {
+                duplicateTitles.add(title);
+            } else {
+                uniqueEntries.put(normalizedTitle, entry);
+            }
+        }
+
+        if (!duplicateTitles.isEmpty()) {
+            logger.info("RSS源 {} 发现 {} 个重复标题: {}",
+                    sourceId, duplicateTitles.size(), String.join(", ", duplicateTitles));
+        }
+
+        return new ArrayList<>(uniqueEntries.values());
     }
 }

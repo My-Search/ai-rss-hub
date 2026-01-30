@@ -80,4 +80,9 @@ public class RssSourceMapper {
     public void delete(Long id) {
         jdbcTemplate.update("DELETE FROM rss_sources WHERE id = ?", id);
     }
+
+    public void updateRefreshIntervalByUserId(Long userId, Integer refreshInterval) {
+        jdbcTemplate.update("UPDATE rss_sources SET refresh_interval = ?, updated_at = datetime('now', 'localtime') WHERE user_id = ?",
+                refreshInterval, userId);
+    }
 }

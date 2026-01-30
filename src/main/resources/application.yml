@@ -37,7 +37,7 @@ email:
     cron: 0 * * * * ?
   max-items: 50
   batch-size: 100
-  enable: false
+  enable: true
   from-alias: AI RSS HUB
 system-config:
   allow-register: true

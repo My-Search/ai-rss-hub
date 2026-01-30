@@ -1,6 +1,7 @@
 package com.rssai.controller;
 
 import com.rssai.mapper.AiConfigMapper;
+import com.rssai.mapper.RssSourceMapper;
 import com.rssai.mapper.UserMapper;
 import com.rssai.model.AiConfig;
 import com.rssai.model.User;
@@ -21,6 +22,8 @@ public class AiConfigController {
     private AiConfigMapper aiConfigMapper;
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private RssSourceMapper rssSourceMapper;
 
     @Value("${email.enable:false}")
     private boolean emailEnabled;
@@ -40,10 +43,11 @@ public class AiConfigController {
                             @RequestParam String model,
                             @RequestParam String apiKey,
                             @RequestParam String systemPrompt,
-                            @RequestParam(defaultValue = "10") Integer refreshInterval) {
+                            @RequestParam(defaultValue = "10") Integer refreshInterval,
+                            @RequestParam(required = false) String forceUpdateSources) {
         User user = userMapper.findByUsername(auth.getName());
         AiConfig config = aiConfigMapper.findByUserId(user.getId());
-        
+
         if (config == null) {
             config = new AiConfig();
             config.setUserId(user.getId());
@@ -61,7 +65,12 @@ public class AiConfigController {
             config.setRefreshInterval(refreshInterval);
             aiConfigMapper.update(config);
         }
-        
+
+        // 如果勾选了强制刷新到所有RSS源，则更新该用户下所有RSS源的刷新频率
+        if ("true".equals(forceUpdateSources)) {
+            rssSourceMapper.updateRefreshIntervalByUserId(user.getId(), refreshInterval);
+        }
+
         return "redirect:/dashboard";
     }
 }

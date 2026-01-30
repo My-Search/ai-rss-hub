@@ -168,6 +168,9 @@
                 body: formData
             })
             .then(response => {
+                if (!response.ok) {
+                    throw new Error('订阅状态更新失败');
+                }
                 if (enabled && digestTime) {
                     const timeFormData = new FormData();
                     timeFormData.append('digestTime', digestTime);
@@ -176,14 +179,17 @@
                         body: timeFormData
                     });
                 }
-                return response;
+                return null;
             })
-            .then(() => {
+            .then(response => {
+                if (response && !response.ok) {
+                    throw new Error('摘要时间更新失败');
+                }
                 window.location.reload();
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('更新失败');
+                alert('更新失败: ' + error.message);
             });
         }
 
