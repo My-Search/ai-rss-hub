@@ -1,5 +1,6 @@
 package com.rssai.security;
 
+import com.rssai.model.LoginDevice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.web.authentication.rememberme.PersistentRememberMeToken;
@@ -7,6 +8,7 @@ import org.springframework.security.web.authentication.rememberme.PersistentToke
 import org.springframework.stereotype.Repository;
 
 import java.util.Date;
+import java.util.List;
 
 @Repository
 public class JdbcTokenRepositoryImpl implements PersistentTokenRepository {
@@ -51,5 +53,33 @@ public class JdbcTokenRepositoryImpl implements PersistentTokenRepository {
     @Override
     public void removeUserTokens(String username) {
         jdbcTemplate.update("DELETE FROM persistent_logins WHERE username = ?", username);
+    }
+
+    public List<LoginDevice> getUserDevices(String username) {
+        return jdbcTemplate.query(
+                "SELECT series, username, last_used FROM persistent_logins WHERE username = ? ORDER BY last_used DESC",
+                (rs, rowNum) -> {
+                    LoginDevice device = new LoginDevice(
+                            rs.getString("series"),
+                            rs.getString("username"),
+                            rs.getTimestamp("last_used")
+                    );
+                    return device;
+                },
+                username
+        );
+    }
+
+    public void removeTokenBySeries(String series) {
+        jdbcTemplate.update("DELETE FROM persistent_logins WHERE series = ?", series);
+    }
+
+    public int getUserDeviceCount(String username) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM persistent_logins WHERE username = ?",
+                Integer.class,
+                username
+        );
+        return count != null ? count : 0;
     }
 }

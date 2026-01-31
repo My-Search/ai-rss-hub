@@ -134,6 +134,11 @@ public class RssItemMapper {
                 item.getSourceId(), item.getTitle(), item.getLink(), item.getDescription(), item.getContent(), item.getPubDate(), item.getAiFiltered(), item.getAiReason());
     }
 
+    public void update(RssItem item) {
+        jdbcTemplate.update("UPDATE rss_items SET ai_filtered = ?, ai_reason = ? WHERE id = ?",
+                item.getAiFiltered(), item.getAiReason(), item.getId());
+    }
+
     public List<RssItem> findTodayLatestItemsByUserId(Long userId, int limit) {
         return jdbcTemplate.query(
                 "SELECT ri.* FROM rss_items ri " +

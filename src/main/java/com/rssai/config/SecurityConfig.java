@@ -42,17 +42,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .and()
             .sessionManagement()
                 .sessionFixation().migrateSession()
-                .maximumSessions(1)
+                .maximumSessions(-1)
                 .maxSessionsPreventsLogin(false)
                 .expiredUrl("/login?expired")
             .and()
             .and()
             .logout()
-                .addLogoutHandler((request, response, authentication) -> {
-                    if (authentication != null && authentication.getName() != null) {
-                        tokenRepository.removeUserTokens(authentication.getName());
-                    }
-                })
                 .logoutSuccessUrl("/login")
                 .deleteCookies("JSESSIONID", "remember-me")
                 .permitAll();

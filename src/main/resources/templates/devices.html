@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备管理 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body>
+    <div th:replace="fragments/header :: header(emailEnabled=${false})"></div>
+    
+    <div class="container">
+        <div class="page-header">
+            <h1>设备管理</h1>
+            <p>管理您的登录设备和"记住我"会话</p>
+        </div>
+
+        <div class="alert alert-info">
+            <strong>提示:</strong> 您当前有 <span th:text="${deviceCount}">0</span> 个活跃设备。每个设备使用"记住我"功能后都会在此显示。
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>活跃设备</h2>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-danger" onclick="revokeAllDevices()">移除其他设备</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div th:if="${#lists.isEmpty(devices)}" class="empty-state">
+                    <p>暂无活跃设备</p>
+                </div>
+                
+                <div class="device-list" th:if="${!#lists.isEmpty(devices)}">
+                    <div class="device-item" th:each="device : ${devices}">
+                        <div class="device-info">
+                            <div class="device-name">
+                                <span th:text="${device.currentDevice} ? '当前设备' : '其他设备'"></span>
+                                <span class="badge badge-primary" th:if="${device.currentDevice}">当前</span>
+                            </div>
+                            <div class="device-meta">
+                                <span>最后活动: <span th:text="${#temporals.format(device.lastUsed, 'yyyy-MM-dd HH:mm:ss')}"></span></span>
+                                <span>设备ID: <span th:text="${device.series.substring(0, 8)}"></span>...</span>
+                            </div>
+                        </div>
+                        <div class="device-actions">
+                            <button class="btn btn-sm btn-danger" 
+                                    th:if="${!device.currentDevice}" 
+                                    th:onclick="'revokeDevice(\'' + ${device.series} + '\')'">
+                                移除
+                            </button>
+                            <span class="text-muted" th:if="${device.currentDevice}">当前设备</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>关于"记住我"功能</h2>
+            </div>
+            <div class="card-body">
+                <ul class="info-list">
+                    <li><strong>多设备支持:</strong> 您可以在多个设备上同时登录，每个设备都有独立的会话。</li>
+                    <li><strong>记住我:</strong> 勾选"记住我"后，登录状态将保持30天，无需频繁重新登录。</li>
+                    <li><strong>安全提示:</strong> 如果您在公共设备上使用，建议不要勾选"记住我"，或在使用后及时移除该设备。</li>
+                    <li><strong>设备管理:</strong> 您可以随时在此页面查看和移除已登录的设备。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast" style="display: none;"></div>
+
+    <script>
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast toast-' + type;
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        function revokeDevice(series) {
+            if (!confirm('确定要移除此设备吗？该设备将需要重新登录。')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('series', series);
+
+            fetch('/devices/revoke', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('操作失败，请稍后重试', 'error');
+            });
+        }
+
+        function revokeAllDevices() {
+            if (!confirm('确定要移除所有其他设备吗？当前设备将保持登录状态。')) {
+                return;
+            }
+
+            fetch('/devices/revoke-all', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('操作失败，请稍后重试', 'error');
+            });
+        }
+    </script>
+
+    <style>
+        .device-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--card-bg);
+        }
+
+        .device-info {
+            flex: 1;
+        }
+
+        .device-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .device-meta {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .device-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .badge-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .text-muted {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .info-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .info-list li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast-success {
+            background: #4caf50;
+        }
+
+        .toast-error {
+            background: #f44336;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .device-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .device-meta {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .device-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</body>
+</html>

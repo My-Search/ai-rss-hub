@@ -185,6 +185,29 @@ public class RssFetchService {
 
             logger.info("发现 {} 条新消息，准备批量筛选", filteredEntries.size());
             
+            // 先插入所有RSS条目到数据库（获取ID）
+            List<RssItem> newRssItems = new ArrayList<>();
+            for (int i = 0; i < filteredEntries.size(); i++) {
+                SyndEntry entry = filteredEntries.get(i);
+                RssItem item = new RssItem();
+                item.setSourceId(source.getId());
+                item.setTitle(entry.getTitle());
+                item.setLink(entry.getLink());
+                String description = entry.getDescription() != null ? entry.getDescription().getValue() : "";
+                item.setDescription(description);
+                item.setContent(entry.getContents().isEmpty() ? "" : entry.getContents().get(0).getValue());
+                if (entry.getPublishedDate() != null) {
+                    item.setPubDate(entry.getPublishedDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+                }
+                item.setAiFiltered(false);
+                item.setAiReason("待处理");
+                rssItemMapper.insert(item);
+                newRssItems.add(item);
+            }
+
+            // 进行关键词匹配和邮件通知（在AI过滤之前）
+            processKeywordMatches(source.getUserId(), newRssItems);
+            
             // 准备批量筛选数据
             List<AiService.RssItemData> itemsToFilter = new ArrayList<>();
             for (SyndEntry entry : filteredEntries) {
@@ -200,13 +223,13 @@ public class RssFetchService {
             long duration = System.currentTimeMillis() - startTime;
             logger.info("批量筛选完成，耗时: {}ms，平均每条: {}ms", duration, duration / filteredEntries.size());
 
-            // 保存结果
+            // 更新AI过滤结果
             int passedCount = 0;
             int rejectedCount = 0;
-            List<RssItem> newRssItems = new ArrayList<>();
 
             for (int i = 0; i < filteredEntries.size(); i++) {
                 SyndEntry entry = filteredEntries.get(i);
+                RssItem item = newRssItems.get(i);
                 String aiReason = filterResults.getOrDefault(i, "未通过 - 处理失败");
                 String aiRawResponse = rawResponses.getOrDefault(i, "未找到响应");
                 boolean filtered = aiReason.startsWith("通过");
@@ -219,21 +242,9 @@ public class RssFetchService {
                 
                 logger.info("消息 #{}: {} - {}", i + 1, entry.getTitle(), aiReason);
                 
-                RssItem item = new RssItem();
-                item.setSourceId(source.getId());
-                item.setTitle(entry.getTitle());
-                item.setLink(entry.getLink());
-                String description = entry.getDescription() != null ? entry.getDescription().getValue() : "";
-                item.setDescription(description);
-                item.setContent(entry.getContents().isEmpty() ? "" : entry.getContents().get(0).getValue());
-                if (entry.getPublishedDate() != null) {
-                    item.setPubDate(entry.getPublishedDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
-                }
                 item.setAiFiltered(filtered);
                 item.setAiReason(aiReason);
-
-                rssItemMapper.insert(item);
-                newRssItems.add(item);
+                rssItemMapper.update(item);
 
                 // 保存筛选日志
                 filterLogService.saveFilterLog(
@@ -247,9 +258,6 @@ public class RssFetchService {
                     source.getName()
                 );
             }
-
-            // 关键词匹配和邮件通知
-            processKeywordMatches(source.getUserId(), newRssItems);
 
             rssSourceMapper.updateLastFetchTime(source.getId());
             
