@@ -102,6 +102,32 @@ public class RssItemMapper {
         return count != null && count > 0;
     }
 
+    /**
+     * 检查指定天数内是否存在相同的link
+     * @param link 链接地址
+     * @param days 天数限制
+     * @return 如果存在返回true，否则返回false
+     */
+    public boolean existsByLinkWithinDays(String link, int days) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM rss_items WHERE link = ? AND created_at >= datetime('now', '-' || ? || ' days')",
+                Integer.class, link, days);
+        return count != null && count > 0;
+    }
+
+    /**
+     * 检查指定天数内是否存在相同的title
+     * @param title 标题
+     * @param days 天数限制
+     * @return 如果存在返回true，否则返回false
+     */
+    public boolean existsByTitleWithinDays(String title, int days) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM rss_items WHERE title = ? AND created_at >= datetime('now', '-' || ? || ' days')",
+                Integer.class, title, days);
+        return count != null && count > 0;
+    }
+
     public void insert(RssItem item) {
         String timeClause = String.format("datetime('now', '%s')", timezoneConfig.getTimezoneModifier());
         jdbcTemplate.update("INSERT OR IGNORE INTO rss_items (source_id, title, link, description, content, pub_date, ai_filtered, ai_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, " + timeClause + ")",

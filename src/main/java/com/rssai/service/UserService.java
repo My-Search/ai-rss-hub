@@ -4,6 +4,7 @@ import com.rssai.mapper.UserMapper;
 import com.rssai.mapper.UserRssFeedMapper;
 import com.rssai.model.User;
 import com.rssai.model.UserRssFeed;
+import com.rssai.security.JdbcTokenRepositoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,8 @@ public class UserService {
     private UserMapper userMapper;
     @Autowired
     private UserRssFeedMapper userRssFeedMapper;
+    @Autowired
+    private JdbcTokenRepositoryImpl tokenRepository;
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public User register(String username, String password, String email) {
@@ -53,6 +56,10 @@ public class UserService {
     }
 
     public void updatePassword(Long userId, String newPassword) {
+        User user = userMapper.findById(userId);
+        if (user != null) {
+            tokenRepository.removeUserTokens(user.getUsername());
+        }
         userMapper.updatePassword(userId, passwordEncoder.encode(newPassword));
     }
 }

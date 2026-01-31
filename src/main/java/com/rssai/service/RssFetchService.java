@@ -138,11 +138,27 @@ public class RssFetchService {
             }
             logger.info("使用AI配置: 模型={}, BaseURL={}", aiConfig.getModel(), aiConfig.getBaseUrl());
 
-            // 收集新消息
+            // 收集新消息 - 过滤30天内重复的title或link
             List<SyndEntry> newEntries = new ArrayList<>();
             for (SyndEntry entry : feed.getEntries()) {
-                if (!rssItemMapper.existsByLink(entry.getLink())) {
+                String title = entry.getTitle();
+                String link = entry.getLink();
+
+                // 检查30天内是否已存在相同的link
+                boolean duplicateLink = rssItemMapper.existsByLinkWithinDays(link, 30);
+                // 检查30天内是否已存在相同的title（仅当title不为空时）
+                boolean duplicateTitle = title != null && !title.trim().isEmpty()
+                        && rssItemMapper.existsByTitleWithinDays(title.trim(), 30);
+
+                if (!duplicateLink && !duplicateTitle) {
                     newEntries.add(entry);
+                } else {
+                    if (duplicateLink) {
+                        logger.info("跳过重复链接: {}", link);
+                    }
+                    if (duplicateTitle) {
+                        logger.info("跳过重复标题: {}", title);
+                    }
                 }
             }
 

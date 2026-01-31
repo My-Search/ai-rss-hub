@@ -297,6 +297,126 @@
             font-size: 1.125rem;
         }
 
+        /* Skeleton loading styles - Shimmer effect */
+        .logs-page .skeleton-row {
+            background: linear-gradient(
+                90deg,
+                #1e293b 25%,
+                #334155 50%,
+                #1e293b 75%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .logs-page .skeleton-cell {
+            background: #334155;
+            border-radius: 4px;
+            height: 16px;
+            margin: 8px 0;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .logs-page .skeleton-cell.short {
+            width: 60%;
+        }
+
+        .logs-page .skeleton-cell.medium {
+            width: 80%;
+        }
+
+        .logs-page .skeleton-cell.long {
+            width: 95%;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Loading indicator styles */
+        .logs-page .loading-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            gap: 0.75rem;
+        }
+
+        .logs-page .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #334155;
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .logs-page .loading-text {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Status messages */
+        .logs-page .status-message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .logs-page .status-message.complete {
+            color: #10b981;
+        }
+
+        .logs-page .status-message.error {
+            color: #ef4444;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .logs-page .status-message.error:hover {
+            opacity: 0.8;
+        }
+
+        .logs-page .status-message svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* New row fade-in animation */
+        .logs-page .logs-table tr.new-row {
+            animation: fadeInRow 0.4s ease-out;
+        }
+
+        @keyframes fadeInRow {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Sentinel element for intersection observer */
+        .logs-page .scroll-sentinel {
+            height: 20px;
+            margin: 1rem 0;
+        }
+
         @media (max-width: 768px) {
             .logs-page {
                 padding: 1rem;
@@ -329,14 +449,13 @@
                 min-width: 100px;
             }
 
-            .logs-page .pagination {
-                flex-direction: column;
-                text-align: center;
+            .logs-page .loading-indicator {
+                padding: 1.5rem;
             }
 
-            .logs-page .pagination-controls {
-                flex-wrap: wrap;
-                justify-content: center;
+            .logs-page .loading-spinner {
+                width: 28px;
+                height: 28px;
             }
         }
     </style>
@@ -400,7 +519,7 @@
                                     <th>AI响应</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="logs-tbody">
                                 <tr th:each="log : ${logs}">
                                     <td class="log-time" th:text="${#temporals.format(log.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
                                     <td class="log-source" th:text="${log.sourceName}"></td>
@@ -419,62 +538,557 @@
                         </table>
                     </div>
                     
-                    <div th:if="${#lists.isEmpty(logs)}" class="empty-state">
+                    <div th:if="${#lists.isEmpty(logs)}" class="empty-state" id="empty-state">
                         <p>暂无筛选日志</p>
                     </div>
-                </div>
-                
-                <div class="pagination" th:if="${totalPages > 1}">
-                    <div class="pagination-info">
-                        共 <span th:text="${totalLogs}">0</span> 条，第 <span th:text="${currentPage}">1</span> / <span th:text="${totalPages}">1</span> 页
+
+                    <!-- Skeleton loading (shown during initial load) -->
+                    <div id="skeleton-loader" class="logs-table-wrapper" style="display: none;">
+                        <table class="logs-table">
+                            <tbody>
+                                <tr class="skeleton-row">
+                                    <td><div class="skeleton-cell short"></div></td>
+                                    <td><div class="skeleton-cell medium"></div></td>
+                                    <td><div class="skeleton-cell long"></div></td>
+                                    <td><div class="skeleton-cell short"></div></td>
+                                    <td><div class="skeleton-cell medium"></div></td>
+                                    <td><div class="skeleton-cell long"></div></td>
+                                </tr>
+                                <tr class="skeleton-row">
+                                    <td><div class="skeleton-cell short"></div></td>
+                                    <td><div class="skeleton-cell medium"></div></td>
+                                    <td><div class="skeleton-cell long"></div></td>
+                                    <td><div class="skeleton-cell short"></div></td>
+                                    <td><div class="skeleton-cell medium"></div></td>
+                                    <td><div class="skeleton-cell long"></div></td>
+                                </tr>
+                                <tr class="skeleton-row">
+                                    <td><div class="skeleton-cell short"></div></td>
+                                    <td><div class="skeleton-cell medium"></div></td>
+                                    <td><div class="skeleton-cell long"></div></td>
+                                    <td><div class="skeleton-cell short"></div></td>
+                                    <td><div class="skeleton-cell medium"></div></td>
+                                    <td><div class="skeleton-cell long"></div></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="pagination-controls">
-                        <a th:href="@{/filter-logs(page=1, filtered=${filtered}, source=${currentSource})}" class="btn" th:disabled="${currentPage == 1}">首页</a>
-                        <a th:href="@{/filter-logs(page=${currentPage - 1}, filtered=${filtered}, source=${currentSource})}" class="btn" th:disabled="${currentPage == 1}">上一页</a>
-                        <span class="pagination-numbers">
-                            <a th:if="${totalPages <= 7}"
-                               th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
-                               th:href="@{/filter-logs(page=${pageNum}, filtered=${filtered}, source=${currentSource})}"
-                               class="btn"
-                               th:classappend="${pageNum == currentPage} ? 'btn-primary' : ''"
-                               th:text="${pageNum}">1</a>
-                            <span th:if="${totalPages > 7}">
-                                <a th:href="@{/filter-logs(page=1, filtered=${filtered}, source=${currentSource})}"
-                                   class="btn"
-                                   th:classappend="${currentPage == 1} ? 'btn-primary' : ''">1</a>
-                                <span th:if="${currentPage > 3}" class="btn" style="cursor: default; border: none; background: transparent;">...</span>
-                                <a th:if="${currentPage > 2}"
-                                   th:href="@{/filter-logs(page=${currentPage - 2}, filtered=${filtered}, source=${currentSource})}"
-                                   class="btn"
-                                   th:text="${currentPage - 2}"></a>
-                                <a th:if="${currentPage > 1}"
-                                   th:href="@{/filter-logs(page=${currentPage - 1}, filtered=${filtered}, source=${currentSource})}"
-                                   class="btn"
-                                   th:text="${currentPage - 1}"></a>
-                                <a th:href="@{/filter-logs(page=${currentPage}, filtered=${filtered}, source=${currentSource})}"
-                                   class="btn btn-primary"
-                                   th:text="${currentPage}"></a>
-                                <a th:if="${currentPage < totalPages}"
-                                   th:href="@{/filter-logs(page=${currentPage + 1}, filtered=${filtered}, source=${currentSource})}"
-                                   class="btn"
-                                   th:text="${currentPage + 1}"></a>
-                                <a th:if="${currentPage < totalPages - 1}"
-                                   th:href="@{/filter-logs(page=${currentPage + 2}, filtered=${filtered}, source=${currentSource})}"
-                                   class="btn"
-                                   th:text="${currentPage + 2}"></a>
-                                <span th:if="${currentPage < totalPages - 2}" class="btn" style="cursor: default; border: none; background: transparent;">...</span>
-                                <a th:href="@{/filter-logs(page=${totalPages}, filtered=${filtered}, source=${currentSource})}"
-                                   class="btn"
-                                   th:classappend="${currentPage == totalPages} ? 'btn-primary' : ''"
-                                   th:text="${totalPages}"></a>
-                            </span>
-                        </span>
-                        <a th:href="@{/filter-logs(page=${currentPage + 1}, filtered=${filtered}, source=${currentSource})}" class="btn" th:disabled="${currentPage == totalPages}">下一页</a>
-                        <a th:href="@{/filter-logs(page=${totalPages}, filtered=${filtered}, source=${currentSource})}" class="btn" th:disabled="${currentPage == totalPages}">末页</a>
+
+                    <!-- Loading indicator (shown when loading more) -->
+                    <div id="loading-indicator" class="loading-indicator" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <span class="loading-text">加载中...</span>
                     </div>
+
+                    <!-- All loaded message -->
+                    <div id="complete-message" class="status-message complete" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>已加载全部记录</span>
+                    </div>
+
+                    <!-- Error message with retry -->
+                    <div id="error-message" class="status-message error" style="display: none;" onclick="infiniteScroll.retry()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>加载失败，点击重试</span>
+                    </div>
+
+                    <!-- Scroll sentinel for intersection observer -->
+                    <div id="scroll-sentinel" class="scroll-sentinel"></div>
                 </div>
             </div>
         </div>
     </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        /**
+         * Infinite Scroll Manager - Law of Atomic Predictability
+         * Pure state management with predictable transitions
+         */
+        class InfiniteScrollManager {
+            constructor() {
+                // State - all mutations go through setState()
+                this.state = {
+                    currentPage: /*[[${currentPage}]]*/ 1,
+                    isLoading: false,
+                    hasMore: /*[[${currentPage < totalPages}]]*/ true,
+                    totalPages: /*[[${totalPages}]]*/ 1,
+                    pageSize: /*[[${pageSize}]]*/ 20,
+                    filters: {
+                        filtered: /*[[${filtered}]]*/ '',
+                        source: /*[[${currentSource}]]*/ ''
+                    }
+                };
+
+                // Race condition protection - request versioning
+                this.requestId = 0;
+
+                // DOM elements
+                this.elements = {
+                    tbody: document.querySelector('#logs-tbody'),
+                    sentinel: document.getElementById('scroll-sentinel'),
+                    skeleton: document.getElementById('skeleton-loader'),
+                    loading: document.getElementById('loading-indicator'),
+                    complete: document.getElementById('complete-message'),
+                    error: document.getElementById('error-message'),
+                    empty: document.getElementById('empty-state'),
+                    filterForm: document.querySelector('.filter-row'),
+                    filteredSelect: document.querySelector('select[name="filtered"]'),
+                    sourceSelect: document.querySelector('select[name="source"]')
+                };
+
+                // Initialize
+                this.init();
+            }
+
+            /**
+             * Initialize the infinite scroll - Law of Early Exit
+             */
+            init() {
+                if (!this.elements.sentinel) {
+                    console.error('Scroll sentinel not found');
+                    return;
+                }
+
+                this.setupIntersectionObserver();
+                this.setupFilterListeners();
+                this.updateEmptyState();
+            }
+
+            /**
+             * Setup IntersectionObserver for scroll detection
+             */
+            setupIntersectionObserver() {
+                const options = {
+                    root: null,
+                    rootMargin: '100px',
+                    threshold: 0.1
+                };
+
+                this.observer = new IntersectionObserver((entries) => {
+                    const entry = entries[0];
+                    if (entry.isIntersecting && !this.state.isLoading && this.state.hasMore) {
+                        this.loadMore();
+                    }
+                }, options);
+
+                this.observer.observe(this.elements.sentinel);
+            }
+
+            /**
+             * Setup filter change listeners
+             */
+            setupFilterListeners() {
+                if (!this.elements.filteredSelect || !this.elements.sourceSelect) return;
+
+                const handleFilterChange = () => {
+                    this.resetAndReload();
+                };
+
+                this.elements.filteredSelect.addEventListener('change', handleFilterChange);
+                this.elements.sourceSelect.addEventListener('change', handleFilterChange);
+
+                // Prevent form submission (we handle it via JS)
+                if (this.elements.filterForm) {
+                    this.elements.filterForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.resetAndReload();
+                    });
+                }
+            }
+
+            /**
+             * Update visibility of empty state - Law of Atomic Predictability
+             */
+            updateEmptyState() {
+                const hasRows = this.elements.tbody && this.elements.tbody.children.length > 0;
+                if (this.elements.empty) {
+                    this.elements.empty.style.display = hasRows ? 'none' : 'block';
+                }
+            }
+
+            /**
+             * Show skeleton loading - for initial load
+             */
+            showSkeleton() {
+                if (this.elements.skeleton) {
+                    this.elements.skeleton.style.display = 'block';
+                }
+                if (this.elements.empty) {
+                    this.elements.empty.style.display = 'none';
+                }
+            }
+
+            /**
+             * Hide skeleton loading
+             */
+            hideSkeleton() {
+                if (this.elements.skeleton) {
+                    this.elements.skeleton.style.display = 'none';
+                }
+            }
+
+            /**
+             * Show loading indicator - for subsequent loads
+             */
+            showLoading() {
+                if (this.elements.loading) {
+                    this.elements.loading.style.display = 'flex';
+                }
+            }
+
+            /**
+             * Hide loading indicator
+             */
+            hideLoading() {
+                if (this.elements.loading) {
+                    this.elements.loading.style.display = 'none';
+                }
+            }
+
+            /**
+             * Show complete message
+             */
+            showComplete() {
+                if (this.elements.complete) {
+                    this.elements.complete.style.display = 'flex';
+                }
+            }
+
+            /**
+             * Show error message
+             */
+            showError() {
+                if (this.elements.error) {
+                    this.elements.error.style.display = 'flex';
+                }
+            }
+
+            /**
+             * Hide error message
+             */
+            hideError() {
+                if (this.elements.error) {
+                    this.elements.error.style.display = 'none';
+                }
+            }
+
+            /**
+             * Build API URL with query parameters - Law of Intentional Naming
+             */
+            buildApiUrl(page) {
+                const params = new URLSearchParams();
+                params.append('page', page);
+                params.append('pageSize', this.state.pageSize);
+
+                if (this.state.filters.filtered) {
+                    params.append('filtered', this.state.filters.filtered);
+                }
+                if (this.state.filters.source) {
+                    params.append('source', this.state.filters.source);
+                }
+
+                return `/api/filter-logs?${params.toString()}`;
+            }
+
+            /**
+             * Load more data - Law of Fail Fast
+             * Includes race condition protection via request versioning
+             */
+            async loadMore() {
+                // Early exit if already loading or no more data
+                if (this.state.isLoading || !this.state.hasMore) {
+                    return;
+                }
+
+                // Increment request ID for race condition protection
+                const currentRequestId = ++this.requestId;
+
+                // Determine if this is initial load or subsequent load
+                const isInitialLoad = this.state.currentPage === 1 &&
+                    (!this.elements.tbody || this.elements.tbody.children.length === 0);
+
+                // Set loading state
+                this.setState({ isLoading: true });
+                this.hideError();
+
+                // Show appropriate loading UI
+                if (isInitialLoad) {
+                    this.showSkeleton();
+                } else {
+                    this.showLoading();
+                }
+
+                try {
+                    const response = await fetch(this.buildApiUrl(this.state.currentPage));
+
+                    // Race condition check: discard outdated responses
+                    if (currentRequestId !== this.requestId) {
+                        console.log('Request outdated, ignoring response');
+                        return;
+                    }
+
+                    // Fail fast on non-ok response
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+
+                    // Race condition check: discard outdated responses
+                    if (currentRequestId !== this.requestId) {
+                        console.log('Request outdated, ignoring response');
+                        return;
+                    }
+
+                    // Validate response structure - Fail Fast
+                    if (!data || !Array.isArray(data.data)) {
+                        throw new Error('Invalid response structure');
+                    }
+
+                    // Render the new rows
+                    this.renderRows(data.data);
+
+                    // Update state
+                    this.setState({
+                        currentPage: this.state.currentPage + 1,
+                        hasMore: data.hasMore,
+                        totalPages: data.totalPages,
+                        isLoading: false
+                    });
+
+                    // Update UI state
+                    this.hideSkeleton();
+                    this.hideLoading();
+                    this.updateEmptyState();
+
+                    // Show complete message if no more data
+                    if (!data.hasMore) {
+                        this.showComplete();
+                    }
+
+                } catch (error) {
+                    // Race condition check: only handle error for current request
+                    if (currentRequestId !== this.requestId) {
+                        return;
+                    }
+
+                    // Fail loud - log and show error UI
+                    console.error('Failed to load filter logs:', error);
+                    this.setState({ isLoading: false });
+                    this.hideSkeleton();
+                    this.hideLoading();
+                    this.showError();
+                }
+            }
+
+            /**
+             * Render rows from data - Law of Atomic Predictability
+             */
+            renderRows(logs) {
+                if (!this.elements.tbody || !Array.isArray(logs)) {
+                    return;
+                }
+
+                logs.forEach((log, index) => {
+                    const row = this.createRowElement(log, index);
+                    this.elements.tbody.appendChild(row);
+                });
+            }
+
+            /**
+             * Create a table row element from log data - XSS-safe implementation.
+             * Uses textContent instead of innerHTML to prevent XSS attacks.
+             */
+            createRowElement(log, index) {
+                const tr = document.createElement('tr');
+                tr.className = 'new-row';
+
+                // Format date
+                const formattedDate = this.formatDate(log.createdAt);
+
+                // Time cell
+                const timeCell = document.createElement('td');
+                timeCell.className = 'log-time';
+                timeCell.textContent = formattedDate;
+                tr.appendChild(timeCell);
+
+                // Source cell
+                const sourceCell = document.createElement('td');
+                sourceCell.className = 'log-source';
+                sourceCell.textContent = log.sourceName || '';
+                tr.appendChild(sourceCell);
+
+                // Title cell - XSS-safe link handling
+                const titleCell = document.createElement('td');
+                titleCell.className = 'log-title';
+                if (log.link) {
+                    const link = document.createElement('a');
+                    link.href = log.link;
+                    link.target = '_blank';
+                    link.textContent = log.title || ''; // Safe: textContent escapes HTML
+                    titleCell.appendChild(link);
+                } else {
+                    titleCell.textContent = log.title || ''; // Safe: textContent escapes HTML
+                }
+                tr.appendChild(titleCell);
+
+                // Result badge cell
+                const resultCell = document.createElement('td');
+                resultCell.className = 'log-result';
+                const badge = document.createElement('span');
+                if (log.aiFiltered) {
+                    badge.className = 'badge-passed';
+                    badge.textContent = '通过';
+                } else {
+                    badge.className = 'badge-rejected';
+                    badge.textContent = '未通过';
+                }
+                resultCell.appendChild(badge);
+                tr.appendChild(resultCell);
+
+                // Reason cell
+                const reasonCell = document.createElement('td');
+                reasonCell.className = 'log-reason';
+                reasonCell.textContent = log.aiReason || '';
+                tr.appendChild(reasonCell);
+
+                // Raw response cell
+                const rawCell = document.createElement('td');
+                rawCell.className = 'log-raw-response';
+                rawCell.textContent = log.aiRawResponse || '';
+                rawCell.title = log.aiRawResponse || '';
+                tr.appendChild(rawCell);
+
+                return tr;
+            }
+
+            /**
+             * Format date string - Law of Atomic Predictability
+             */
+            formatDate(dateString) {
+                if (!dateString) return '-';
+
+                try {
+                    const date = new Date(dateString);
+                    if (isNaN(date.getTime())) return dateString;
+
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const seconds = String(date.getSeconds()).padStart(2, '0');
+
+                    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                } catch (e) {
+                    return dateString;
+                }
+            }
+
+            /**
+             * Escape HTML to prevent XSS - Law of Fail Fast
+             */
+            escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            /**
+             * Reset and reload data when filters change - Law of Atomic Predictability
+             * Increments request ID to invalidate in-flight requests (race condition protection)
+             */
+            resetAndReload() {
+                // Invalidate any in-flight requests by incrementing request ID
+                this.requestId++;
+
+                // Update filter state
+                this.setState({
+                    filters: {
+                        filtered: this.elements.filteredSelect ? this.elements.filteredSelect.value : '',
+                        source: this.elements.sourceSelect ? this.elements.sourceSelect.value : ''
+                    },
+                    currentPage: 1,
+                    hasMore: true,
+                    isLoading: false
+                });
+
+                // Clear existing rows
+                if (this.elements.tbody) {
+                    this.elements.tbody.innerHTML = '';
+                }
+
+                // Hide status messages
+                if (this.elements.complete) {
+                    this.elements.complete.style.display = 'none';
+                }
+                this.hideError();
+
+                // Update URL for shareability (optional)
+                this.updateUrl();
+
+                // Load fresh data
+                this.loadMore();
+            }
+
+            /**
+             * Update browser URL to reflect current filters
+             */
+            updateUrl() {
+                const params = new URLSearchParams();
+                if (this.state.filters.filtered) {
+                    params.append('filtered', this.state.filters.filtered);
+                }
+                if (this.state.filters.source) {
+                    params.append('source', this.state.filters.source);
+                }
+
+                const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+                window.history.replaceState({}, '', newUrl);
+            }
+
+            /**
+             * Retry loading after error - public method
+             */
+            retry() {
+                this.hideError();
+                this.loadMore();
+            }
+
+            /**
+             * Update state immutably - Law of Atomic Predictability
+             */
+            setState(newState) {
+                this.state = { ...this.state, ...newState };
+            }
+
+            /**
+             * Cleanup method for resource management
+             * Disconnects observer and clears references (useful for SPA navigation)
+             */
+            destroy() {
+                if (this.observer) {
+                    this.observer.disconnect();
+                    this.observer = null;
+                }
+                // Increment request ID to invalidate any pending requests
+                this.requestId++;
+                // Clear references for garbage collection
+                this.elements = {};
+            }
+        }
+
+        // Initialize infinite scroll manager
+        const infiniteScroll = new InfiniteScrollManager();
+        /*]]>*/
+    </script>
 </body>
 </html>

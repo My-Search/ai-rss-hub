@@ -1,5 +1,6 @@
 package com.rssai.mapper;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.rssai.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,6 +17,9 @@ import java.util.List;
 public class UserMapper {
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    
+    @Autowired
+    private Cache<String, User> userCache;
 
     private RowMapper<User> rowMapper = new RowMapper<User>() {
         @Override
@@ -46,13 +50,39 @@ public class UserMapper {
     };
 
     public User findByUsername(String username) {
+        String cacheKey = "username:" + username;
+        User cachedUser = userCache.getIfPresent(cacheKey);
+        if (cachedUser != null) {
+            return cachedUser;
+        }
+        
         List<User> users = jdbcTemplate.query("SELECT * FROM users WHERE username = ?", rowMapper, username);
-        return users.isEmpty() ? null : users.get(0);
+        User user = users.isEmpty() ? null : users.get(0);
+        
+        if (user != null) {
+            userCache.put(cacheKey, user);
+            userCache.put("id:" + user.getId(), user);
+        }
+        
+        return user;
     }
 
     public User findById(Long id) {
+        String cacheKey = "id:" + id;
+        User cachedUser = userCache.getIfPresent(cacheKey);
+        if (cachedUser != null) {
+            return cachedUser;
+        }
+        
         List<User> users = jdbcTemplate.query("SELECT * FROM users WHERE id = ?", rowMapper, id);
-        return users.isEmpty() ? null : users.get(0);
+        User user = users.isEmpty() ? null : users.get(0);
+        
+        if (user != null) {
+            userCache.put(cacheKey, user);
+            userCache.put("username:" + user.getUsername(), user);
+        }
+        
+        return user;
     }
 
     public void insert(User user) {
@@ -62,10 +92,12 @@ public class UserMapper {
 
     public void updateEmailSubscription(Long userId, Boolean enabled) {
         jdbcTemplate.update("UPDATE users SET email_subscription_enabled = ?, updated_at = datetime('now', 'localtime') WHERE id = ?", enabled, userId);
+        invalidateUserCache(userId);
     }
 
     public void updateLastEmailSentAt(Long userId) {
         jdbcTemplate.update("UPDATE users SET last_email_sent_at = datetime('now', 'localtime'), updated_at = datetime('now', 'localtime') WHERE id = ?", userId);
+        invalidateUserCache(userId);
     }
 
     public List<User> findUsersWithEmailSubscriptionEnabled() {
@@ -83,14 +115,42 @@ public class UserMapper {
 
     public void updateEmailDigestTime(Long userId, String time) {
         jdbcTemplate.update("UPDATE users SET email_digest_time = ?, updated_at = datetime('now', 'localtime') WHERE id = ?", time, userId);
+        invalidateUserCache(userId);
     }
 
     public User findByEmail(String email) {
+        String cacheKey = "email:" + email;
+        User cachedUser = userCache.getIfPresent(cacheKey);
+        if (cachedUser != null) {
+            return cachedUser;
+        }
+        
         List<User> users = jdbcTemplate.query("SELECT * FROM users WHERE email = ?", rowMapper, email);
-        return users.isEmpty() ? null : users.get(0);
+        User user = users.isEmpty() ? null : users.get(0);
+        
+        if (user != null) {
+            userCache.put(cacheKey, user);
+            userCache.put("id:" + user.getId(), user);
+            userCache.put("username:" + user.getUsername(), user);
+        }
+        
+        return user;
     }
 
     public void updatePassword(Long userId, String password) {
         jdbcTemplate.update("UPDATE users SET password = ?, updated_at = datetime('now', 'localtime') WHERE id = ?", password, userId);
+        invalidateUserCache(userId);
+    }
+    
+    private void invalidateUserCache(Long userId) {
+        List<User> users = jdbcTemplate.query("SELECT * FROM users WHERE id = ?", rowMapper, userId);
+        if (!users.isEmpty()) {
+            User user = users.get(0);
+            userCache.invalidate("id:" + userId);
+            userCache.invalidate("username:" + user.getUsername());
+            if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+                userCache.invalidate("email:" + user.getEmail());
+            }
+        }
     }
 }

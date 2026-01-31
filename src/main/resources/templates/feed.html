@@ -52,7 +52,7 @@
                     <small>设置后，系统将在每天指定时间自动发送当天最新的最多50条RSS摘要到您的邮箱。</small>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn-primary" onclick="updateEmailSettings()">保存设置</button>
+                    <button type="button" id="saveEmailSettingsBtn" class="btn btn-primary" onclick="updateEmailSettings()">保存设置</button>
                     <button type="button" class="btn btn-secondary" onclick="sendTestEmail()">发送测试邮件</button>
                 </div>
             </div>
@@ -157,6 +157,11 @@
         }
 
         function updateEmailSettings() {
+            const saveBtn = document.getElementById('saveEmailSettingsBtn');
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.5';
+            saveBtn.style.cursor = 'not-allowed';
+
             const enabled = document.getElementById('emailSubscription').checked;
             const digestTime = document.getElementById('emailDigestTime').value;
 
@@ -191,6 +196,9 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('更新失败: ' + error.message);
+                saveBtn.disabled = false;
+                saveBtn.style.opacity = '1';
+                saveBtn.style.cursor = 'pointer';
             });
         }
 

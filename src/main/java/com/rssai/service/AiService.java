@@ -3,9 +3,11 @@ package com.rssai.service;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.rssai.model.AiConfig;
+import com.github.benmanes.caffeine.cache.Cache;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -15,6 +17,9 @@ import java.util.regex.Pattern;
 @Service
 public class AiService {
     private static final Logger logger = LoggerFactory.getLogger(AiService.class);
+    
+    @Autowired
+    private Cache<String, OkHttpClient> httpClientCache;
     
     private final Gson gson = new Gson();
     
@@ -43,14 +48,18 @@ public class AiService {
         int writeTimeout = config.getWriteTimeout() != null ? 
             config.getWriteTimeout() : 10000;
         
-        logger.info("连接超时: {}ms, 读取超时: {}ms (模型: {}, 思考模型: {})", 
-            connectTimeout, readTimeout, config.getModel(), isThinkingModel(config.getModel()));
+        String cacheKey = config.getBaseUrl() + "|" + config.getModel() + "|" + connectTimeout + "|" + readTimeout + "|" + writeTimeout;
         
-        return new OkHttpClient.Builder()
-                .connectTimeout(connectTimeout, TimeUnit.MILLISECONDS)
-                .readTimeout(readTimeout, TimeUnit.MILLISECONDS)
-                .writeTimeout(writeTimeout, TimeUnit.MILLISECONDS)
-                .build();
+        return httpClientCache.get(cacheKey, key -> {
+            logger.info("创建新的OkHttpClient实例 - 连接超时: {}ms, 读取超时: {}ms (模型: {}, 思考模型: {})", 
+                connectTimeout, readTimeout, config.getModel(), isThinkingModel(config.getModel()));
+            
+            return new OkHttpClient.Builder()
+                    .connectTimeout(connectTimeout, TimeUnit.MILLISECONDS)
+                    .readTimeout(readTimeout, TimeUnit.MILLISECONDS)
+                    .writeTimeout(writeTimeout, TimeUnit.MILLISECONDS)
+                    .build();
+        });
     }
     
     // HTML标签清理
@@ -216,6 +225,74 @@ public class AiService {
      * 执行批量筛选
      */
     private java.util.Map<Integer, String> doFilterBatch(AiConfig config, java.util.List<RssItemData> items, int startIndex, String sourceName) throws IOException {
+        BatchFilterResult result = executeBatchFilter(config, items, startIndex, sourceName, false);
+        return result.getFilterResults();
+    }
+
+    /**
+     * 执行批量筛选（带原始响应）
+     */
+    private BatchFilterResult doFilterBatchWithRawResponse(AiConfig config, java.util.List<RssItemData> items, int startIndex, String sourceName) throws IOException {
+        java.util.Map<Integer, String> results = new java.util.HashMap<>();
+        java.util.Map<Integer, String> rawResponses = new java.util.HashMap<>();
+        
+        if (items == null || items.isEmpty()) {
+            return new BatchFilterResult(results, rawResponses);
+        }
+        
+        logger.info("========================================");
+        logger.info("开始批量筛选 RSS源: {}", sourceName);
+        logger.info("共{}条内容", items.size());
+        logger.info("========================================");
+        
+        // 分批处理
+        for (int i = 0; i < items.size(); i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, items.size());
+            java.util.List<RssItemData> batch = items.subList(i, end);
+            
+            logger.info("处理第{}-{}条", i + 1, end);
+            
+            for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    BatchFilterResult batchResults = executeBatchFilter(config, batch, i, sourceName, true);
+                    results.putAll(batchResults.getFilterResults());
+                    rawResponses.putAll(batchResults.getRawResponses());
+                    break;
+                } catch (Exception e) {
+                    logger.error("批量筛选第{}次尝试失败", attempt, e);
+                    if (attempt < MAX_RETRIES) {
+                        try {
+                            long delay = INITIAL_RETRY_DELAY_MS * (long) Math.pow(2, attempt - 1);
+                            Thread.sleep(delay);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            for (int j = 0; j < batch.size(); j++) {
+                                results.put(i + j, "未通过 - 处理中断");
+                                rawResponses.put(i + j, "处理中断");
+                            }
+                            return new BatchFilterResult(results, rawResponses);
+                        }
+                    } else {
+                        for (int j = 0; j < batch.size(); j++) {
+                            results.put(i + j, "未通过 - AI服务不可用");
+                            rawResponses.put(i + j, "AI服务不可用");
+                        }
+                    }
+                }
+            }
+        }
+        
+        logger.info("========================================");
+        logger.info("批量筛选完成 RSS源: {}", sourceName);
+        logger.info("成功处理{}条", results.size());
+        logger.info("========================================");
+        return new BatchFilterResult(results, rawResponses);
+    }
+    
+    /**
+     * 执行批量筛选的核心方法
+     */
+    private BatchFilterResult executeBatchFilter(AiConfig config, java.util.List<RssItemData> items, int startIndex, String sourceName, boolean includeRawResponse) throws IOException {
         logger.info("处理模型: {} -> {}类型", 
             config.getModel(), 
             isThinkingModel(config.getModel()) ? "思考" : "标准");
@@ -265,82 +342,30 @@ public class AiService {
         try (Response response = customClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
                 String responseBody = response.body().string();
-                JsonObject result = gson.fromJson(responseBody, JsonObject.class);
-                
-                String content;
-                try {
-                    if (!result.has("choices")) {
-                        logger.error("AI响应缺少choices字段: {}", responseBody);
-                        throw new IOException("AI响应缺少choices字段");
-                    }
-                    
-                    com.google.gson.JsonArray choices = result.getAsJsonArray("choices");
-                    if (choices == null || choices.size() == 0) {
-                        logger.error("AI响应choices数组为空: {}", responseBody);
-                        throw new IOException("AI响应choices数组为空");
-                    }
-                    
-                    com.google.gson.JsonElement firstChoice = choices.get(0);
-                    if (!firstChoice.isJsonObject()) {
-                        logger.error("AI响应choices[0]不是对象: {}", responseBody);
-                        throw new IOException("AI响应choices[0]不是对象");
-                    }
-                    
-                    com.google.gson.JsonObject choiceObj = firstChoice.getAsJsonObject();
-                    if (!choiceObj.has("message")) {
-                        logger.error("AI响应缺少message字段: {}", responseBody);
-                        throw new IOException("AI响应缺少message字段");
-                    }
-                    
-                    com.google.gson.JsonElement messageEle = choiceObj.get("message");
-                    if (!messageEle.isJsonObject()) {
-                        logger.error("AI响应message不是对象: {}", responseBody);
-                        throw new IOException("AI响应message不是对象");
-                    }
-                    
-                    com.google.gson.JsonObject messageObj = messageEle.getAsJsonObject();
-                    
-                    String[] contentFields = {"content", "reasoning_content", "thinking_content", "thought", "think", "reasoning"};
-
-                    content = null;
-                    for (String field : contentFields) {
-                        if (messageObj.has(field) && !messageObj.get(field).isJsonNull()) {
-                            content = messageObj.get(field).getAsString().trim();
-                            if (!content.isEmpty()) {
-                                if (!field.equals("content")) {
-                                    logger.debug("使用{}字段获取内容 (模型: {})", field, config.getModel());
-                                }
-                                break;
-                            }
-                        }
-                    }
-
-                    if (content == null || content.isEmpty()) {
-                        logger.error("AI响应中未找到有效内容字段。已检查字段: {}. 完整响应: {}", 
-                            String.join(", ", contentFields), responseBody);
-                        throw new IOException("AI响应缺少有效内容字段");
-                    }
-                } catch (Exception e) {
-                    logger.error("解析AI响应时发生异常", e);
-                    throw new IOException("解析AI响应失败: " + e.getMessage(), e);
-                }
+                String content = parseAiResponseContent(responseBody, config.getModel());
                 
                 logger.info("AI原始返回: {}", content);
                 
                 java.util.Map<Integer, String> parsedResults = parseBatchResponse(content, items.size(), startIndex);
+                java.util.Map<Integer, String> rawResponses = includeRawResponse ? new java.util.HashMap<>() : null;
                 
                 for (int i = 0; i < items.size(); i++) {
                     int index = startIndex + i;
                     RssItemData item = items.get(i);
                     String filterResult = parsedResults.getOrDefault(index, "未通过 - 解析失败");
                     
+                    if (includeRawResponse && rawResponses != null) {
+                        String rawResponse = extractAiResponseForItem(content, i + 1);
+                        rawResponses.put(index, rawResponse);
+                    }
+                    
                     logger.info("消息 #{} [RSS源: {}]", index + 1, sourceName);
                     logger.info("  标题: {}", item.getTitle());
-                    logger.info("  AI返回: {}", extractAiResponseForItem(content, i + 1));
+                    logger.info("  AI返回: {}", includeRawResponse ? extractAiResponseForItem(content, i + 1) : "N/A");
                     logger.info("  结果: {}", filterResult);
                 }
                 
-                return parsedResults;
+                return new BatchFilterResult(parsedResults, rawResponses != null ? rawResponses : new java.util.HashMap<>());
             } else {
                 throw new IOException("HTTP " + response.code());
             }
@@ -349,143 +374,71 @@ public class AiService {
             throw e;
         }
     }
-
+    
     /**
-     * 执行批量筛选（带原始响应）
+     * 解析AI响应内容（通用方法）
      */
-    private BatchFilterResult doFilterBatchWithRawResponse(AiConfig config, java.util.List<RssItemData> items, int startIndex, String sourceName) throws IOException {
-        // 构建批量提示词
-        StringBuilder prompt = new StringBuilder("请判断以下文章是否符合偏好，对每条回复格式：[序号]YES-原因 或 [序号]NO-原因\n\n");
+    private String parseAiResponseContent(String responseBody, String model) throws IOException {
+        JsonObject result = gson.fromJson(responseBody, JsonObject.class);
         
-        for (int i = 0; i < items.size(); i++) {
-            RssItemData item = items.get(i);
-            String cleanTitle = cleanHtml(item.getTitle());
-            String cleanDesc = cleanHtml(item.getDescription());
-            cleanTitle = truncate(cleanTitle, MAX_TITLE_LENGTH);
-            cleanDesc = truncate(cleanDesc, MAX_DESCRIPTION_LENGTH / 2);
-            
-            prompt.append(String.format("[%d] 标题:%s 内容:%s\n", i + 1, cleanTitle, cleanDesc));
-        }
-        
-        JsonObject message = new JsonObject();
-        message.addProperty("role", "user");
-        message.addProperty("content", prompt.toString());
-        
-        JsonObject systemMessage = new JsonObject();
-        systemMessage.addProperty("role", "system");
-        systemMessage.addProperty("content", config.getSystemPrompt() + 
-            "\n\n【重要规则】\n" +
-            "1. 必须对每条文章进行判断\n" +
-            "2. 回复格式严格为：[序号]YES-原因 或 [序号]NO-原因\n" +
-            "3. 原因必须简洁，不超过5个字\n" +
-            "4. 每条占一行，不要添加其他文字\n" +
-            "5. 必须包含所有序号，从[1]到[" + items.size() + "]");
-        
-        JsonObject requestBody = new JsonObject();
-        requestBody.addProperty("model", config.getModel());
-        requestBody.add("messages", gson.toJsonTree(new JsonObject[]{systemMessage, message}));
-        int maxTokens = config.getMaxTokensBatch() != null ? 
-            config.getMaxTokensBatch() : 2000;
-        requestBody.addProperty("max_tokens", maxTokens);
-        requestBody.addProperty("temperature", 0.1);
-        
-        Request request = new Request.Builder()
-                .url(config.getBaseUrl() + "/chat/completions")
-                .addHeader("Authorization", "Bearer " + config.getApiKey())
-                .addHeader("Content-Type", "application/json")
-                .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-                .build();
-        
-        OkHttpClient customClient = buildClient(config);
-        try (Response response = customClient.newCall(request).execute()) {
-            if (response.isSuccessful() && response.body() != null) {
-                String responseBody = response.body().string();
-                JsonObject result = gson.fromJson(responseBody, JsonObject.class);
-                
-                String content;
-                try {
-                    if (!result.has("choices")) {
-                        logger.error("AI响应缺少choices字段: {}", responseBody);
-                        throw new IOException("AI响应缺少choices字段");
-                    }
-                    
-                    com.google.gson.JsonArray choices = result.getAsJsonArray("choices");
-                    if (choices == null || choices.size() == 0) {
-                        logger.error("AI响应choices数组为空: {}", responseBody);
-                        throw new IOException("AI响应choices数组为空");
-                    }
-                    
-                    com.google.gson.JsonElement firstChoice = choices.get(0);
-                    if (!firstChoice.isJsonObject()) {
-                        logger.error("AI响应choices[0]不是对象: {}", responseBody);
-                        throw new IOException("AI响应choices[0]不是对象");
-                    }
-                    
-                    com.google.gson.JsonObject choiceObj = firstChoice.getAsJsonObject();
-                    if (!choiceObj.has("message")) {
-                        logger.error("AI响应缺少message字段: {}", responseBody);
-                        throw new IOException("AI响应缺少message字段");
-                    }
-                    
-                    com.google.gson.JsonElement messageEle = choiceObj.get("message");
-                    if (!messageEle.isJsonObject()) {
-                        logger.error("AI响应message不是对象: {}", responseBody);
-                        throw new IOException("AI响应message不是对象");
-                    }
-                    
-                    com.google.gson.JsonObject messageObj = messageEle.getAsJsonObject();
-                    
-                    String[] contentFields = {"content", "reasoning_content", "thinking_content", "thought", "think", "reasoning"};
-                    content = null;
-                    for (String field : contentFields) {
-                        if (messageObj.has(field) && !messageObj.get(field).isJsonNull()) {
-                            content = messageObj.get(field).getAsString().trim();
-                            if (!content.isEmpty()) {
-                                if (!field.equals("content")) {
-                                    logger.debug("使用{}字段获取内容 (模型: {})", field, config.getModel());
-                                }
-                                break;
-                            }
-                        }
-                    }
-
-                    if (content == null || content.isEmpty()) {
-                        logger.error("AI响应中未找到有效内容字段。已检查字段: {}. 完整响应: {}", 
-                            String.join(", ", contentFields), responseBody);
-                        throw new IOException("AI响应缺少有效内容字段");
-                    }
-                } catch (Exception e) {
-                    logger.error("解析AI响应时发生异常", e);
-                    throw new IOException("解析AI响应失败: " + e.getMessage(), e);
-                }
-                
-                logger.info("AI原始返回: {}", content);
-                
-                java.util.Map<Integer, String> parsedResults = parseBatchResponse(content, items.size(), startIndex);
-                java.util.Map<Integer, String> rawResponses = new java.util.HashMap<>();
-                
-                for (int i = 0; i < items.size(); i++) {
-                    int index = startIndex + i;
-                    RssItemData item = items.get(i);
-                    String filterResult = parsedResults.getOrDefault(index, "未通过 - 解析失败");
-                    String rawResponse = extractAiResponseForItem(content, i + 1);
-                    
-                    rawResponses.put(index, rawResponse);
-                    
-                    logger.info("消息 #{} [RSS源: {}]", index + 1, sourceName);
-                    logger.info("  标题: {}", item.getTitle());
-                    logger.info("  AI返回: {}", rawResponse);
-                    logger.info("  结果: {}", filterResult);
-                }
-                
-                return new BatchFilterResult(parsedResults, rawResponses);
-            } else {
-                throw new IOException("HTTP " + response.code());
+        String content;
+        try {
+            if (!result.has("choices")) {
+                logger.error("AI响应缺少choices字段: {}", responseBody);
+                throw new IOException("AI响应缺少choices字段");
             }
-        }catch (Exception e) {
-            logger.error("批量筛选请求失败", e);
-            throw e;
+            
+            com.google.gson.JsonArray choices = result.getAsJsonArray("choices");
+            if (choices == null || choices.size() == 0) {
+                logger.error("AI响应choices数组为空: {}", responseBody);
+                throw new IOException("AI响应choices数组为空");
+            }
+            
+            com.google.gson.JsonElement firstChoice = choices.get(0);
+            if (!firstChoice.isJsonObject()) {
+                logger.error("AI响应choices[0]不是对象: {}", responseBody);
+                throw new IOException("AI响应choices[0]不是对象");
+            }
+            
+            com.google.gson.JsonObject choiceObj = firstChoice.getAsJsonObject();
+            if (!choiceObj.has("message")) {
+                logger.error("AI响应缺少message字段: {}", responseBody);
+                throw new IOException("AI响应缺少message字段");
+            }
+            
+            com.google.gson.JsonElement messageEle = choiceObj.get("message");
+            if (!messageEle.isJsonObject()) {
+                logger.error("AI响应message不是对象: {}", responseBody);
+                throw new IOException("AI响应message不是对象");
+            }
+            
+            com.google.gson.JsonObject messageObj = messageEle.getAsJsonObject();
+            
+            String[] contentFields = {"content", "reasoning_content", "thinking_content", "thought", "think", "reasoning"};
+            content = null;
+            for (String field : contentFields) {
+                if (messageObj.has(field) && !messageObj.get(field).isJsonNull()) {
+                    content = messageObj.get(field).getAsString().trim();
+                    if (!content.isEmpty()) {
+                        if (!field.equals("content")) {
+                            logger.debug("使用{}字段获取内容 (模型: {})", field, model);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (content == null || content.isEmpty()) {
+                logger.error("AI响应中未找到有效内容字段。已检查字段: {}. 完整响应: {}", 
+                    String.join(", ", contentFields), responseBody);
+                throw new IOException("AI响应缺少有效内容字段");
+            }
+        } catch (Exception e) {
+            logger.error("解析AI响应时发生异常", e);
+            throw new IOException("解析AI响应失败: " + e.getMessage(), e);
         }
+        
+        return content;
     }
     
     /**
@@ -636,66 +589,7 @@ public class AiService {
                 String responseBody = response.body().string();
                 logger.debug("AI响应: {}", responseBody);
                 
-                JsonObject result = gson.fromJson(responseBody, JsonObject.class);
-                
-                String content;
-                try {
-                    if (!result.has("choices")) {
-                        logger.error("AI响应缺少choices字段: {}", responseBody);
-                        throw new IOException("AI响应缺少choices字段");
-                    }
-                    
-                    com.google.gson.JsonArray choices = result.getAsJsonArray("choices");
-                    if (choices == null || choices.size() == 0) {
-                        logger.error("AI响应choices数组为空: {}", responseBody);
-                        throw new IOException("AI响应choices数组为空");
-                    }
-                    
-                    com.google.gson.JsonElement firstChoice = choices.get(0);
-                    if (!firstChoice.isJsonObject()) {
-                        logger.error("AI响应choices[0]不是对象: {}", responseBody);
-                        throw new IOException("AI响应choices[0]不是对象");
-                    }
-                    
-                    com.google.gson.JsonObject choiceObj = firstChoice.getAsJsonObject();
-                    if (!choiceObj.has("message")) {
-                        logger.error("AI响应缺少message字段: {}", responseBody);
-                        throw new IOException("AI响应缺少message字段");
-                    }
-                    
-                    com.google.gson.JsonElement messageEle = choiceObj.get("message");
-                    if (!messageEle.isJsonObject()) {
-                        logger.error("AI响应message不是对象: {}", responseBody);
-                        throw new IOException("AI响应message不是对象");
-                    }
-                    
-                    com.google.gson.JsonObject messageObj = messageEle.getAsJsonObject();
-                    
-                    String[] contentFields = {"content", "reasoning_content", "thinking_content", "thought", "think", "reasoning"};
-
-                    content = null;
-                    for (String field : contentFields) {
-                        if (messageObj.has(field) && !messageObj.get(field).isJsonNull()) {
-                            content = messageObj.get(field).getAsString().trim();
-                            if (!content.isEmpty()) {
-                                if (!field.equals("content")) {
-                                    logger.debug("使用{}字段获取内容 (模型: {})", field, config.getModel());
-                                }
-                                break;
-                            }
-                        }
-                    }
-
-                    if (content == null || content.isEmpty()) {
-                        logger.error("AI响应中未找到有效内容字段。已检查字段: {}. 完整响应: {}", 
-                            String.join(", ", contentFields), responseBody);
-                        throw new IOException("AI响应缺少有效内容字段");
-                    }
-                } catch (Exception e) {
-                    logger.error("解析AI响应时发生异常", e);
-                    throw new IOException("解析AI响应失败: " + e.getMessage(), e);
-                }
-                
+                String content = parseAiResponseContent(responseBody, config.getModel());
                 return parseAiResponse(content);
             } else {
                 String errorMsg = "HTTP " + response.code();
@@ -866,6 +760,8 @@ public class AiService {
         requestBody.addProperty("max_tokens", maxTokens);
         requestBody.addProperty("temperature", 0.3);
         
+        logger.debug("发送AI请求: {}", requestBody.toString());
+        
         Request request = new Request.Builder()
                 .url(config.getBaseUrl() + "/chat/completions")
                 .addHeader("Authorization", "Bearer " + config.getApiKey())
@@ -877,67 +773,9 @@ public class AiService {
         try (Response response = customClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
                 String responseBody = response.body().string();
-                JsonObject result = gson.fromJson(responseBody, JsonObject.class);
+                logger.debug("AI响应: {}", responseBody);
                 
-                String content;
-                try {
-                    if (!result.has("choices")) {
-                        logger.error("AI响应缺少choices字段: {}", responseBody);
-                        throw new IOException("AI响应缺少choices字段");
-                    }
-                    
-                    com.google.gson.JsonArray choices = result.getAsJsonArray("choices");
-                    if (choices == null || choices.size() == 0) {
-                        logger.error("AI响应choices数组为空: {}", responseBody);
-                        throw new IOException("AI响应choices数组为空");
-                    }
-                    
-                    com.google.gson.JsonElement firstChoice = choices.get(0);
-                    if (!firstChoice.isJsonObject()) {
-                        logger.error("AI响应choices[0]不是对象: {}", responseBody);
-                        throw new IOException("AI响应choices[0]不是对象");
-                    }
-                    
-                    com.google.gson.JsonObject choiceObj = firstChoice.getAsJsonObject();
-                    if (!choiceObj.has("message")) {
-                        logger.error("AI响应缺少message字段: {}", responseBody);
-                        throw new IOException("AI响应缺少message字段");
-                    }
-                    
-                    com.google.gson.JsonElement messageEle = choiceObj.get("message");
-                    if (!messageEle.isJsonObject()) {
-                        logger.error("AI响应message不是对象: {}", responseBody);
-                        throw new IOException("AI响应message不是对象");
-                    }
-                    
-                    com.google.gson.JsonObject messageObj = messageEle.getAsJsonObject();
-                    
-                    String[] contentFields = {"content", "reasoning_content", "thinking_content", "thought", "think", "reasoning"};
-
-                    content = null;
-                    for (String field : contentFields) {
-                        if (messageObj.has(field) && !messageObj.get(field).isJsonNull()) {
-                            content = messageObj.get(field).getAsString().trim();
-                            if (!content.isEmpty()) {
-                                if (!field.equals("content")) {
-                                    logger.debug("使用{}字段获取内容 (模型: {})", field, config.getModel());
-                                }
-                                break;
-                            }
-                        }
-                    }
-
-                    if (content == null || content.isEmpty()) {
-                        logger.error("AI响应中未找到有效内容字段。已检查字段: {}. 完整响应: {}", 
-                            String.join(", ", contentFields), responseBody);
-                        throw new IOException("AI响应缺少有效内容字段");
-                    }
-                } catch (Exception e) {
-                    logger.error("解析AI响应时发生异常", e);
-                    throw new IOException("解析AI响应失败: " + e.getMessage(), e);
-                }
-                
-                return content;
+                return parseAiResponseContent(responseBody, config.getModel());
             } else {
                 throw new IOException("HTTP " + response.code());
             }

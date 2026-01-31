@@ -306,6 +306,36 @@ body {
     user-select: none;
 }
 
+.checkbox-group {
+    margin-bottom: 1.75rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.checkbox-text {
+    font-size: 0.875rem;
+    color: var(--gray-700);
+}
+
+[data-theme="dark"] .checkbox-text {
+    color: var(--gray-800);
+}
+
 .form-group small {
     display: block;
     margin-top: 0.25rem;
