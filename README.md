@@ -7,10 +7,11 @@
 
 一个基于 Spring Boot 的智能 RSS 过滤系统，集成 AI 能力实现个性化内容筛选。支持多用户、多 RSS 源，自动处理并生成符合个人偏好的自定义 RSS 订阅。
 
+
 移动网页：
-![alt text](./doc-images/2f960a1ecccaa9015790273cf27efe14.jpg)
+<img src="./doc-images/2f960a1ecccaa9015790273cf27efe14.jpg" alt="alt text" height="400" />
 PC网页：
-![alt text](./doc-images/PixPin_2026-01-31_16-12-06.png)
+<img src="./doc-images/PixPin_2026-01-31_16-12-06.png" alt="alt text" height="400" />
 
 ---
 
