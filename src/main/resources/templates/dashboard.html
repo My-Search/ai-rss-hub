@@ -38,7 +38,7 @@
                 <h2>最新筛选文章</h2>
             </div>
             <div class="card-body">
-                <div class="rss-items">
+                <div class="rss-items" id="rss-items">
                     <div class="rss-item" th:each="item : ${items}">
                         <h3><a th:href="${item.link}" target="_blank" th:text="${item.title}"></a></h3>
                         <p class="item-desc" th:text="${item.description}"></p>
@@ -52,60 +52,18 @@
                     </div>
                 </div>
                 
-                <div class="pagination" th:if="${totalPages > 1}">
-                    <div class="pagination-info">
-                        共 <span th:text="${totalItems}">0</span> 条，第 <span th:text="${currentPage}">1</span> / <span th:text="${totalPages}">1</span> 页
-                    </div>
-                    <div class="pagination-controls">
-                        <a th:href="@{/dashboard(page=1)}" class="btn btn-sm" th:disabled="${currentPage == 1}">首页</a>
-                        <a th:href="@{/dashboard(page=${currentPage - 1})}" class="btn btn-sm" th:disabled="${currentPage == 1}">上一页</a>
-                        <span class="pagination-numbers">
-                            <a th:if="${totalPages <= 7}"
-                               th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
-                               th:href="@{/dashboard(page=${pageNum})}"
-                               class="btn btn-sm"
-                               th:classappend="${pageNum == currentPage} ? 'btn-primary' : ''"
-                               th:text="${pageNum}">1</a>
-                            <span th:if="${totalPages > 7}">
-                                <a th:href="@{/dashboard(page=1)}"
-                                   class="btn btn-sm"
-                                   th:classappend="${currentPage == 1} ? 'btn-primary' : ''">1</a>
-                                <span th:if="${currentPage > 3}" class="btn btn-sm" style="cursor: default; border: none; background: transparent;">...</span>
-                                <a th:if="${currentPage > 2}"
-                                   th:href="@{/dashboard(page=${currentPage - 2})}"
-                                   class="btn btn-sm"
-                                   th:text="${currentPage - 2}"></a>
-                                <a th:if="${currentPage > 1}"
-                                   th:href="@{/dashboard(page=${currentPage - 1})}"
-                                   class="btn btn-sm"
-                                   th:text="${currentPage - 1}"></a>
-                                <a th:href="@{/dashboard(page=${currentPage})}"
-                                   class="btn btn-sm btn-primary"
-                                   th:text="${currentPage}"></a>
-                                <a th:if="${currentPage < totalPages}"
-                                   th:href="@{/dashboard(page=${currentPage + 1})}"
-                                   class="btn btn-sm"
-                                   th:text="${currentPage + 1}"></a>
-                                <a th:if="${currentPage < totalPages - 1}"
-                                   th:href="@{/dashboard(page=${currentPage + 2})}"
-                                   class="btn btn-sm"
-                                   th:text="${currentPage + 2}"></a>
-                                <span th:if="${currentPage < totalPages - 2}" class="btn btn-sm" style="cursor: default; border: none; background: transparent;">...</span>
-                                <a th:href="@{/dashboard(page=${totalPages})}"
-                                   class="btn btn-sm"
-                                   th:classappend="${currentPage == totalPages} ? 'btn-primary' : ''"
-                                   th:text="${totalPages}"></a>
-                            </span>
-                        </span>
-                        <a th:href="@{/dashboard(page=${currentPage + 1})}" class="btn btn-sm" th:disabled="${currentPage == totalPages}">下一页</a>
-                        <a th:href="@{/dashboard(page=${totalPages})}" class="btn btn-sm" th:disabled="${currentPage == totalPages}">末页</a>
-                    </div>
+                <div id="loading" class="loading" style="display: none; text-align: center; padding: 20px;">
+                    加载中...
+                </div>
+                
+                <div id="no-more" class="no-more" style="display: none; text-align: center; padding: 20px; color: #999;">
+                    没有更多文章了
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
+    <script th:inline="javascript">
         document.addEventListener('DOMContentLoaded', function() {
             const today = new Date().toISOString().split('T')[0];
             document.querySelectorAll('.pub-date').forEach(function(el) {
@@ -117,6 +75,81 @@
                     el.textContent = dateText + ' ' + timeText;
                 }
             });
+
+            let currentPage = /*[[${currentPage}]]*/ 1;
+            const totalPages = /*[[${totalPages}]]*/ 1;
+            const pageSize = /*[[${pageSize}]]*/ 20;
+            let isLoading = false;
+            let hasMore = currentPage < totalPages;
+
+            const rssItemsContainer = document.getElementById('rss-items');
+            const loadingEl = document.getElementById('loading');
+            const noMoreEl = document.getElementById('no-more');
+
+            function formatPubDate(pubDate) {
+                const date = new Date(pubDate);
+                const dateStr = date.toISOString().split('T')[0];
+                const timeStr = date.toTimeString().split(' ')[0].substring(0, 5);
+                if (dateStr === today) {
+                    return dateStr + '(今天) ' + timeStr;
+                }
+                return dateStr + ' ' + timeStr;
+            }
+
+            function appendItems(items) {
+                items.forEach(function(item) {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'rss-item';
+                    itemDiv.innerHTML = `
+                        <h3><a href="${item.link}" target="_blank">${item.title}</a></h3>
+                        <p class="item-desc">${item.description}</p>
+                        <div class="item-meta">
+                            ${item.pubDate ? `<span class="pub-date">${formatPubDate(item.pubDate)}</span>` : '<span>未知时间</span>'}
+                        </div>
+                    `;
+                    rssItemsContainer.appendChild(itemDiv);
+                });
+            }
+
+            function loadMoreItems() {
+                if (isLoading || !hasMore) return;
+
+                isLoading = true;
+                loadingEl.style.display = 'block';
+
+                fetch(`/dashboard/items?page=${currentPage + 1}&pageSize=${pageSize}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.items && data.items.length > 0) {
+                            appendItems(data.items);
+                        }
+                        currentPage = data.currentPage;
+                        hasMore = data.hasMore;
+                        isLoading = false;
+                        loadingEl.style.display = 'none';
+
+                        if (!hasMore) {
+                            noMoreEl.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('加载失败:', error);
+                        isLoading = false;
+                        loadingEl.style.display = 'none';
+                    });
+            }
+
+            function handleScroll() {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const windowHeight = window.innerHeight;
+                const documentHeight = document.documentElement.scrollHeight;
+
+                if (scrollTop + windowHeight >= documentHeight - 200) {
+                    loadMoreItems();
+                }
+            }
+
+            window.addEventListener('scroll', handleScroll);
         });
     </script>
 </body>

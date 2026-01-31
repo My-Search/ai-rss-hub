@@ -14,8 +14,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 public class DashboardController {
@@ -56,5 +59,28 @@ public class DashboardController {
         model.addAttribute("totalItems", totalItems);
         model.addAttribute("totalPages", totalPages);
         return "dashboard";
+    }
+
+    @GetMapping("/dashboard/items")
+    @ResponseBody
+    public Map<String, Object> loadMoreItems(Authentication auth,
+                                             @RequestParam int page,
+                                             @RequestParam(defaultValue = "20") int pageSize) {
+        User user = userMapper.findByUsername(auth.getName());
+        int totalItems = rssItemMapper.countFilteredByUserId(user.getId());
+        int totalPages = (int) Math.ceil((double) totalItems / pageSize);
+        
+        List<RssItem> items = rssItemMapper.findFilteredByUserIdWithPagination(user.getId(), page, pageSize);
+        for (RssItem item : items) {
+            String cleanDesc = HtmlUtils.stripHtml(item.getDescription());
+            item.setDescription(HtmlUtils.truncate(cleanDesc, 200));
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", items);
+        result.put("hasMore", page < totalPages);
+        result.put("currentPage", page);
+        result.put("totalPages", totalPages);
+        return result;
     }
 }
