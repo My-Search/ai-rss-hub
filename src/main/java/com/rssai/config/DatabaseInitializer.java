@@ -122,5 +122,11 @@ public class DatabaseInitializer implements CommandLineRunner {
 
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_keyword_match_notifications_user_rss ON keyword_match_notifications(user_id, rss_item_id)");
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_keyword_match_notifications_notified ON keyword_match_notifications(notified, user_id)");
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS persistent_logins (" +
+                "username VARCHAR(64) NOT NULL, " +
+                "series VARCHAR(64) PRIMARY KEY, " +
+                "token VARCHAR(64) NOT NULL, " +
+                "last_used TIMESTAMP NOT NULL)");
     }
 }

@@ -32,16 +32,20 @@ public class JdbcTokenRepositoryImpl implements PersistentTokenRepository {
 
     @Override
     public PersistentRememberMeToken getTokenForSeries(String seriesId) {
-        return jdbcTemplate.queryForObject(
-                "SELECT username, series, token, last_used FROM persistent_logins WHERE series = ?",
-                (rs, rowNum) -> new PersistentRememberMeToken(
-                        rs.getString("username"),
-                        rs.getString("series"),
-                        rs.getString("token"),
-                        rs.getTimestamp("last_used")
-                ),
-                seriesId
-        );
+        try {
+            return jdbcTemplate.queryForObject(
+                    "SELECT username, series, token, last_used FROM persistent_logins WHERE series = ?",
+                    (rs, rowNum) -> new PersistentRememberMeToken(
+                            rs.getString("username"),
+                            rs.getString("series"),
+                            rs.getString("token"),
+                            rs.getTimestamp("last_used")
+                    ),
+                    seriesId
+            );
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override
