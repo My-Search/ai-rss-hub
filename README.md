@@ -7,6 +7,11 @@
 
 一个基于 Spring Boot 的智能 RSS 过滤系统，集成 AI 能力实现个性化内容筛选。支持多用户、多 RSS 源，自动处理并生成符合个人偏好的自定义 RSS 订阅。
 
+移动网页：
+![alt text](./doc-images/2f960a1ecccaa9015790273cf27efe14.jpg)
+PC网页：
+![alt text](./doc-images/PixPin_2026-01-31_16-12-06.png)
+
 ---
 
 ## 功能特性
@@ -21,6 +26,9 @@
 | **灵活调度** | 可配置每个 RSS 源的刷新频率（默认 10 分钟） |
 | **个人订阅** | 每个用户生成专属 RSS 订阅地址 |
 | **邮件摘要** | 支持定期邮件推送精选内容摘要 |
+| **关键词订阅** | 支持关键词订阅，匹配内容时自动发送邮件通知 |
+| **邮箱验证** | 支持注册验证码和密码重置功能 |
+| **记住我** | 支持"记住我"登录功能 |
 | **日志追溯** | 完整的筛选日志和抓取日志记录 |
 | **企业级界面** | 专业扁平化设计，响应式布局 |
 
@@ -47,6 +55,7 @@
 - **OkHttp 4.9.3** - HTTP 客户端
 - **Gson** - JSON 处理
 - **Spring Mail** - 邮件发送
+- **Caffeine** - 高性能缓存库（用于验证码存储）
 
 ### 容器化
 - **Docker** + **Docker Compose** - 容器化部署支持
@@ -69,6 +78,7 @@ cd ai-rss-hub
 docker-compose build --no-cache
 docker-compose up -d
 # 访问http://ip:2799
+# 后续更新`bash update.sh`
 ```
 
 ### 本地安装运行
@@ -138,7 +148,24 @@ docker run -d -p 2799:8080 -v $(pwd)/data:/app/data ai-rss-hub:1.0.0
 http://localhost:8080/register
 ```
 
-### 2. 配置 AI
+**邮箱验证功能**（可选）：
+- 如启用邮件功能，注册时需要输入邮箱并验证验证码
+- 点击"发送验证码"按钮，系统会发送6位数字验证码到您的邮箱
+- 输入验证码后完成注册
+
+### 2. 找回密码
+
+忘记密码时，可通过邮箱重置：
+
+```
+http://localhost:8080/forgot-password
+```
+
+- 输入注册时使用的邮箱
+- 点击"发送验证码"获取密码重置验证码
+- 输入验证码和新密码完成重置
+
+### 3. 配置 AI
 
 登录后进入**AI配置**页面，填写以下信息：
 
@@ -149,7 +176,7 @@ http://localhost:8080/register
 | API Key | API 认证密钥 | sk-... |
 | 系统提示词 | 筛选偏好描述 | 只关注与机器学习相关的技术文章 |
 
-### 3. 添加 RSS 源
+### 4. 添加 RSS 源
 
 进入**RSS源**页面管理订阅源：
 
@@ -158,11 +185,21 @@ http://localhost:8080/register
 - 设置刷新频率（单位：分钟）
 - 保存配置
 
-### 4. 获取个人订阅地址
+### 5. 关键词订阅
+
+进入**关键词订阅**页面设置关键词匹配规则：
+
+- 点击"添加关键词订阅"
+- 输入关键词（多个关键词用空格分隔，使用 AND 逻辑）
+- 例如："glm 最新模型" 表示文章必须同时包含"glm"和"最新模型"
+- 当 RSS 内容匹配关键词时，系统会自动发送邮件通知
+- 可随时启用/禁用或删除关键词订阅
+
+### 6. 获取个人订阅地址
 
 在**AI配置**页面底部，系统将生成您的专属 RSS 订阅地址。复制该地址到任意 RSS 阅读器即可使用。
 
-### 5. 查看日志
+### 7. 查看日志
 
 - **筛选日志**：查看 AI 处理记录
 - **抓取日志**：查看 RSS 源抓取状态
@@ -203,6 +240,12 @@ spring:
           auth: true
           starttls:
             enable: true
+
+email:
+  enable: true  # 启用邮件功能（验证码、密码重置等）
+
+system-config:
+  allow-register: true  # 允许用户注册
 ```
 
 ### 数据存储
@@ -221,7 +264,10 @@ ai-rss-hub/
 │   │   ├── SecurityConfig.java    # Spring Security 配置
 │   │   ├── JdbcConfig.java        # 数据库连接配置
 │   │   ├── DatabaseInitializer.java # 数据库初始化
-│   │   └── UserDetailsServiceImpl.java # 用户详情服务
+│   │   ├── UserDetailsServiceImpl.java # 用户详情服务
+│   │   ├── AsyncConfig.java       # 异步配置
+│   │   ├── CaffeineCacheConfig.java # 缓存配置
+│   │   └── TimezoneConfig.java    # 时区配置
 │   ├── controller/                # 控制器层
 │   │   ├── AuthController.java    # 认证控制器
 │   │   ├── AiConfigController.java # AI 配置控制器
@@ -230,21 +276,26 @@ ai-rss-hub/
 │   │   ├── DashboardController.java # 仪表盘
 │   │   ├── EmailController.java   # 邮件设置
 │   │   ├── FilterLogController.java # 筛选日志
-│   │   └── UserFeedController.java # 用户订阅管理
+│   │   ├── UserFeedController.java # 用户订阅管理
+│   │   └── KeywordSubscriptionController.java # 关键词订阅管理
 │   ├── mapper/                    # 数据访问层
 │   │   ├── UserMapper.java        # 用户数据
 │   │   ├── AiConfigMapper.java    # AI 配置数据
 │   │   ├── RssSourceMapper.java   # RSS 源数据
 │   │   ├── RssItemMapper.java     # RSS 条目数据
 │   │   ├── UserRssFeedMapper.java # 用户订阅数据
-│   │   └── FilterLogMapper.java   # 筛选日志数据
+│   │   ├── FilterLogMapper.java   # 筛选日志数据
+│   │   ├── KeywordSubscriptionMapper.java # 关键词订阅数据
+│   │   └── KeywordMatchNotificationMapper.java # 关键词匹配通知数据
 │   ├── model/                     # 数据模型
 │   │   ├── User.java              # 用户实体
 │   │   ├── AiConfig.java          # AI 配置实体
 │   │   ├── RssSource.java         # RSS 源实体
 │   │   ├── RssItem.java           # RSS 条目实体
 │   │   ├── UserRssFeed.java       # 用户订阅实体
-│   │   └── FilterLog.java         # 筛选日志实体
+│   │   ├── FilterLog.java         # 筛选日志实体
+│   │   ├── KeywordSubscription.java # 关键词订阅实体
+│   │   └── KeywordMatchNotification.java # 关键词匹配通知实体
 │   ├── service/                   # 业务逻辑层
 │   │   ├── UserService.java       # 用户服务
 │   │   ├── AiService.java         # AI 处理服务
@@ -252,18 +303,42 @@ ai-rss-hub/
 │   │   ├── RssGeneratorService.java # RSS 生成服务
 │   │   ├── EmailService.java      # 邮件服务
 │   │   ├── EmailScheduler.java    # 邮件调度器
-│   │   └── FilterLogService.java  # 日志服务
+│   │   ├── FilterLogService.java  # 日志服务
+│   │   ├── KeywordSubscriptionService.java # 关键词订阅服务
+│   │   └── VerificationCodeService.java # 验证码服务
+│   ├── security/                  # 安全相关
+│   │   └── JdbcTokenRepositoryImpl.java # JDBC Token 持久化实现
 │   ├── util/                      # 工具类
 │   │   └── HtmlUtils.java         # HTML 处理工具
 │   └── RssAiApplication.java      # 应用启动类
 ├── src/main/resources/
 │   ├── templates/                 # Thymeleaf 模板
+│   │   ├── fragments/             # 模板片段
+│   │   ├── ai-config.html         # AI 配置页面
+│   │   ├── dashboard.html         # 仪表盘
+│   │   ├── email-digest.html      # 邮件摘要模板
+│   │   ├── email-keyword-match.html # 关键词匹配邮件模板
+│   │   ├── email-password-reset-code.html # 密码重置邮件模板
+│   │   ├── email-register-code.html # 注册验证码邮件模板
+│   │   ├── email-test.html        # 测试邮件模板
+│   │   ├── feed.html              # 订阅页面
+│   │   ├── filter-logs.html       # 筛选日志页面
+│   │   ├── forgot-password.html   # 忘记密码页面
+│   │   ├── keyword-subscriptions.html # 关键词订阅页面
+│   │   ├── login.html             # 登录页面
+│   │   └── register.html          # 注册页面
 │   ├── static/                    # 静态资源
-│   └── application.yml            # 应用配置文件
+│   │   ├── css/                   # 样式文件
+│   │   └── favicon.svg            # 网站图标
+│   ├── application.yml            # 应用配置文件
+│   ├── application-dev.yml        # 开发环境配置
+│   └── application-prod.yml       # 生产环境配置
 ├── data/                          # 数据目录（数据库文件）
 ├── Dockerfile                     # Docker 构建文件
 ├── docker-compose.yml             # Docker Compose 配置
 ├── pom.xml                        # Maven 依赖配置
+├── update.sql                     # 数据库更新脚本
+├── update.sh                      # 更新脚本
 └── README.md                      # 项目说明文档
 ```
 
@@ -337,6 +412,37 @@ ai-rss-hub/
 | reason | TEXT | 筛选原因 |
 | created_at | TIMESTAMP | 处理时间 |
 
+#### 关键词订阅表（keyword_subscriptions）
+
+| 字段 | 类型 | 说明 |
+|-----|------|------|
+| id | INTEGER | 主键 |
+| user_id | INTEGER | 用户ID |
+| keywords | VARCHAR | 关键词（空格分隔） |
+| enabled | BOOLEAN | 是否启用 |
+| created_at | TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | 更新时间 |
+
+#### 关键词匹配通知表（keyword_match_notifications）
+
+| 字段 | 类型 | 说明 |
+|-----|------|------|
+| id | INTEGER | 主键 |
+| user_id | INTEGER | 用户ID |
+| subscription_id | INTEGER | 关联关键词订阅ID |
+| item_id | INTEGER | 关联RSS条目ID |
+| sent | BOOLEAN | 是否已发送邮件 |
+| created_at | TIMESTAMP | 创建时间 |
+
+#### 持久化登录表（persistent_logins）
+
+| 字段 | 类型 | 说明 |
+|-----|------|------|
+| username | VARCHAR | 用户名 |
+| series | VARCHAR | 系列标识（主键） |
+| token | VARCHAR | 令牌 |
+| last_used | TIMESTAMP | 最后使用时间 |
+
 ---
 
 ## 常见问题
@@ -363,6 +469,29 @@ ai-rss-hub/
 ### Q: 邮件发送失败？
 
 确认邮件配置正确，包括 SMTP 服务器、端口、认证信息等。
+
+### Q: 关键词订阅如何工作？
+
+- 关键词使用 AND 逻辑匹配，多个关键词用空格分隔
+- 系统会检查 RSS 条目的标题和描述
+- 匹配成功后自动发送邮件通知
+- 需要启用邮件功能才能使用
+
+### Q: 如何启用邮箱验证功能？
+
+在 `application.yml` 中配置邮件服务器，并设置 `email.enable: true`。
+
+### Q: 如何关闭用户注册功能？
+
+在 `application.yml` 中设置 `system-config.allow-register: false`。
+
+### Q: 验证码有效期多久？
+
+验证码存储在 Caffeine 缓存中，默认有效期为 10 分钟。
+
+### Q: "记住我"功能如何使用？
+
+登录时勾选"记住我"选项，系统会在数据库中持久化登录令牌，下次访问时自动登录。
 
 ---
 
