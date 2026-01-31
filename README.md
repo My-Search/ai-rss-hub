@@ -9,8 +9,10 @@
 
 
 移动网页：
+
 <img src="./doc-images/2f960a1ecccaa9015790273cf27efe14.jpg" alt="alt text" height="400" />
 PC网页：
+
 <img src="./doc-images/PixPin_2026-01-31_16-12-06.png" alt="alt text" height="400" />
 
 ---
