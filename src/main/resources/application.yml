@@ -1,6 +1,8 @@
 spring:
   application:
     name: ai-rss-hub
+  profiles:
+    active: dev
   datasource:
     url: jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=30000&journal_mode=WAL&synchronous=NORMAL
     driver-class-name: org.sqlite.JDBC
