@@ -66,6 +66,18 @@ public class AiService {
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
     
+    // 增强的YES/NO提取正则表达式 - 支持左右任意字符
+    private static final Pattern YES_NO_PATTERN = Pattern.compile(
+        "(?i).*?(YES|NO)[-:：\\s]*(.+?)(?:\\s*$|\\s*[\\[\\]【】*#\\d]+|$)",
+        Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
+    );
+    
+    // 批量响应提取正则 - 支持序号格式
+    private static final Pattern BATCH_YES_NO_PATTERN = Pattern.compile(
+        "(?i)(?:\\[|【)?(\\d+)(?:\\]|】)?[^\\w]*?(YES|NO)[-:：\\s]*(.+?)(?:\\s*$|\\s*[\\[\\]【】*#]|$)",
+        Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
+    );
+    
     // 内容长度限制（避免发送过长内容）
     private static final int MAX_TITLE_LENGTH = 200;
     private static final int MAX_DESCRIPTION_LENGTH = 500;
@@ -443,6 +455,7 @@ public class AiService {
     
     /**
      * 解析批量响应
+     * 使用增强的正则表达式稳定提取每项的 YES/NO-原因
      */
     private java.util.Map<Integer, String> parseBatchResponse(String content, int itemCount, int startIndex) {
         java.util.Map<Integer, String> results = new java.util.HashMap<>();
@@ -452,17 +465,22 @@ public class AiService {
             line = line.trim();
             if (line.isEmpty()) continue;
             
-            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\[(\\d+)\\]\\s*(YES|NO)[-:]?(.*)").matcher(line);
+            java.util.regex.Matcher matcher = BATCH_YES_NO_PATTERN.matcher(line);
+            
             if (matcher.find()) {
                 int index = Integer.parseInt(matcher.group(1)) - 1;
-                String decision = matcher.group(2);
+                String decision = matcher.group(2).toUpperCase();
                 String reason = matcher.group(3).trim();
                 
                 if (index >= 0 && index < itemCount) {
-                    if ("YES".equalsIgnoreCase(decision)) {
-                        results.put(startIndex + index, "通过 - " + (reason.isEmpty() ? "符合偏好" : reason));
+                    if (reason.isEmpty()) {
+                        reason = decision.equals("YES") ? "符合偏好" : "不符合偏好";
+                    }
+                    
+                    if (decision.equals("YES")) {
+                        results.put(startIndex + index, "通过 - " + reason);
                     } else {
-                        results.put(startIndex + index, "未通过 - " + (reason.isEmpty() ? "不符合偏好" : reason));
+                        results.put(startIndex + index, "未通过 - " + reason);
                     }
                 }
             }
@@ -601,40 +619,33 @@ public class AiService {
     
     /**
      * 解析AI响应（支持多种格式）
+     * 使用增强的正则表达式稳定提取 YES/NO-原因
      */
     private String parseAiResponse(String content) {
-        String upperContent = content.toUpperCase().trim();
-        
-        if (upperContent.startsWith("YES")) {
-            String reason = content.substring(3).trim();
-            if (reason.startsWith("-") || reason.startsWith(":") || reason.startsWith(" ")) {
-                reason = reason.substring(1).trim();
-            }
-            return "通过 - " + (reason.isEmpty() ? "符合偏好" : reason);
-        } else if (upperContent.startsWith("NO")) {
-            String reason = content.substring(2).trim();
-            if (reason.startsWith("-") || reason.startsWith(":") || reason.startsWith(" ")) {
-                reason = reason.substring(1).trim();
-            }
-            return "未通过 - " + (reason.isEmpty() ? "不符合偏好" : reason);
-        } else if (upperContent.contains("YES")) {
-            int yesIndex = upperContent.indexOf("YES");
-            String reason = content.substring(yesIndex + 3).trim();
-            if (reason.startsWith("-") || reason.startsWith(":") || reason.startsWith(" ")) {
-                reason = reason.substring(1).trim();
-            }
-            return "通过 - " + (reason.isEmpty() ? "符合偏好" : reason);
-        } else if (upperContent.contains("NO")) {
-            int noIndex = upperContent.indexOf("NO");
-            String reason = content.substring(noIndex + 2).trim();
-            if (reason.startsWith("-") || reason.startsWith(":") || reason.startsWith(" ")) {
-                reason = reason.substring(1).trim();
-            }
-            return "未通过 - " + (reason.isEmpty() ? "不符合偏好" : reason);
-        } else {
-            logger.warn("AI响应格式异常: {}", content);
-            return "未通过 - 响应格式异常";
+        if (content == null || content.trim().isEmpty()) {
+            logger.warn("AI响应为空");
+            return "未通过 - 响应为空";
         }
+        
+        java.util.regex.Matcher matcher = YES_NO_PATTERN.matcher(content);
+        
+        if (matcher.find()) {
+            String decision = matcher.group(1).toUpperCase();
+            String reason = matcher.group(2).trim();
+            
+            if (reason.isEmpty()) {
+                reason = decision.equals("YES") ? "符合偏好" : "不符合偏好";
+            }
+            
+            if (decision.equals("YES")) {
+                return "通过 - " + reason;
+            } else {
+                return "未通过 - " + reason;
+            }
+        }
+        
+        logger.warn("AI响应格式异常，无法提取YES/NO: {}", content);
+        return "未通过 - 响应格式异常";
     }
     
     /**

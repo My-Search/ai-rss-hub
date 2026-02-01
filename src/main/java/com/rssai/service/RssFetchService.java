@@ -201,8 +201,22 @@ public class RssFetchService {
                 }
                 item.setAiFiltered(false);
                 item.setAiReason("待处理");
+                
                 rssItemMapper.insert(item);
-                newRssItems.add(item);
+                
+                // 只添加成功获取ID的记录（新插入或已存在的记录）
+                if (item.getId() != null) {
+                    newRssItems.add(item);
+                } else {
+                    logger.warn("无法获取RSS条目ID，跳过 - 标题: {}", item.getTitle());
+                }
+            }
+            
+            if (newRssItems.isEmpty()) {
+                logger.info("没有有效的RSS条目需要处理");
+                rssSourceMapper.updateLastFetchTime(source.getId());
+                logger.info("========================================");
+                return;
             }
 
             // 进行关键词匹配和邮件通知（在AI过滤之前）
@@ -210,9 +224,8 @@ public class RssFetchService {
             
             // 准备批量筛选数据
             List<AiService.RssItemData> itemsToFilter = new ArrayList<>();
-            for (SyndEntry entry : filteredEntries) {
-                String description = entry.getDescription() != null ? entry.getDescription().getValue() : "";
-                itemsToFilter.add(new AiService.RssItemData(entry.getTitle(), description));
+            for (RssItem item : newRssItems) {
+                itemsToFilter.add(new AiService.RssItemData(item.getTitle(), item.getDescription()));
             }
 
             // 批量AI筛选（带原始响应）
@@ -221,14 +234,13 @@ public class RssFetchService {
             Map<Integer, String> filterResults = filterResult.getFilterResults();
             Map<Integer, String> rawResponses = filterResult.getRawResponses();
             long duration = System.currentTimeMillis() - startTime;
-            logger.info("批量筛选完成，耗时: {}ms，平均每条: {}ms", duration, duration / filteredEntries.size());
+            logger.info("批量筛选完成，耗时: {}ms，平均每条: {}ms", duration, duration / newRssItems.size());
 
             // 更新AI过滤结果
             int passedCount = 0;
             int rejectedCount = 0;
 
-            for (int i = 0; i < filteredEntries.size(); i++) {
-                SyndEntry entry = filteredEntries.get(i);
+            for (int i = 0; i < newRssItems.size(); i++) {
                 RssItem item = newRssItems.get(i);
                 String aiReason = filterResults.getOrDefault(i, "未通过 - 处理失败");
                 String aiRawResponse = rawResponses.getOrDefault(i, "未找到响应");
@@ -240,7 +252,7 @@ public class RssFetchService {
                     rejectedCount++;
                 }
                 
-                logger.info("消息 #{}: {} - {}", i + 1, entry.getTitle(), aiReason);
+                logger.info("消息 #{}: {} - {}", i + 1, item.getTitle(), aiReason);
                 
                 item.setAiFiltered(filtered);
                 item.setAiReason(aiReason);
@@ -250,8 +262,8 @@ public class RssFetchService {
                 filterLogService.saveFilterLog(
                     source.getUserId(),
                     item.getId(),
-                    entry.getTitle(),
-                    entry.getLink(),
+                    item.getTitle(),
+                    item.getLink(),
                     filtered,
                     aiReason,
                     aiRawResponse,
@@ -263,7 +275,8 @@ public class RssFetchService {
             
             logger.info("========================================");
             logger.info("抓取完成: {}", source.getName());
-            logger.info("统计: 新消息={}, 重复标题={}, 通过={}, 未通过={}", newEntries.size(), duplicateCount, passedCount, rejectedCount);
+            logger.info("统计: 新消息={}, 重复标题={}, 处理成功={}, 通过={}, 未通过={}", 
+                newEntries.size(), duplicateCount, newRssItems.size(), passedCount, rejectedCount);
             logger.info("========================================");
             
         } catch (Exception e) {
@@ -299,6 +312,12 @@ public class RssFetchService {
             List<RssItem> itemsToNotify = new ArrayList<>();
 
             for (RssItem item : matchingItems) {
+                // 检查item的ID是否有效
+                if (item.getId() == null) {
+                    logger.warn("RSS条目ID为空，跳过关键词匹配通知 - 标题: {}", item.getTitle());
+                    continue;
+                }
+                
                 KeywordMatchNotification existingNotification = keywordMatchNotificationMapper.findByUserIdAndSubscriptionIdAndRssItemId(
                         userId, subscription.getId(), item.getId());
 
