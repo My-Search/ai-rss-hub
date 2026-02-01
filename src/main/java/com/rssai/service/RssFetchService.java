@@ -138,9 +138,12 @@ public class RssFetchService {
             }
             logger.info("使用AI配置: 模型={}, BaseURL={}", aiConfig.getModel(), aiConfig.getBaseUrl());
 
-            // 收集新消息 - 过滤30天内重复的title或link
+            // 收集所有消息 - 包括重复的（重复的也需要进行AI过滤并更新）
+            List<SyndEntry> allEntries = feed.getEntries();
             List<SyndEntry> newEntries = new ArrayList<>();
-            for (SyndEntry entry : feed.getEntries()) {
+            List<SyndEntry> existingEntries = new ArrayList<>();
+
+            for (SyndEntry entry : allEntries) {
                 String title = entry.getTitle();
                 String link = entry.getLink();
 
@@ -153,40 +156,48 @@ public class RssFetchService {
                 if (!duplicateLink && !duplicateTitle) {
                     newEntries.add(entry);
                 } else {
+                    // 重复的文章也需要处理，用于更新AI过滤结果
+                    existingEntries.add(entry);
                     if (duplicateLink) {
-                        logger.info("跳过重复链接: {}", link);
+                        logger.info("发现重复链接，将重新进行AI过滤: {}", link);
                     }
                     if (duplicateTitle) {
-                        logger.info("跳过重复标题: {}", title);
+                        logger.info("发现重复标题，将重新进行AI过滤: {}", title);
                     }
                 }
             }
 
-            if (newEntries.isEmpty()) {
-                logger.info("没有新消息需要处理");
+            if (newEntries.isEmpty() && existingEntries.isEmpty()) {
+                logger.info("没有消息需要处理");
                 rssSourceMapper.updateLastFetchTime(source.getId());
                 logger.info("========================================");
                 return;
             }
 
+            // 合并新文章和重复文章进行处理
+            List<SyndEntry> entriesToProcess = new ArrayList<>();
+            entriesToProcess.addAll(newEntries);
+            entriesToProcess.addAll(existingEntries);
+
             // 过滤同一源下的重复标题
-            List<SyndEntry> filteredEntries = filterDuplicateTitles(newEntries, source.getId());
-            int duplicateCount = newEntries.size() - filteredEntries.size();
+            List<SyndEntry> filteredEntries = filterDuplicateTitles(entriesToProcess, source.getId());
+            int duplicateCount = entriesToProcess.size() - filteredEntries.size();
             if (duplicateCount > 0) {
                 logger.info("过滤了 {} 条重复标题的消息", duplicateCount);
             }
 
             if (filteredEntries.isEmpty()) {
-                logger.info("过滤后没有新消息需要处理");
+                logger.info("过滤后没有消息需要处理");
                 rssSourceMapper.updateLastFetchTime(source.getId());
                 logger.info("========================================");
                 return;
             }
 
-            logger.info("发现 {} 条新消息，准备批量筛选", filteredEntries.size());
+            logger.info("发现 {} 条消息需要处理（新消息={}, 重复消息={}），准备批量筛选", 
+                    filteredEntries.size(), newEntries.size(), existingEntries.size());
             
             // 先插入所有RSS条目到数据库（获取ID）
-            List<RssItem> newRssItems = new ArrayList<>();
+            List<RssItem> rssItemsToProcess = new ArrayList<>();
             for (int i = 0; i < filteredEntries.size(); i++) {
                 SyndEntry entry = filteredEntries.get(i);
                 RssItem item = new RssItem();
@@ -204,15 +215,15 @@ public class RssFetchService {
                 
                 rssItemMapper.insert(item);
                 
-                // 只添加成功获取ID的记录（新插入或已存在的记录）
+                // 添加所有成功获取ID的记录（新插入或已存在的记录）
                 if (item.getId() != null) {
-                    newRssItems.add(item);
+                    rssItemsToProcess.add(item);
                 } else {
                     logger.warn("无法获取RSS条目ID，跳过 - 标题: {}", item.getTitle());
                 }
             }
             
-            if (newRssItems.isEmpty()) {
+            if (rssItemsToProcess.isEmpty()) {
                 logger.info("没有有效的RSS条目需要处理");
                 rssSourceMapper.updateLastFetchTime(source.getId());
                 logger.info("========================================");
@@ -220,11 +231,11 @@ public class RssFetchService {
             }
 
             // 进行关键词匹配和邮件通知（在AI过滤之前）
-            processKeywordMatches(source.getUserId(), newRssItems);
+            processKeywordMatches(source.getUserId(), rssItemsToProcess);
             
             // 准备批量筛选数据
             List<AiService.RssItemData> itemsToFilter = new ArrayList<>();
-            for (RssItem item : newRssItems) {
+            for (RssItem item : rssItemsToProcess) {
                 itemsToFilter.add(new AiService.RssItemData(item.getTitle(), item.getDescription()));
             }
 
@@ -234,14 +245,14 @@ public class RssFetchService {
             Map<Integer, String> filterResults = filterResult.getFilterResults();
             Map<Integer, String> rawResponses = filterResult.getRawResponses();
             long duration = System.currentTimeMillis() - startTime;
-            logger.info("批量筛选完成，耗时: {}ms，平均每条: {}ms", duration, duration / newRssItems.size());
+            logger.info("批量筛选完成，耗时: {}ms，平均每条: {}ms", duration, duration / rssItemsToProcess.size());
 
             // 更新AI过滤结果
             int passedCount = 0;
             int rejectedCount = 0;
 
-            for (int i = 0; i < newRssItems.size(); i++) {
-                RssItem item = newRssItems.get(i);
+            for (int i = 0; i < rssItemsToProcess.size(); i++) {
+                RssItem item = rssItemsToProcess.get(i);
                 String aiReason = filterResults.getOrDefault(i, "未通过 - 处理失败");
                 String aiRawResponse = rawResponses.getOrDefault(i, "未找到响应");
                 boolean filtered = aiReason.startsWith("通过");
@@ -275,8 +286,8 @@ public class RssFetchService {
             
             logger.info("========================================");
             logger.info("抓取完成: {}", source.getName());
-            logger.info("统计: 新消息={}, 重复标题={}, 处理成功={}, 通过={}, 未通过={}", 
-                newEntries.size(), duplicateCount, newRssItems.size(), passedCount, rejectedCount);
+            logger.info("统计: 总消息={}, 新消息={}, 重复消息={}, 重复标题={}, 处理成功={}, 通过={}, 未通过={}", 
+                allEntries.size(), newEntries.size(), existingEntries.size(), duplicateCount, rssItemsToProcess.size(), passedCount, rejectedCount);
             logger.info("========================================");
             
         } catch (Exception e) {
