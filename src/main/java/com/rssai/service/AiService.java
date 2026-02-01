@@ -468,58 +468,22 @@ public class AiService {
             line = line.trim();
             if (line.isEmpty()) continue;
             
-            String[] parts = line.split("[,，。]");
+            java.util.regex.Matcher matcher = BATCH_YES_NO_PATTERN.matcher(line);
             
-            for (String part : parts) {
-                part = part.trim();
-                if (part.isEmpty()) continue;
+            if (matcher.find()) {
+                int index = Integer.parseInt(matcher.group(1)) - 1;
+                String decision = matcher.group(2).toUpperCase();
+                String reason = matcher.group(3).trim();
                 
-                java.util.regex.Matcher indexMatcher = java.util.regex.Pattern.compile("(?:\\[|【)?(\\d+)(?:\\]|】)?").matcher(part);
-                
-                if (indexMatcher.find()) {
-                    int index = Integer.parseInt(indexMatcher.group(1)) - 1;
+                if (index >= 0 && index < itemCount) {
+                    if (reason.isEmpty()) {
+                        reason = decision.equals("YES") ? "符合偏好" : "不符合偏好";
+                    }
                     
-                    if (index >= 0 && index < itemCount) {
-                        String[] decisionParts = part.split("-");
-                        
-                        if (decisionParts.length >= 2) {
-                            String leftPart = decisionParts[0].trim().toUpperCase();
-                            String rightPart = decisionParts[1].trim();
-                            
-                            boolean isYes = leftPart.contains("YES");
-                            boolean isNo = leftPart.contains("NO");
-                            
-                            String reason = rightPart;
-                            if (reason.isEmpty()) {
-                                reason = isYes ? "符合偏好" : "不符合偏好";
-                            }
-                            
-                            if (isYes || isNo) {
-                                if (isYes) {
-                                    results.put(startIndex + index, "通过 - " + reason);
-                                } else {
-                                    results.put(startIndex + index, "未通过 - " + reason);
-                                }
-                            }
-                        } else {
-                            java.util.regex.Matcher yesNoMatcher = java.util.regex.Pattern.compile("(?i)(YES|NO)").matcher(part);
-                            if (yesNoMatcher.find()) {
-                                String decision = yesNoMatcher.group(1).toUpperCase();
-                                String reason = "符合偏好";
-                                
-                                int yesNoIndex = yesNoMatcher.end();
-                                String remaining = part.substring(yesNoIndex).trim();
-                                if (!remaining.isEmpty()) {
-                                    reason = remaining.replaceAll("[-:：\\s]+", "");
-                                }
-                                
-                                if (decision.equals("YES")) {
-                                    results.put(startIndex + index, "通过 - " + reason);
-                                } else {
-                                    results.put(startIndex + index, "未通过 - " + reason);
-                                }
-                            }
-                        }
+                    if (decision.equals("YES")) {
+                        results.put(startIndex + index, "通过 - " + reason);
+                    } else {
+                        results.put(startIndex + index, "未通过 - " + reason);
                     }
                 }
             }

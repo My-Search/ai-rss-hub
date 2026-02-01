@@ -41,7 +41,7 @@ public class AiConfigController {
     public String saveConfig(Authentication auth,
                             @RequestParam String baseUrl,
                             @RequestParam String model,
-                            @RequestParam String apiKey,
+                            @RequestParam(required = false) String apiKey,
                             @RequestParam String systemPrompt,
                             @RequestParam(defaultValue = "10") Integer refreshInterval,
                             @RequestParam(required = false) String forceUpdateSources) {

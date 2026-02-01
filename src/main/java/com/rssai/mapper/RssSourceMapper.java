@@ -1,7 +1,6 @@
 package com.rssai.mapper;
 
 import com.rssai.model.RssSource;
-import com.rssai.util.DatabaseRetryUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -85,27 +84,5 @@ public class RssSourceMapper {
     public void updateRefreshIntervalByUserId(Long userId, Integer refreshInterval) {
         jdbcTemplate.update("UPDATE rss_sources SET refresh_interval = ?, updated_at = datetime('now', 'localtime') WHERE user_id = ?",
                 refreshInterval, userId);
-    }
-
-    public List<RssSource> findPendingFetch(int limit) {
-        return DatabaseRetryUtil.executeWithRetry("查询待抓取RSS源", () -> {
-            String sql = "SELECT rs.*, ac.refresh_interval as user_refresh_interval " +
-                    "FROM rss_sources rs " +
-                    "LEFT JOIN ai_configs ac ON rs.user_id = ac.user_id " +
-                    "WHERE rs.enabled = 1 " +
-                    "AND ac.id IS NOT NULL " +
-                    "AND (" +
-                    "  rs.last_fetch_time IS NULL OR " +
-                    "  datetime('now', 'localtime') >= datetime(rs.last_fetch_time, '+' || " +
-                    "  COALESCE(rs.refresh_interval, ac.refresh_interval, 10) || ' minutes')" +
-                    ") " +
-                    "ORDER BY " +
-                    "  CASE " +
-                    "    WHEN rs.last_fetch_time IS NULL THEN 0 " +
-                    "    ELSE CAST((julianday('now', 'localtime') - julianday(rs.last_fetch_time)) * 86400 AS INTEGER) " +
-                    "  END DESC " +
-                    "LIMIT ?";
-            return jdbcTemplate.query(sql, rowMapper, limit);
-        });
     }
 }

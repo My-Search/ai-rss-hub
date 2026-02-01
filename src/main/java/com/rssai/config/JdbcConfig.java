@@ -26,11 +26,9 @@ public class JdbcConfig {
     public JdbcTemplate jdbcTemplate(DataSource dataSource) {
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
         jdbcTemplate.execute("PRAGMA timezone = 'Asia/Shanghai'");
-        jdbcTemplate.execute("PRAGMA busy_timeout = 60000");
+        jdbcTemplate.execute("PRAGMA busy_timeout = 30000");
         jdbcTemplate.execute("PRAGMA journal_mode = WAL");
         jdbcTemplate.execute("PRAGMA synchronous = NORMAL");
-        jdbcTemplate.execute("PRAGMA cache_size = -64000");
-        jdbcTemplate.execute("PRAGMA temp_store = MEMORY");
         return jdbcTemplate;
     }
 }
