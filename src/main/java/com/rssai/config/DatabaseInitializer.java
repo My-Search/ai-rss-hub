@@ -52,12 +52,18 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "enabled BOOLEAN DEFAULT 1, " +
                 "refresh_interval INTEGER DEFAULT 60, " +
                 "last_fetch_time TIMESTAMP, " +
+                "fetching BOOLEAN DEFAULT 0, " +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "FOREIGN KEY (user_id) REFERENCES users(id))");
 
         try {
             jdbcTemplate.execute("ALTER TABLE rss_sources ADD COLUMN refresh_interval INTEGER DEFAULT 60");
+        } catch (Exception e) {
+        }
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE rss_sources ADD COLUMN fetching BOOLEAN DEFAULT 0");
         } catch (Exception e) {
         }
 

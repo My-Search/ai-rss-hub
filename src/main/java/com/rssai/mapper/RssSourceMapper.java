@@ -10,6 +10,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Repository
@@ -35,6 +37,7 @@ public class RssSourceMapper {
 
             source.setCreatedAt(parseDateTime(rs.getString("created_at")));
             source.setUpdatedAt(parseDateTime(rs.getString("updated_at")));
+            source.setFetching(rs.getBoolean("fetching"));
             return source;
         }
         
@@ -84,5 +87,31 @@ public class RssSourceMapper {
     public void updateRefreshIntervalByUserId(Long userId, Integer refreshInterval) {
         jdbcTemplate.update("UPDATE rss_sources SET refresh_interval = ?, updated_at = datetime('now', 'localtime') WHERE user_id = ?",
                 refreshInterval, userId);
+    }
+
+    public List<RssSource> findSourcesReadyToFetch(int limit) {
+        String sql = "SELECT * FROM rss_sources " +
+                "WHERE enabled = 1 " +
+                "AND fetching = 0 " +
+                "AND (last_fetch_time IS NULL OR " +
+                "     datetime(last_fetch_time, '+' || refresh_interval || ' minutes') <= datetime('now', 'localtime')) " +
+                "ORDER BY " +
+                "  CASE WHEN last_fetch_time IS NULL THEN 0 ELSE 1 END, " +
+                "  last_fetch_time ASC " +
+                "LIMIT ?";
+        return jdbcTemplate.query(sql, rowMapper, limit);
+    }
+
+    public void setFetchingStatus(Long sourceId, boolean fetching) {
+        jdbcTemplate.update("UPDATE rss_sources SET fetching = ? WHERE id = ?", fetching ? 1 : 0, sourceId);
+    }
+
+    public List<RssSource> findByUserIdAndIds(Long userId, List<Long> sourceIds) {
+        if (sourceIds == null || sourceIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        String placeholders = String.join(",", Collections.nCopies(sourceIds.size(), "?"));
+        String sql = "SELECT * FROM rss_sources WHERE user_id = ? AND id IN (" + placeholders + ")";
+        return jdbcTemplate.query(sql, rowMapper, userId, sourceIds.toArray());
     }
 }

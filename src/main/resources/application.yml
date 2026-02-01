@@ -33,6 +33,11 @@ server:
 rss:
   default-refresh-interval: 10
   timezone: GMT+8
+  fetch:
+    max-concurrent-threads: 10
+    batch-size: 100
+    query-interval-seconds: 10
+    empty-query-interval-seconds: 10
 
 email:
   schedule:

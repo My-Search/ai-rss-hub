@@ -4,6 +4,7 @@ import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
+import com.rssai.config.RssFetchConfig;
 import com.rssai.mapper.*;
 import com.rssai.model.*;
 import okhttp3.OkHttpClient;
@@ -20,12 +21,10 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -34,6 +33,7 @@ public class RssFetchService {
     private static final Logger logger = LoggerFactory.getLogger(RssFetchService.class);
     
     private final OkHttpClient httpClient;
+    private ExecutorService workerPool;
     
     public RssFetchService() {
         this.httpClient = new OkHttpClient.Builder()
@@ -64,48 +64,65 @@ public class RssFetchService {
     private EmailService emailService;
     @Autowired
     private KeywordMatchNotificationMapper keywordMatchNotificationMapper;
+    @Autowired
+    private TaskQueueManager taskQueueManager;
+    @Autowired
+    private RssFetchConfig config;
 
-    @Scheduled(fixedDelayString = "${rss.default-refresh-interval:10}000", initialDelay = 10000)
-    public void fetchAllRss() {
-        List<RssSource> sources = rssSourceMapper.findAllEnabled();
-        logger.info("开始批量抓取RSS，共{}个源", sources.size());
-
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-
-        for (RssSource source : sources) {
-            if (shouldFetch(source)) {
-                CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                    try {
-                        fetchRssSource(source);
-                    } catch (Exception e) {
-                        logger.error("抓取RSS源失败: {} - {}", source.getName(), e.getMessage());
-                    }
-                });
-                futures.add(future);
-            }
+    public void initializeWorkerPool() {
+        int threadCount = config.getMaxConcurrentThreads();
+        workerPool = Executors.newFixedThreadPool(threadCount, r -> {
+            Thread thread = new Thread(r, "RSS-Fetch-Worker-" + System.currentTimeMillis());
+            thread.setDaemon(true);
+            return thread;
+        });
+        
+        logger.info("初始化RSS抓取工作线程池，线程数: {}", threadCount);
+        
+        for (int i = 0; i < threadCount; i++) {
+            workerPool.submit(this::workerLoop);
         }
-
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        logger.info("批量抓取RSS完成");
     }
 
-    private boolean shouldFetch(RssSource source) {
-        AiConfig aiConfig = aiConfigMapper.findByUserId(source.getUserId());
-        if (aiConfig == null) {
-            logger.warn("用户 {} 未配置AI，跳过RSS源 {}", source.getUserId(), source.getName());
-            return false;
+    private void workerLoop() {
+        logger.info("RSS抓取工作线程已启动: {}", Thread.currentThread().getName());
+        
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                RssSource task = taskQueueManager.acquireTask();
+                
+                if (task != null) {
+                    Long userId = task.getUserId();
+                    
+                    try {
+                        logger.info("开始处理RSS源: {} (用户: {})", task.getName(), userId);
+                        fetchRssSource(task);
+                        taskQueueManager.releaseTask(userId);
+                    } catch (Exception e) {
+                        logger.error("处理RSS源失败: {}", task.getName(), e);
+                        taskQueueManager.markTaskFailed(userId);
+                    } finally {
+                        rssSourceMapper.setFetchingStatus(task.getId(), false);
+                    }
+                } else {
+                    Thread.sleep(1000);
+                }
+            } catch (InterruptedException e) {
+                logger.warn("工作线程被中断: {}", Thread.currentThread().getName());
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                logger.error("工作线程发生错误", e);
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
-
-        if (source.getLastFetchTime() == null) return true;
-
-        // 优先使用RSS源级配置，如果没有则使用用户级配置
-        Integer refreshInterval = source.getRefreshInterval();
-        if (refreshInterval == null || refreshInterval <= 0) {
-            refreshInterval = aiConfig.getRefreshInterval();
-        }
-
-        LocalDateTime nextFetch = source.getLastFetchTime().plusMinutes(refreshInterval);
-        return LocalDateTime.now().isAfter(nextFetch);
+        
+        logger.info("RSS抓取工作线程已停止: {}", Thread.currentThread().getName());
     }
 
     @Async

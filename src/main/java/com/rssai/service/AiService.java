@@ -317,11 +317,10 @@ public class AiService {
             String cleanDesc = cleanHtml(item.getDescription());
             cleanTitle = truncate(cleanTitle, MAX_TITLE_LENGTH);
             cleanDesc = truncate(cleanDesc, MAX_DESCRIPTION_LENGTH / 2);
+            cleanTitle = cleanTitle.replace("\n", " ").replace("\r", " ");
+            cleanDesc = cleanDesc.replace("\n", " ").replace("\r", " ");
             
-            cleanTitle = cleanTitle.replace("\n", "").replace("\r", "");
-            cleanDesc = cleanDesc.replace("\n", "").replace("\r", "");
-            
-            prompt.append(String.format("[%d] 标题：%s; 内容:%s;\n", i + 1, cleanTitle, cleanDesc));
+            prompt.append(String.format("[%d] 标题:%s 内容:%s\n", i + 1, cleanTitle, cleanDesc));
         }
         
         JsonObject message = new JsonObject();
@@ -330,14 +329,14 @@ public class AiService {
         
         JsonObject systemMessage = new JsonObject();
         systemMessage.addProperty("role", "system");
-        systemMessage.addProperty("content", config.getSystemPrompt() + 
+        systemMessage.addProperty("content", 
+            "【筛选偏好说明】\n" + config.getSystemPrompt() + 
             "\n\n【重要规则】\n" +
             "1. 必须对每条文章进行判断\n" +
             "2. 回复格式严格为：[序号]YES-原因 或 [序号]NO-原因\n" +
             "3. 原因必须简洁，不超过5个字\n" +
             "4. 每条占一行，不要添加其他文字\n" +
-            "5. 必须包含所有序号，从[1]到[" + items.size() + "]\n" +
-            "6. 【关键】必须严格按照输入的序号顺序返回结果，序号不能错乱，序号1对应第一条内容，序号2对应第二条内容，以此类推");
+            "5. 必须包含所有序号，从[1]到[" + items.size() + "]");
         
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("model", config.getModel());
@@ -571,6 +570,8 @@ public class AiService {
         
         cleanTitle = truncate(cleanTitle, MAX_TITLE_LENGTH);
         cleanDescription = truncate(cleanDescription, MAX_DESCRIPTION_LENGTH);
+        cleanTitle = cleanTitle.replace("\n", " ").replace("\r", " ");
+        cleanDescription = cleanDescription.replace("\n", " ").replace("\r", " ");
         
         String prompt = String.format("标题: %s\n内容: %s\n\n判断是否符合偏好，仅回复：YES-原因 或 NO-原因（原因限10字内）", 
             cleanTitle, cleanDescription);
@@ -581,7 +582,8 @@ public class AiService {
         
         JsonObject systemMessage = new JsonObject();
         systemMessage.addProperty("role", "system");
-        systemMessage.addProperty("content", config.getSystemPrompt() + 
+        systemMessage.addProperty("content", 
+            "【筛选偏好说明】\n" + config.getSystemPrompt() + 
             "\n\n【重要规则】\n" +
             "1. 必须快速判断并简短回复\n" +
             "2. 格式严格为：YES-原因 或 NO-原因\n" +
