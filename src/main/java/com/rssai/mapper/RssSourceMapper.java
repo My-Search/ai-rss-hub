@@ -54,8 +54,8 @@ public class RssSourceMapper {
         return jdbcTemplate.query("SELECT * FROM rss_sources WHERE user_id = ? ORDER BY created_at DESC", rowMapper, userId);
     }
 
-    public RssSource findById(Long id) {
-        List<RssSource> sources = jdbcTemplate.query("SELECT * FROM rss_sources WHERE id = ?", rowMapper, id);
+    public RssSource findById(Long id, Long userId) {
+        List<RssSource> sources = jdbcTemplate.query("SELECT * FROM rss_sources WHERE id = ? AND user_id = ?", rowMapper, id, userId);
         return sources.isEmpty() ? null : sources.get(0);
     }
 
@@ -69,16 +69,16 @@ public class RssSourceMapper {
     }
 
     public void update(RssSource source) {
-        jdbcTemplate.update("UPDATE rss_sources SET name = ?, url = ?, enabled = ?, refresh_interval = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
-                source.getName(), source.getUrl(), source.getEnabled(), source.getRefreshInterval(), source.getId());
+        jdbcTemplate.update("UPDATE rss_sources SET name = ?, url = ?, enabled = ?, refresh_interval = ?, updated_at = datetime('now', 'localtime') WHERE id = ? AND user_id = ?",
+                source.getName(), source.getUrl(), source.getEnabled(), source.getRefreshInterval(), source.getId(), source.getUserId());
     }
 
     public void updateLastFetchTime(Long id) {
         jdbcTemplate.update("UPDATE rss_sources SET last_fetch_time = datetime('now', 'localtime') WHERE id = ?", id);
     }
 
-    public void delete(Long id) {
-        jdbcTemplate.update("DELETE FROM rss_sources WHERE id = ?", id);
+    public void delete(Long id, Long userId) {
+        jdbcTemplate.update("DELETE FROM rss_sources WHERE id = ? AND user_id = ?", id, userId);
     }
 
     public void updateRefreshIntervalByUserId(Long userId, Integer refreshInterval) {

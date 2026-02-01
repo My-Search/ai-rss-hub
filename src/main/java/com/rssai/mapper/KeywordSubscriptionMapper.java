@@ -46,8 +46,8 @@ public class KeywordSubscriptionMapper {
         return jdbcTemplate.query("SELECT * FROM keyword_subscriptions WHERE user_id = ? ORDER BY created_at DESC", rowMapper, userId);
     }
 
-    public KeywordSubscription findById(Long id) {
-        List<KeywordSubscription> subscriptions = jdbcTemplate.query("SELECT * FROM keyword_subscriptions WHERE id = ?", rowMapper, id);
+    public KeywordSubscription findById(Long id, Long userId) {
+        List<KeywordSubscription> subscriptions = jdbcTemplate.query("SELECT * FROM keyword_subscriptions WHERE id = ? AND user_id = ?", rowMapper, id, userId);
         return subscriptions.isEmpty() ? null : subscriptions.get(0);
     }
 
@@ -56,13 +56,13 @@ public class KeywordSubscriptionMapper {
                 subscription.getUserId(), subscription.getKeywords(), subscription.getEnabled() != null ? subscription.getEnabled() : true);
     }
 
-    public void update(KeywordSubscription subscription) {
-        jdbcTemplate.update("UPDATE keyword_subscriptions SET keywords = ?, enabled = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
-                subscription.getKeywords(), subscription.getEnabled(), subscription.getId());
+    public void update(KeywordSubscription subscription, Long userId) {
+        jdbcTemplate.update("UPDATE keyword_subscriptions SET keywords = ?, enabled = ?, updated_at = datetime('now', 'localtime') WHERE id = ? AND user_id = ?",
+                subscription.getKeywords(), subscription.getEnabled(), subscription.getId(), userId);
     }
 
-    public void delete(Long id) {
-        jdbcTemplate.update("DELETE FROM keyword_subscriptions WHERE id = ?", id);
+    public void delete(Long id, Long userId) {
+        jdbcTemplate.update("DELETE FROM keyword_subscriptions WHERE id = ? AND user_id = ?", id, userId);
     }
 
     public List<KeywordSubscription> findEnabledByUserId(Long userId) {

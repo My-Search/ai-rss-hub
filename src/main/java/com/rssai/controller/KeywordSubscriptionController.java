@@ -41,7 +41,7 @@ public class KeywordSubscriptionController {
                 .filter(s -> s.getId().equals(id))
                 .findFirst().orElse(null);
         if (subscription != null && keywords != null && !keywords.trim().isEmpty()) {
-            keywordSubscriptionService.update(id, keywords);
+            keywordSubscriptionService.update(id, keywords, user.getId());
         }
         return "redirect:/feed";
     }
@@ -53,7 +53,7 @@ public class KeywordSubscriptionController {
                 .filter(s -> s.getId().equals(id))
                 .findFirst().orElse(null);
         if (subscription != null) {
-            keywordSubscriptionService.delete(id);
+            keywordSubscriptionService.delete(id, user.getId());
         }
         return "redirect:/feed";
     }
@@ -65,7 +65,7 @@ public class KeywordSubscriptionController {
                 .filter(s -> s.getId().equals(id))
                 .findFirst().orElse(null);
         if (subscription != null) {
-            keywordSubscriptionService.toggleEnabled(id);
+            keywordSubscriptionService.toggleEnabled(id, user.getId());
         }
         return "redirect:/feed";
     }

@@ -75,17 +75,16 @@ public class RssSourceController {
     }
 
     @PostMapping("/{id}/delete")
-    public String deleteSource(@PathVariable Long id) {
-        rssSourceMapper.delete(id);
+    public String deleteSource(@PathVariable Long id, Authentication auth) {
+        User user = userMapper.findByUsername(auth.getName());
+        rssSourceMapper.delete(id, user.getId());
         return "redirect:/rss-sources";
     }
 
     @PostMapping("/{id}/toggle")
     public String toggleSource(@PathVariable Long id, Authentication auth) {
         User user = userMapper.findByUsername(auth.getName());
-        RssSource source = rssSourceMapper.findByUserId(user.getId()).stream()
-                .filter(s -> s.getId().equals(id))
-                .findFirst().orElse(null);
+        RssSource source = rssSourceMapper.findById(id, user.getId());
         if (source != null) {
             source.setEnabled(!source.getEnabled());
             rssSourceMapper.update(source);
@@ -96,9 +95,7 @@ public class RssSourceController {
     @PostMapping("/{id}/fetch")
     public String fetchNow(@PathVariable Long id, Authentication auth, Model model) {
         User user = userMapper.findByUsername(auth.getName());
-        RssSource source = rssSourceMapper.findByUserId(user.getId()).stream()
-                .filter(s -> s.getId().equals(id))
-                .findFirst().orElse(null);
+        RssSource source = rssSourceMapper.findById(id, user.getId());
         if (source != null && source.getEnabled()) {
             rssFetchService.fetchRssSource(source);
             model.addAttribute("message", "已触发抓取任务，正在后台执行，请查看控制台日志");
@@ -116,9 +113,7 @@ public class RssSourceController {
                               @RequestParam String url,
                               @RequestParam(required = false) Integer refreshInterval) {
         User user = userMapper.findByUsername(auth.getName());
-        RssSource source = rssSourceMapper.findByUserId(user.getId()).stream()
-                .filter(s -> s.getId().equals(id))
-                .findFirst().orElse(null);
+        RssSource source = rssSourceMapper.findById(id, user.getId());
         if (source != null) {
             if (name == null || name.trim().isEmpty()) {
                 name = extractDomainFromUrl(url);

@@ -22,8 +22,8 @@ public class KeywordSubscriptionService {
         return keywordSubscriptionMapper.findByUserId(userId);
     }
 
-    public KeywordSubscription findById(Long id) {
-        return keywordSubscriptionMapper.findById(id);
+    public KeywordSubscription findById(Long id, Long userId) {
+        return keywordSubscriptionMapper.findById(id, userId);
     }
 
     public void create(Long userId, String keywords) {
@@ -35,25 +35,25 @@ public class KeywordSubscriptionService {
         log.info("Created keyword subscription for user {}: {}", userId, keywords);
     }
 
-    public void update(Long id, String keywords) {
-        KeywordSubscription subscription = keywordSubscriptionMapper.findById(id);
+    public void update(Long id, String keywords, Long userId) {
+        KeywordSubscription subscription = keywordSubscriptionMapper.findById(id, userId);
         if (subscription != null) {
             subscription.setKeywords(keywords.trim());
-            keywordSubscriptionMapper.update(subscription);
+            keywordSubscriptionMapper.update(subscription, userId);
             log.info("Updated keyword subscription {}: {}", id, keywords);
         }
     }
 
-    public void delete(Long id) {
-        keywordSubscriptionMapper.delete(id);
+    public void delete(Long id, Long userId) {
+        keywordSubscriptionMapper.delete(id, userId);
         log.info("Deleted keyword subscription {}", id);
     }
 
-    public void toggleEnabled(Long id) {
-        KeywordSubscription subscription = keywordSubscriptionMapper.findById(id);
+    public void toggleEnabled(Long id, Long userId) {
+        KeywordSubscription subscription = keywordSubscriptionMapper.findById(id, userId);
         if (subscription != null) {
             subscription.setEnabled(!subscription.getEnabled());
-            keywordSubscriptionMapper.update(subscription);
+            keywordSubscriptionMapper.update(subscription, userId);
             log.info("Toggled enabled status for keyword subscription {}: {}", id, subscription.getEnabled());
         }
     }

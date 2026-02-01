@@ -147,11 +147,11 @@ public class RssFetchService {
                 String title = entry.getTitle();
                 String link = entry.getLink();
 
-                // 检查30天内是否已存在相同的link
-                boolean duplicateLink = rssItemMapper.existsByLinkWithinDays(link, 30);
-                // 检查30天内是否已存在相同的title（仅当title不为空时）
+                // 检查30天内是否已存在相同的link（用户隔离）
+                boolean duplicateLink = rssItemMapper.existsByLinkWithinDays(link, 30, source.getUserId());
+                // 检查30天内是否已存在相同的title（仅当title不为空时，用户隔离）
                 boolean duplicateTitle = title != null && !title.trim().isEmpty()
-                        && rssItemMapper.existsByTitleWithinDays(title.trim(), 30);
+                        && rssItemMapper.existsByTitleWithinDays(title.trim(), 30, source.getUserId());
 
                 if (!duplicateLink && !duplicateTitle) {
                     newEntries.add(entry);

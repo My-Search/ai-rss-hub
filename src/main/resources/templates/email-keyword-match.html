@@ -122,9 +122,8 @@
             <h2 class="item-title">
                 <a th:href="${item.link}" th:text="${item.title}" target="_blank"></a>
             </h2>
-            <div class="item-summary" th:if="${item.description != null}">
-                <span th:text="${#strings.substring(item.description, 0, 150)}"></span>
-                <span th:if="${#strings.length(item.description) > 150}">...</span>
+            <div class="item-summary" th:if="${item.description != null and !item.description.isEmpty()}">
+                <span th:text="${item.description}"></span>
             </div>
             <div class="item-meta">
                 <span th:if="${item.pubDate != null}" th:text="'发布时间：' + ${#temporals.format(item.pubDate, 'yyyy-MM-dd HH:mm')}"></span>

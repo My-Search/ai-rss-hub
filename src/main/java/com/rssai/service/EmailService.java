@@ -1,6 +1,7 @@
 package com.rssai.service;
 
 import com.rssai.model.RssItem;
+import com.rssai.util.HtmlUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import javax.mail.internet.MimeMessage;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -117,10 +119,30 @@ public class EmailService {
             
             helper.setSubject("你订阅的关键字" + keywords + "有更新");
 
+            List<RssItem> itemsWithPlainText = new ArrayList<>();
+            for (RssItem item : items) {
+                RssItem plainTextItem = new RssItem();
+                plainTextItem.setId(item.getId());
+                plainTextItem.setSourceId(item.getSourceId());
+                plainTextItem.setTitle(item.getTitle());
+                plainTextItem.setLink(item.getLink());
+                plainTextItem.setPubDate(item.getPubDate());
+                plainTextItem.setAiFiltered(item.getAiFiltered());
+                plainTextItem.setAiReason(item.getAiReason());
+                plainTextItem.setCreatedAt(item.getCreatedAt());
+                if (item.getDescription() != null && !item.getDescription().trim().isEmpty()) {
+                    plainTextItem.setDescription(HtmlUtils.stripHtmlTags(item.getDescription(), 150));
+                }
+                if (item.getContent() != null && !item.getContent().trim().isEmpty()) {
+                    plainTextItem.setContent(HtmlUtils.stripHtmlTags(item.getContent()));
+                }
+                itemsWithPlainText.add(plainTextItem);
+            }
+
             Context context = new Context();
             context.setVariable("keywords", keywords);
-            context.setVariable("items", items);
-            context.setVariable("count", items.size());
+            context.setVariable("items", itemsWithPlainText);
+            context.setVariable("count", itemsWithPlainText.size());
             context.setVariable("date", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日")));
 
             String htmlContent = templateEngine.process("email-keyword-match", context);
