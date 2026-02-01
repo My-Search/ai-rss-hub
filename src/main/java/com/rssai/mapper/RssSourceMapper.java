@@ -1,6 +1,7 @@
 package com.rssai.mapper;
 
 import com.rssai.model.RssSource;
+import com.rssai.util.DatabaseRetryUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -10,8 +11,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Repository
@@ -37,7 +36,6 @@ public class RssSourceMapper {
 
             source.setCreatedAt(parseDateTime(rs.getString("created_at")));
             source.setUpdatedAt(parseDateTime(rs.getString("updated_at")));
-            source.setFetching(rs.getBoolean("fetching"));
             return source;
         }
         
@@ -89,29 +87,25 @@ public class RssSourceMapper {
                 refreshInterval, userId);
     }
 
-    public List<RssSource> findSourcesReadyToFetch(int limit) {
-        String sql = "SELECT * FROM rss_sources " +
-                "WHERE enabled = 1 " +
-                "AND fetching = 0 " +
-                "AND (last_fetch_time IS NULL OR " +
-                "     datetime(last_fetch_time, '+' || refresh_interval || ' minutes') <= datetime('now', 'localtime')) " +
-                "ORDER BY " +
-                "  CASE WHEN last_fetch_time IS NULL THEN 0 ELSE 1 END, " +
-                "  last_fetch_time ASC " +
-                "LIMIT ?";
-        return jdbcTemplate.query(sql, rowMapper, limit);
-    }
-
-    public void setFetchingStatus(Long sourceId, boolean fetching) {
-        jdbcTemplate.update("UPDATE rss_sources SET fetching = ? WHERE id = ?", fetching ? 1 : 0, sourceId);
-    }
-
-    public List<RssSource> findByUserIdAndIds(Long userId, List<Long> sourceIds) {
-        if (sourceIds == null || sourceIds.isEmpty()) {
-            return new ArrayList<>();
-        }
-        String placeholders = String.join(",", Collections.nCopies(sourceIds.size(), "?"));
-        String sql = "SELECT * FROM rss_sources WHERE user_id = ? AND id IN (" + placeholders + ")";
-        return jdbcTemplate.query(sql, rowMapper, userId, sourceIds.toArray());
+    public List<RssSource> findPendingFetch(int limit) {
+        return DatabaseRetryUtil.executeWithRetry("查询待抓取RSS源", () -> {
+            String sql = "SELECT rs.*, ac.refresh_interval as user_refresh_interval " +
+                    "FROM rss_sources rs " +
+                    "LEFT JOIN ai_configs ac ON rs.user_id = ac.user_id " +
+                    "WHERE rs.enabled = 1 " +
+                    "AND ac.id IS NOT NULL " +
+                    "AND (" +
+                    "  rs.last_fetch_time IS NULL OR " +
+                    "  datetime('now', 'localtime') >= datetime(rs.last_fetch_time, '+' || " +
+                    "  COALESCE(rs.refresh_interval, ac.refresh_interval, 10) || ' minutes')" +
+                    ") " +
+                    "ORDER BY " +
+                    "  CASE " +
+                    "    WHEN rs.last_fetch_time IS NULL THEN 0 " +
+                    "    ELSE CAST((julianday('now', 'localtime') - julianday(rs.last_fetch_time)) * 86400 AS INTEGER) " +
+                    "  END DESC " +
+                    "LIMIT ?";
+            return jdbcTemplate.query(sql, rowMapper, limit);
+        });
     }
 }

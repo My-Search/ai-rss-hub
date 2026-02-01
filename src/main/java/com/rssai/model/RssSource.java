@@ -13,7 +13,6 @@ public class RssSource {
     private Boolean enabled;
     private Integer refreshInterval;
     private LocalDateTime lastFetchTime;
-    private Boolean fetching;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

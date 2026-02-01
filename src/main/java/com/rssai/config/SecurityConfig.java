@@ -1,6 +1,5 @@
 package com.rssai.config;
 
-import com.rssai.security.CustomRememberMeServices;
 import com.rssai.security.JdbcTokenRepositoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -12,8 +11,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
-import javax.servlet.http.HttpServletResponse;
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
@@ -23,11 +20,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     private UserDetailsService userDetailsService;
-
-    @Bean
-    public CustomRememberMeServices customRememberMeServices() {
-        return new CustomRememberMeServices("rss-ai-hub-remember-me-key", userDetailsService, tokenRepository);
-    }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -43,18 +35,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .permitAll()
             .and()
             .rememberMe()
-                .rememberMeServices(customRememberMeServices())
+                .userDetailsService(userDetailsService)
                 .tokenRepository(tokenRepository)
                 .tokenValiditySeconds(Integer.MAX_VALUE)
                 .key("rss-ai-hub-remember-me-key")
-                .useSecureCookie(false)
-            .and()
-            .exceptionHandling()
-                .authenticationEntryPoint((request, response, authException) -> {
-                    if (authException != null && response.getStatus() == HttpServletResponse.SC_UNAUTHORIZED) {
-                        response.sendRedirect("/login");
-                    }
-                })
             .and()
             .sessionManagement()
                 .sessionFixation().migrateSession()

@@ -4,7 +4,6 @@ import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
-import com.rssai.config.RssFetchConfig;
 import com.rssai.mapper.*;
 import com.rssai.model.*;
 import okhttp3.OkHttpClient;
@@ -14,32 +13,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class RssFetchService {
     private static final Logger logger = LoggerFactory.getLogger(RssFetchService.class);
     
     private final OkHttpClient httpClient;
-    private ExecutorService workerPool;
     
     public RssFetchService() {
         this.httpClient = new OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
             .retryOnConnectionFailure(true)
@@ -64,68 +59,7 @@ public class RssFetchService {
     private EmailService emailService;
     @Autowired
     private KeywordMatchNotificationMapper keywordMatchNotificationMapper;
-    @Autowired
-    private TaskQueueManager taskQueueManager;
-    @Autowired
-    private RssFetchConfig config;
 
-    public void initializeWorkerPool() {
-        int threadCount = config.getMaxConcurrentThreads();
-        workerPool = Executors.newFixedThreadPool(threadCount, r -> {
-            Thread thread = new Thread(r, "RSS-Fetch-Worker-" + System.currentTimeMillis());
-            thread.setDaemon(true);
-            return thread;
-        });
-        
-        logger.info("初始化RSS抓取工作线程池，线程数: {}", threadCount);
-        
-        for (int i = 0; i < threadCount; i++) {
-            workerPool.submit(this::workerLoop);
-        }
-    }
-
-    private void workerLoop() {
-        logger.info("RSS抓取工作线程已启动: {}", Thread.currentThread().getName());
-        
-        while (!Thread.currentThread().isInterrupted()) {
-            try {
-                RssSource task = taskQueueManager.acquireTask();
-                
-                if (task != null) {
-                    Long userId = task.getUserId();
-                    
-                    try {
-                        logger.info("开始处理RSS源: {} (用户: {})", task.getName(), userId);
-                        fetchRssSource(task);
-                        taskQueueManager.releaseTask(userId);
-                    } catch (Exception e) {
-                        logger.error("处理RSS源失败: {}", task.getName(), e);
-                        taskQueueManager.markTaskFailed(userId);
-                    } finally {
-                        rssSourceMapper.setFetchingStatus(task.getId(), false);
-                    }
-                } else {
-                    Thread.sleep(1000);
-                }
-            } catch (InterruptedException e) {
-                logger.warn("工作线程被中断: {}", Thread.currentThread().getName());
-                Thread.currentThread().interrupt();
-                break;
-            } catch (Exception e) {
-                logger.error("工作线程发生错误", e);
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        }
-        
-        logger.info("RSS抓取工作线程已停止: {}", Thread.currentThread().getName());
-    }
-
-    @Async
     public void fetchRssSource(RssSource source) {
         logger.info("========================================");
         logger.info("开始抓取RSS源: {} (ID: {})", source.getName(), source.getId());

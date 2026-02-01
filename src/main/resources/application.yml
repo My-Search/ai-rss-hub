@@ -4,7 +4,7 @@ spring:
   profiles:
     active: dev
   datasource:
-    url: jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=30000&journal_mode=WAL&synchronous=NORMAL
+    url: jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=60000&journal_mode=WAL&synchronous=NORMAL
     driver-class-name: org.sqlite.JDBC
   thymeleaf:
     cache: false
@@ -34,10 +34,9 @@ rss:
   default-refresh-interval: 10
   timezone: GMT+8
   fetch:
-    max-concurrent-threads: 10
-    batch-size: 100
+    thread-pool-size: 10
+    query-batch-size: 100
     query-interval-seconds: 10
-    empty-query-interval-seconds: 10
 
 email:
   schedule:

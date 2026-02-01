@@ -2,6 +2,7 @@ package com.rssai.mapper;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.rssai.model.User;
+import com.rssai.util.DatabaseRetryUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -105,12 +106,14 @@ public class UserMapper {
     }
 
     public List<User> findUsersDueForDigestWithPagination(String time, int offset, int limit) {
-        return jdbcTemplate.query(
-                "SELECT * FROM users " +
-                "WHERE email_subscription_enabled = 1 " +
-                "  AND email_digest_time = ? " +
-                "ORDER BY id ASC LIMIT ? OFFSET ?",
-                rowMapper, time, limit, offset);
+        return DatabaseRetryUtil.executeWithRetry("查询待发送摘要的用户", () -> {
+            return jdbcTemplate.query(
+                    "SELECT * FROM users " +
+                    "WHERE email_subscription_enabled = 1 " +
+                    "  AND email_digest_time = ? " +
+                    "ORDER BY id ASC LIMIT ? OFFSET ?",
+                    rowMapper, time, limit, offset);
+        });
     }
 
     public void updateEmailDigestTime(Long userId, String time) {
