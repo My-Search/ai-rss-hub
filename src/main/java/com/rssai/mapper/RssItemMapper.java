@@ -159,6 +159,11 @@ public class RssItemMapper {
                 item.getAiFiltered(), item.getAiReason(), item.getId());
     }
 
+    public RssItem findById(Long id) {
+        List<RssItem> results = jdbcTemplate.query("SELECT * FROM rss_items WHERE id = ?", rowMapper, id);
+        return results.isEmpty() ? null : results.get(0);
+    }
+
     public List<RssItem> findTodayLatestItemsByUserId(Long userId, int limit) {
         return jdbcTemplate.query(
                 "SELECT ri.* FROM rss_items ri " +

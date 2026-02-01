@@ -64,6 +64,8 @@ public class RssFetchService {
     private EmailService emailService;
     @Autowired
     private KeywordMatchNotificationMapper keywordMatchNotificationMapper;
+    @Autowired
+    private RetryQueueService retryQueueService;
 
     @Scheduled(fixedDelayString = "${rss.default-refresh-interval:10}000", initialDelay = 10000)
     public void fetchAllRss() {
@@ -268,6 +270,18 @@ public class RssFetchService {
                 item.setAiFiltered(filtered);
                 item.setAiReason(aiReason);
                 rssItemMapper.update(item);
+
+                if (aiReason.equals("未通过 - 处理失败") || aiReason.equals("未通过 - AI服务不可用")) {
+                    retryQueueService.addToRetryQueue(
+                            source.getUserId(),
+                            item.getId(),
+                            source.getId(),
+                            item.getTitle(),
+                            item.getLink(),
+                            item.getDescription(),
+                            aiRawResponse
+                    );
+                }
 
                 // 保存筛选日志
                 filterLogService.saveFilterLog(

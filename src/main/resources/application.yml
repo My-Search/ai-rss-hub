@@ -42,3 +42,9 @@ email:
 system-config:
   allow-register: true
 
+ai:
+  max-retries: 3
+
+retry:
+  queue-interval: 300000
+
