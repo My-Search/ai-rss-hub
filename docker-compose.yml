@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   ai-rss-hub:
+    image: ai-rss-hub:latest
     build:
       context: .
       dockerfile: Dockerfile
