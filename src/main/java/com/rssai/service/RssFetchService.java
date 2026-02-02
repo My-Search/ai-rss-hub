@@ -12,8 +12,6 @@ import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -24,10 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Service
 public class RssFetchService {
@@ -65,50 +60,7 @@ public class RssFetchService {
     @Autowired
     private KeywordMatchNotificationMapper keywordMatchNotificationMapper;
 
-    @Scheduled(fixedDelayString = "${rss.default-refresh-interval:10}000", initialDelay = 10000)
-    public void fetchAllRss() {
-        List<RssSource> sources = rssSourceMapper.findAllEnabled();
-        logger.info("开始批量抓取RSS，共{}个源", sources.size());
 
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-
-        for (RssSource source : sources) {
-            if (shouldFetch(source)) {
-                CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                    try {
-                        fetchRssSource(source);
-                    } catch (Exception e) {
-                        logger.error("抓取RSS源失败: {} - {}", source.getName(), e.getMessage());
-                    }
-                });
-                futures.add(future);
-            }
-        }
-
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        logger.info("批量抓取RSS完成");
-    }
-
-    private boolean shouldFetch(RssSource source) {
-        AiConfig aiConfig = aiConfigMapper.findByUserId(source.getUserId());
-        if (aiConfig == null) {
-            logger.warn("用户 {} 未配置AI，跳过RSS源 {}", source.getUserId(), source.getName());
-            return false;
-        }
-
-        if (source.getLastFetchTime() == null) return true;
-
-        // 优先使用RSS源级配置，如果没有则使用用户级配置
-        Integer refreshInterval = source.getRefreshInterval();
-        if (refreshInterval == null || refreshInterval <= 0) {
-            refreshInterval = aiConfig.getRefreshInterval();
-        }
-
-        LocalDateTime nextFetch = source.getLastFetchTime().plusMinutes(refreshInterval);
-        return LocalDateTime.now().isAfter(nextFetch);
-    }
-
-    @Async
     public void fetchRssSource(RssSource source) {
         logger.info("========================================");
         logger.info("开始抓取RSS源: {} (ID: {})", source.getName(), source.getId());

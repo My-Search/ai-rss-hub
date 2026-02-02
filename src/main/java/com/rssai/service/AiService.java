@@ -23,15 +23,54 @@ public class AiService {
     
     private final Gson gson = new Gson();
     
-    private boolean isThinkingModel(String model) {
-        if (model == null) return false;
-        String lowerModel = model.toLowerCase();
-        return lowerModel.contains("think") || 
-               lowerModel.contains("reasoning") ||
-               lowerModel.contains("glm4") ||
-               lowerModel.contains("o1") ||
-               lowerModel.contains("r1") ||
-               lowerModel.contains("deepseek-r");
+    /**
+     * 判断是否为思考模型（推理模型）
+     * 优先使用用户显式配置，如果未配置则通过模型名称智能识别
+     * 
+     * @param config AI配置
+     * @return true表示思考模型，false表示标准模型
+     */
+    private boolean isThinkingModel(AiConfig config) {
+        // 优先使用显式配置
+        // isReasoningModel: null=自动识别, 1=思考模型, 0=标准模型
+        if (config.getIsReasoningModel() != null) {
+            return config.getIsReasoningModel() == 1;
+        }
+        
+        // 回退到智能识别
+        return detectReasoningModelByName(config.getModel());
+    }
+    
+    /**
+     * 通过模型名称智能识别是否为思考模型
+     * 支持主流推理模型的识别规则
+     */
+    private boolean detectReasoningModelByName(String model) {
+        if (model == null || model.isEmpty()) {
+            return false;
+        }
+        
+        String normalized = model.toLowerCase().trim();
+        
+        // OpenAI o1/o3 系列
+        if (normalized.matches(".*\\bo[13](-.*)?$") || normalized.contains("o1-") || normalized.contains("o3-")) {
+            return true;
+        }
+        
+        // DeepSeek 推理系列
+        if (normalized.matches("deepseek-r\\d+.*")) {
+            return true;
+        }
+        
+        // 智谱 GLM-4 系列
+        if (normalized.matches("glm-?4.*")) {
+            return true;
+        }
+        
+        // 通用关键词匹配（兜底）
+        return normalized.contains("reasoning") || 
+               normalized.contains("think") ||
+               normalized.contains("-r1");
     }
     
     private OkHttpClient buildClient(AiConfig config) {
@@ -42,7 +81,7 @@ public class AiService {
         if (config.getReadTimeout() != null) {
             readTimeout = config.getReadTimeout();
         } else {
-            readTimeout = isThinkingModel(config.getModel()) ? 300000 : 60000;
+            readTimeout = isThinkingModel(config) ? 300000 : 60000;
         }
         
         int writeTimeout = config.getWriteTimeout() != null ? 
@@ -52,7 +91,7 @@ public class AiService {
         
         return httpClientCache.get(cacheKey, key -> {
             logger.info("创建新的OkHttpClient实例 - 连接超时: {}ms, 读取超时: {}ms (模型: {}, 思考模型: {})", 
-                connectTimeout, readTimeout, config.getModel(), isThinkingModel(config.getModel()));
+                connectTimeout, readTimeout, config.getModel(), isThinkingModel(config));
             
             return new OkHttpClient.Builder()
                     .connectTimeout(connectTimeout, TimeUnit.MILLISECONDS)
@@ -177,7 +216,7 @@ public class AiService {
             
             for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
                 try {
-                    BatchFilterResult batchResults = doFilterBatchWithRawResponse(config, batch, i, sourceName);
+                    BatchFilterResult batchResults = executeBatchFilter(config, batch, i, sourceName, true);
                     results.putAll(batchResults.getFilterResults());
                     rawResponses.putAll(batchResults.getRawResponses());
                     break;
@@ -241,73 +280,15 @@ public class AiService {
         return result.getFilterResults();
     }
 
-    /**
-     * 执行批量筛选（带原始响应）
-     */
-    private BatchFilterResult doFilterBatchWithRawResponse(AiConfig config, java.util.List<RssItemData> items, int startIndex, String sourceName) throws IOException {
-        java.util.Map<Integer, String> results = new java.util.HashMap<>();
-        java.util.Map<Integer, String> rawResponses = new java.util.HashMap<>();
-        
-        if (items == null || items.isEmpty()) {
-            return new BatchFilterResult(results, rawResponses);
-        }
-        
-        logger.info("========================================");
-        logger.info("开始批量筛选 RSS源: {}", sourceName);
-        logger.info("共{}条内容", items.size());
-        logger.info("========================================");
-        
-        // 分批处理
-        for (int i = 0; i < items.size(); i += BATCH_SIZE) {
-            int end = Math.min(i + BATCH_SIZE, items.size());
-            java.util.List<RssItemData> batch = items.subList(i, end);
-            
-            logger.info("处理第{}-{}条", i + 1, end);
-            
-            for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-                try {
-                    BatchFilterResult batchResults = executeBatchFilter(config, batch, i, sourceName, true);
-                    results.putAll(batchResults.getFilterResults());
-                    rawResponses.putAll(batchResults.getRawResponses());
-                    break;
-                } catch (Exception e) {
-                    logger.error("批量筛选第{}次尝试失败", attempt, e);
-                    if (attempt < MAX_RETRIES) {
-                        try {
-                            long delay = INITIAL_RETRY_DELAY_MS * (long) Math.pow(2, attempt - 1);
-                            Thread.sleep(delay);
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            for (int j = 0; j < batch.size(); j++) {
-                                results.put(i + j, "未通过 - 处理中断");
-                                rawResponses.put(i + j, "处理中断");
-                            }
-                            return new BatchFilterResult(results, rawResponses);
-                        }
-                    } else {
-                        for (int j = 0; j < batch.size(); j++) {
-                            results.put(i + j, "未通过 - AI服务不可用");
-                            rawResponses.put(i + j, "AI服务不可用");
-                        }
-                    }
-                }
-            }
-        }
-        
-        logger.info("========================================");
-        logger.info("批量筛选完成 RSS源: {}", sourceName);
-        logger.info("成功处理{}条", results.size());
-        logger.info("========================================");
-        return new BatchFilterResult(results, rawResponses);
-    }
+
     
     /**
      * 执行批量筛选的核心方法
      */
     private BatchFilterResult executeBatchFilter(AiConfig config, java.util.List<RssItemData> items, int startIndex, String sourceName, boolean includeRawResponse) throws IOException {
-        logger.info("处理模型: {} -> {}类型", 
+        logger.debug("处理模型: {} -> {}类型", 
             config.getModel(), 
-            isThinkingModel(config.getModel()) ? "思考" : "标准");
+            isThinkingModel(config) ? "思考" : "标准");
         
         StringBuilder prompt = new StringBuilder("请判断以下文章是否符合偏好，对每条回复格式：[序号]YES-原因 或 [序号]NO-原因\n\n");
         
@@ -357,9 +338,10 @@ public class AiService {
         try (Response response = customClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
                 String responseBody = response.body().string();
+                System.out.println();
                 String content = parseAiResponseContent(responseBody, config.getModel());
                 
-                logger.info("AI原始返回: {}", content);
+                logger.debug("AI原始返回:\n {}", content);
                 
                 java.util.Map<Integer, String> parsedResults = parseBatchResponse(content, items.size(), startIndex);
                 java.util.Map<Integer, String> rawResponses = includeRawResponse ? new java.util.HashMap<>() : null;
@@ -374,10 +356,7 @@ public class AiService {
                         rawResponses.put(index, rawResponse);
                     }
                     
-                    logger.info("消息 #{} [RSS源: {}]", index + 1, sourceName);
-                    logger.info("  标题: {}", item.getTitle());
-                    logger.info("  AI返回: {}", includeRawResponse ? extractAiResponseForItem(content, i + 1) : "N/A");
-                    logger.info("  结果: {}", filterResult);
+                    logger.debug("批次内索引 #{}: {} - {}", i + 1, item.getTitle(), filterResult);
                 }
                 
                 return new BatchFilterResult(parsedResults, rawResponses != null ? rawResponses : new java.util.HashMap<>());
@@ -563,7 +542,7 @@ public class AiService {
     private String doFilterRssItem(AiConfig config, String title, String description) throws IOException {
         logger.info("处理模型: {} -> {}类型", 
             config.getModel(), 
-            isThinkingModel(config.getModel()) ? "思考" : "标准");
+            isThinkingModel(config) ? "思考" : "标准");
         
         String cleanTitle = cleanHtml(title);
         String cleanDescription = cleanHtml(description);
@@ -750,7 +729,7 @@ public class AiService {
     private String doGenerateSummary(AiConfig config, String title, String description) throws IOException {
         logger.info("处理模型: {} -> {}类型", 
             config.getModel(), 
-            isThinkingModel(config.getModel()) ? "思考" : "标准");
+            isThinkingModel(config) ? "思考" : "标准");
         
         String cleanTitle = cleanHtml(title);
         String cleanDescription = cleanHtml(description);

@@ -28,6 +28,23 @@ public class AiConfigMapper {
             config.setApiKey(rs.getString("api_key"));
             config.setSystemPrompt(rs.getString("system_prompt"));
             config.setRefreshInterval(rs.getInt("refresh_interval"));
+            
+            // 处理 is_reasoning_model 字段（INTEGER 类型：null=自动识别, 1=思考模型, 0=标准模型）
+            try {
+                Object reasoningModelObj = rs.getObject("is_reasoning_model");
+                if (reasoningModelObj != null) {
+                    if (reasoningModelObj instanceof Integer) {
+                        config.setIsReasoningModel((Integer) reasoningModelObj);
+                    } else if (reasoningModelObj instanceof Long) {
+                        config.setIsReasoningModel(((Long) reasoningModelObj).intValue());
+                    } else if (reasoningModelObj instanceof Number) {
+                        config.setIsReasoningModel(((Number) reasoningModelObj).intValue());
+                    }
+                }
+            } catch (SQLException e) {
+                // 字段不存在时忽略，保持为 null
+            }
+            
             config.setCreatedAt(parseDateTime(rs.getString("created_at")));
             config.setUpdatedAt(parseDateTime(rs.getString("updated_at")));
             return config;
@@ -51,12 +68,12 @@ public class AiConfigMapper {
     }
 
     public void insert(AiConfig config) {
-        jdbcTemplate.update("INSERT INTO ai_configs (user_id, base_url, model, api_key, system_prompt, refresh_interval, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))",
-                config.getUserId(), config.getBaseUrl(), config.getModel(), config.getApiKey(), config.getSystemPrompt(), config.getRefreshInterval());
+        jdbcTemplate.update("INSERT INTO ai_configs (user_id, base_url, model, api_key, system_prompt, refresh_interval, is_reasoning_model, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))",
+                config.getUserId(), config.getBaseUrl(), config.getModel(), config.getApiKey(), config.getSystemPrompt(), config.getRefreshInterval(), config.getIsReasoningModel());
     }
 
     public void update(AiConfig config) {
-        jdbcTemplate.update("UPDATE ai_configs SET base_url = ?, model = ?, api_key = ?, system_prompt = ?, refresh_interval = ?, updated_at = datetime('now', 'localtime') WHERE user_id = ?",
-                config.getBaseUrl(), config.getModel(), config.getApiKey(), config.getSystemPrompt(), config.getRefreshInterval(), config.getUserId());
+        jdbcTemplate.update("UPDATE ai_configs SET base_url = ?, model = ?, api_key = ?, system_prompt = ?, refresh_interval = ?, is_reasoning_model = ?, updated_at = datetime('now', 'localtime') WHERE user_id = ?",
+                config.getBaseUrl(), config.getModel(), config.getApiKey(), config.getSystemPrompt(), config.getRefreshInterval(), config.getIsReasoningModel(), config.getUserId());
     }
 }

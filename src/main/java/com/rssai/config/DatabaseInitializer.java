@@ -44,6 +44,14 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "FOREIGN KEY (user_id) REFERENCES users(id))");
 
+        // 添加 is_reasoning_model 字段（如果不存在）
+        // 使用 INTEGER 类型：NULL=自动识别, 1=思考模型, 0=标准模型
+        try {
+            jdbcTemplate.execute("ALTER TABLE ai_configs ADD COLUMN is_reasoning_model INTEGER DEFAULT NULL");
+        } catch (Exception e) {
+            // 字段已存在，忽略错误
+        }
+
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS rss_sources (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "user_id INTEGER NOT NULL, " +

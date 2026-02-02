@@ -44,9 +44,16 @@ public class AiConfigController {
                             @RequestParam(required = false) String apiKey,
                             @RequestParam String systemPrompt,
                             @RequestParam(defaultValue = "10") Integer refreshInterval,
-                            @RequestParam(required = false) String forceUpdateSources) {
+                            @RequestParam(required = false) String forceUpdateSources,
+                            @RequestParam(required = false) String isReasoningModel) {
         User user = userMapper.findByUsername(auth.getName());
         AiConfig config = aiConfigMapper.findByUserId(user.getId());
+
+        // 处理思考模型标识：null=自动识别, 1=思考模型, 0=标准模型
+        Integer reasoningModel = null;
+        if (isReasoningModel != null && !isReasoningModel.isEmpty()) {
+            reasoningModel = Boolean.parseBoolean(isReasoningModel) ? 1 : 0;
+        }
 
         if (config == null) {
             config = new AiConfig();
@@ -56,6 +63,7 @@ public class AiConfigController {
             config.setApiKey(apiKey);
             config.setSystemPrompt(systemPrompt);
             config.setRefreshInterval(refreshInterval);
+            config.setIsReasoningModel(reasoningModel);
             aiConfigMapper.insert(config);
         } else {
             config.setBaseUrl(baseUrl);
@@ -63,6 +71,7 @@ public class AiConfigController {
             config.setApiKey(apiKey);
             config.setSystemPrompt(systemPrompt);
             config.setRefreshInterval(refreshInterval);
+            config.setIsReasoningModel(reasoningModel);
             aiConfigMapper.update(config);
         }
 

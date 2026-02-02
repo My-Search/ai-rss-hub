@@ -33,6 +33,14 @@ server:
 rss:
   default-refresh-interval: 10
   timezone: GMT+8
+  fetch:
+    thread-pool:
+      core-size: 5
+      max-size: 10
+      queue-capacity: 100
+      keep-alive-seconds: 60
+    batch-size: 100
+    check-interval-seconds: 10
 
 email:
   schedule:

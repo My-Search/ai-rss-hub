@@ -6,3 +6,13 @@ logging:
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: /app/data/app.log
+
+rss:
+  fetch:
+    thread-pool:
+      core-size: 10
+      max-size: 20
+      queue-capacity: 200
+      keep-alive-seconds: 120
+    batch-size: 100
+    check-interval-seconds: 10
