@@ -78,6 +78,7 @@ update_project() {
 
   if [ -d "data" ]; then
     cp -r data "$PROJECT_NAME/"
+    ls -1 | grep -v -E '^(data|logs)$' | xargs rm -rf
   fi
 
   if [ -f "docker-compose.yml" ]; then
