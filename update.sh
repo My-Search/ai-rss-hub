@@ -73,7 +73,7 @@ install_sqlite() {
 update_project() {
   log "Updating project..."
 
-  ls -1 | grep -v -E '^(data|logs)$' | xargs rm -rf
+  ls -1 | grep -v -E '^(data|docker-compose.yml)$' | xargs rm -rf
   git clone "$REPO_URL"
 
   cp -rf "$PROJECT_NAME"/. .
