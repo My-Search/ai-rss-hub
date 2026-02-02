@@ -76,14 +76,7 @@ update_project() {
   rm -rf "$PROJECT_NAME"
   git clone "$REPO_URL"
 
-  if [ -d "data" ]; then
-    cp -r data "$PROJECT_NAME/"
-    ls -1 | grep -v -E '^(data|logs)$' | xargs rm -rf
-  fi
-
-  if [ -f "docker-compose.yml" ]; then
-    cp -f docker-compose.yml "$PROJECT_NAME/"
-  fi
+  ls -1 | grep -v -E '^(data|logs)$' | xargs rm -rf
 
   cp -rf "$PROJECT_NAME"/. .
 
