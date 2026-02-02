@@ -32,25 +32,23 @@ public class DatabaseInitializer implements CommandLineRunner {
 
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_email_digest_time ON users(email_digest_time, email_subscription_enabled)");
 
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS ai_configs (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "user_id INTEGER NOT NULL, " +
-                "base_url TEXT NOT NULL, " +
-                "model TEXT NOT NULL, " +
-                "api_key TEXT NOT NULL, " +
-                "system_prompt TEXT, " +
-                "refresh_interval INTEGER DEFAULT 10, " +
-                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                "FOREIGN KEY (user_id) REFERENCES users(id))");
+        // 创建表（包含 is_reasoning_model）
+        jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS ai_configs (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        "user_id INTEGER NOT NULL, " +
+                        "base_url TEXT NOT NULL, " +
+                        "model TEXT NOT NULL, " +
+                        "api_key TEXT NOT NULL, " +
+                        "system_prompt TEXT, " +
+                        "refresh_interval INTEGER DEFAULT 10, " +
+                        "is_reasoning_model INTEGER DEFAULT NULL, " + // NULL=自动识别,1=思考,0=普通
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "FOREIGN KEY (user_id) REFERENCES users(id)" +
+                        ")"
+        );
 
-        // 添加 is_reasoning_model 字段（如果不存在）
-        // 使用 INTEGER 类型：NULL=自动识别, 1=思考模型, 0=标准模型
-        try {
-            jdbcTemplate.execute("ALTER TABLE ai_configs ADD COLUMN is_reasoning_model INTEGER DEFAULT NULL");
-        } catch (Exception e) {
-            // 字段已存在，忽略错误
-        }
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS rss_sources (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
