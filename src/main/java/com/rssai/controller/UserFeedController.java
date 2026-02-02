@@ -6,7 +6,6 @@ import com.rssai.mapper.UserRssFeedMapper;
 import com.rssai.model.User;
 import com.rssai.model.UserRssFeed;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,15 +17,17 @@ import javax.servlet.http.HttpServletRequest;
 @Controller
 @RequestMapping("/feed")
 public class UserFeedController {
-    @Autowired
-    private UserMapper userMapper;
-    @Autowired
-    private UserRssFeedMapper userRssFeedMapper;
-    @Autowired
-    private KeywordSubscriptionMapper keywordSubscriptionMapper;
-
-    @Value("${email.enable:false}")
-    private boolean emailEnabled;
+    private final UserMapper userMapper;
+    private final UserRssFeedMapper userRssFeedMapper;
+    private final KeywordSubscriptionMapper keywordSubscriptionMapper;
+    
+    public UserFeedController(UserMapper userMapper,
+                              UserRssFeedMapper userRssFeedMapper,
+                              KeywordSubscriptionMapper keywordSubscriptionMapper) {
+        this.userMapper = userMapper;
+        this.userRssFeedMapper = userRssFeedMapper;
+        this.keywordSubscriptionMapper = keywordSubscriptionMapper;
+    }
 
     @GetMapping
     public String feedPage(Authentication auth, Model model, HttpServletRequest request) {
@@ -42,7 +43,6 @@ public class UserFeedController {
 
         model.addAttribute("user", user);
         model.addAttribute("keywordSubscriptions", keywordSubscriptionMapper.findByUserId(user.getId()));
-        model.addAttribute("emailEnabled", emailEnabled);
 
         return "feed";
     }

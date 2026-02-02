@@ -6,7 +6,6 @@ import com.rssai.model.KeywordSubscription;
 import com.rssai.model.User;
 import com.rssai.service.KeywordSubscriptionService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -15,15 +14,17 @@ import org.springframework.web.bind.annotation.*;
 @Controller
 @RequestMapping("/keyword-subscriptions")
 public class KeywordSubscriptionController {
-    @Autowired
-    private KeywordSubscriptionMapper keywordSubscriptionMapper;
-    @Autowired
-    private UserMapper userMapper;
-    @Autowired
-    private KeywordSubscriptionService keywordSubscriptionService;
-
-    @Value("${email.enable:false}")
-    private boolean emailEnabled;
+    private final KeywordSubscriptionMapper keywordSubscriptionMapper;
+    private final UserMapper userMapper;
+    private final KeywordSubscriptionService keywordSubscriptionService;
+    
+    public KeywordSubscriptionController(KeywordSubscriptionMapper keywordSubscriptionMapper,
+                                        UserMapper userMapper,
+                                        KeywordSubscriptionService keywordSubscriptionService) {
+        this.keywordSubscriptionMapper = keywordSubscriptionMapper;
+        this.userMapper = userMapper;
+        this.keywordSubscriptionService = keywordSubscriptionService;
+    }
 
     @PostMapping
     public String createSubscription(Authentication auth, @RequestParam String keywords) {

@@ -15,4 +15,6 @@ public class User {
     private LocalDateTime lastEmailSentAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Boolean isAdmin;
+    private Boolean forcePasswordChange;
 }

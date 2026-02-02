@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
@@ -19,6 +20,8 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -29,27 +32,36 @@ import java.util.stream.Collectors;
 public class RssFetchSchedulerService {
     private static final Logger logger = LoggerFactory.getLogger(RssFetchSchedulerService.class);
 
-    @Autowired
-    @Qualifier("rssFetchExecutor")
-    private Executor threadPoolExecutor;
-
-    @Autowired
-    private RssSourceMapper rssSourceMapper;
-
-    @Autowired
-    private AiConfigMapper aiConfigMapper;
-
-    @Autowired
-    private RssFetchService rssFetchService;
+    private final Executor threadPoolExecutor;
+    private final RssSourceMapper rssSourceMapper;
+    private final AiConfigMapper aiConfigMapper;
+    private final RssFetchService rssFetchService;
 
     @Value("${rss.fetch.batch-size:100}")
     private int batchSize;
 
     @Value("${rss.fetch.check-interval-seconds:10}")
     private int checkIntervalSeconds;
+    
+    public RssFetchSchedulerService(@Qualifier("rssFetchExecutor") Executor threadPoolExecutor,
+                                    RssSourceMapper rssSourceMapper,
+                                    AiConfigMapper aiConfigMapper,
+                                    RssFetchService rssFetchService) {
+        this.threadPoolExecutor = threadPoolExecutor;
+        this.rssSourceMapper = rssSourceMapper;
+        this.aiConfigMapper = aiConfigMapper;
+        this.rssFetchService = rssFetchService;
+    }
 
     private Thread schedulerThread;
     private final AtomicBoolean running = new AtomicBoolean(false);
+
+    // 统计数据
+    private final AtomicInteger pendingGroups = new AtomicInteger(0);
+    private final AtomicInteger activeThreads = new AtomicInteger(0);
+    private final AtomicLong totalProcessedGroups = new AtomicLong(0);
+    private final AtomicLong totalProcessingTimeMs = new AtomicLong(0);
+    private volatile LocalDateTime schedulerStartTime = null;
 
     /**
      * 应用启动后自动启动调度线程
@@ -57,11 +69,12 @@ public class RssFetchSchedulerService {
     @EventListener(ApplicationReadyEvent.class)
     public void startScheduler() {
         if (running.compareAndSet(false, true)) {
+            schedulerStartTime = LocalDateTime.now();
             schedulerThread = new Thread(this::schedulerLoop, "rss-fetch-scheduler");
             schedulerThread.setDaemon(false);
             schedulerThread.start();
             logger.info("RSS抓取调度器已启动 - 批次大小: {}, 检查间隔: {}秒", batchSize, checkIntervalSeconds);
-            
+
             // 如果是ThreadPoolExecutor类型，输出详细配置
             if (threadPoolExecutor instanceof ThreadPoolExecutor) {
                 ThreadPoolExecutor tpe = (ThreadPoolExecutor) threadPoolExecutor;
@@ -119,18 +132,21 @@ public class RssFetchSchedulerService {
                 // 按用户分组
                 Map<Long, List<RssSource>> userGroups = sourcesToFetch.stream()
                         .collect(Collectors.groupingBy(RssSource::getUserId));
-                
+
                 logger.info("分组结果: {} 个用户组", userGroups.size());
-                
+
+                // 更新等待处理组数
+                pendingGroups.set(userGroups.size());
+
                 // 提交任务到线程池
                 for (Map.Entry<Long, List<RssSource>> entry : userGroups.entrySet()) {
                     Long userId = entry.getKey();
                     List<RssSource> sources = entry.getValue();
-                    
+
                     // 创建用户组抓取任务
                     UserGroupFetchTask task = new UserGroupFetchTask(userId, sources);
                     threadPoolExecutor.execute(task);
-                    
+
                     logger.info("已提交用户组任务 - 用户ID: {}, RSS源数量: {}", userId, sources.size());
                 }
                 
@@ -231,12 +247,16 @@ public class RssFetchSchedulerService {
 
         @Override
         public void run() {
+            long startTime = System.currentTimeMillis();
+            activeThreads.incrementAndGet();
+            pendingGroups.decrementAndGet();
+
             String threadName = Thread.currentThread().getName();
             logger.info("[{}] 开始处理用户组 - 用户ID: {}, RSS源数量: {}", threadName, userId, sources.size());
-            
+
             int successCount = 0;
             int failCount = 0;
-            
+
             for (RssSource source : sources) {
                 try {
                     logger.info("[{}] 正在抓取RSS源: {} (ID: {})", threadName, source.getName(), source.getId());
@@ -247,9 +267,14 @@ public class RssFetchSchedulerService {
                     failCount++;
                 }
             }
-            
-            logger.info("[{}] 用户组处理完成 - 用户ID: {}, 成功: {}, 失败: {}", 
-                    threadName, userId, successCount, failCount);
+
+            long processingTime = System.currentTimeMillis() - startTime;
+            activeThreads.decrementAndGet();
+            totalProcessedGroups.incrementAndGet();
+            totalProcessingTimeMs.addAndGet(processingTime);
+
+            logger.info("[{}] 用户组处理完成 - 用户ID: {}, 成功: {}, 失败: {}, 耗时: {}ms",
+                    threadName, userId, successCount, failCount, processingTime);
         }
     }
 
@@ -264,5 +289,47 @@ public class RssFetchSchedulerService {
             this.source = source;
             this.waitingMinutes = waitingMinutes;
         }
+    }
+
+    /**
+     * 获取RSS抓取状态统计
+     */
+    public Map<String, Object> getFetchStatus() {
+        Map<String, Object> status = new HashMap<>();
+
+        // 基本状态
+        status.put("running", running.get());
+        status.put("schedulerStartTime", schedulerStartTime);
+
+        // 线程池状态
+        ThreadPoolExecutor tpe = null;
+        if (threadPoolExecutor instanceof ThreadPoolExecutor) {
+            tpe = (ThreadPoolExecutor) threadPoolExecutor;
+        } else if (threadPoolExecutor instanceof ThreadPoolTaskExecutor) {
+            tpe = ((ThreadPoolTaskExecutor) threadPoolExecutor).getThreadPoolExecutor();
+        }
+        
+        if (tpe != null) {
+            status.put("corePoolSize", tpe.getCorePoolSize());
+            status.put("maximumPoolSize", tpe.getMaximumPoolSize());
+            status.put("activeCount", tpe.getActiveCount());
+            status.put("poolSize", tpe.getPoolSize());
+            status.put("queueSize", tpe.getQueue().size());
+            status.put("completedTaskCount", tpe.getCompletedTaskCount());
+            status.put("taskCount", tpe.getTaskCount());
+        }
+
+        // 自定义统计
+        status.put("pendingGroups", pendingGroups.get());
+        status.put("activeThreads", activeThreads.get());
+        status.put("totalProcessedGroups", totalProcessedGroups.get());
+        status.put("totalProcessingTimeMs", totalProcessingTimeMs.get());
+
+        // 平均处理时间
+        long processed = totalProcessedGroups.get();
+        long avgProcessingTime = processed > 0 ? totalProcessingTimeMs.get() / processed : 0;
+        status.put("avgProcessingTimeMs", avgProcessingTime);
+
+        return status;
     }
 }

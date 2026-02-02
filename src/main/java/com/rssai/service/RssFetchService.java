@@ -29,8 +29,25 @@ public class RssFetchService {
     private static final Logger logger = LoggerFactory.getLogger(RssFetchService.class);
     
     private final OkHttpClient httpClient;
+    private final RssSourceMapper rssSourceMapper;
+    private final RssItemMapper rssItemMapper;
+    private final AiConfigMapper aiConfigMapper;
+    private final AiService aiService;
+    private final FilterLogService filterLogService;
+    private final UserMapper userMapper;
+    private final KeywordSubscriptionService keywordSubscriptionService;
+    private final EmailService emailService;
+    private final KeywordMatchNotificationMapper keywordMatchNotificationMapper;
     
-    public RssFetchService() {
+    public RssFetchService(RssSourceMapper rssSourceMapper,
+                           RssItemMapper rssItemMapper,
+                           AiConfigMapper aiConfigMapper,
+                           AiService aiService,
+                           FilterLogService filterLogService,
+                           UserMapper userMapper,
+                           KeywordSubscriptionService keywordSubscriptionService,
+                           EmailService emailService,
+                           KeywordMatchNotificationMapper keywordMatchNotificationMapper) {
         this.httpClient = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -39,26 +56,16 @@ public class RssFetchService {
             .followSslRedirects(true)
             .retryOnConnectionFailure(true)
             .build();
+        this.rssSourceMapper = rssSourceMapper;
+        this.rssItemMapper = rssItemMapper;
+        this.aiConfigMapper = aiConfigMapper;
+        this.aiService = aiService;
+        this.filterLogService = filterLogService;
+        this.userMapper = userMapper;
+        this.keywordSubscriptionService = keywordSubscriptionService;
+        this.emailService = emailService;
+        this.keywordMatchNotificationMapper = keywordMatchNotificationMapper;
     }
-    
-    @Autowired
-    private RssSourceMapper rssSourceMapper;
-    @Autowired
-    private RssItemMapper rssItemMapper;
-    @Autowired
-    private AiConfigMapper aiConfigMapper;
-    @Autowired
-    private AiService aiService;
-    @Autowired
-    private FilterLogService filterLogService;
-    @Autowired
-    private UserMapper userMapper;
-    @Autowired
-    private KeywordSubscriptionService keywordSubscriptionService;
-    @Autowired
-    private EmailService emailService;
-    @Autowired
-    private KeywordMatchNotificationMapper keywordMatchNotificationMapper;
 
 
     public void fetchRssSource(RssSource source) {
@@ -90,10 +97,10 @@ public class RssFetchService {
             }
             logger.info("使用AI配置: 模型={}, BaseURL={}", aiConfig.getModel(), aiConfig.getBaseUrl());
 
-            // 收集所有消息 - 包括重复的（重复的也需要进行AI过滤并更新）
+            // 收集所有消息 - 只处理新消息，重复的直接跳过
             List<SyndEntry> allEntries = feed.getEntries();
             List<SyndEntry> newEntries = new ArrayList<>();
-            List<SyndEntry> existingEntries = new ArrayList<>();
+            int skippedDuplicateCount = 0;
 
             for (SyndEntry entry : allEntries) {
                 String title = entry.getTitle();
@@ -108,28 +115,26 @@ public class RssFetchService {
                 if (!duplicateLink && !duplicateTitle) {
                     newEntries.add(entry);
                 } else {
-                    // 重复的文章也需要处理，用于更新AI过滤结果
-                    existingEntries.add(entry);
+                    // 重复的文章直接跳过，不做任何处理
+                    skippedDuplicateCount++;
                     if (duplicateLink) {
-                        logger.info("发现重复链接，将重新进行AI过滤: {}", link);
+                        logger.info("发现重复链接，跳过: {}", link);
                     }
                     if (duplicateTitle) {
-                        logger.info("发现重复标题，将重新进行AI过滤: {}", title);
+                        logger.info("发现重复标题，跳过: {}", title);
                     }
                 }
             }
 
-            if (newEntries.isEmpty() && existingEntries.isEmpty()) {
-                logger.info("没有消息需要处理");
+            if (newEntries.isEmpty()) {
+                logger.info("没有新消息需要处理，跳过 {} 条重复消息", skippedDuplicateCount);
                 rssSourceMapper.updateLastFetchTime(source.getId());
                 logger.info("========================================");
                 return;
             }
 
-            // 合并新文章和重复文章进行处理
-            List<SyndEntry> entriesToProcess = new ArrayList<>();
-            entriesToProcess.addAll(newEntries);
-            entriesToProcess.addAll(existingEntries);
+            // 只处理新文章
+            List<SyndEntry> entriesToProcess = new ArrayList<>(newEntries);
 
             // 过滤同一源下的重复标题
             List<SyndEntry> filteredEntries = filterDuplicateTitles(entriesToProcess, source.getId());
@@ -145,8 +150,8 @@ public class RssFetchService {
                 return;
             }
 
-            logger.info("发现 {} 条消息需要处理（新消息={}, 重复消息={}），准备批量筛选", 
-                    filteredEntries.size(), newEntries.size(), existingEntries.size());
+            logger.info("发现 {} 条新消息需要处理，跳过 {} 条重复消息", 
+                    filteredEntries.size(), skippedDuplicateCount);
             
             // 先插入所有RSS条目到数据库（获取ID）
             List<RssItem> rssItemsToProcess = new ArrayList<>();
@@ -235,11 +240,11 @@ public class RssFetchService {
             }
 
             rssSourceMapper.updateLastFetchTime(source.getId());
-            
+
             logger.info("========================================");
             logger.info("抓取完成: {}", source.getName());
-            logger.info("统计: 总消息={}, 新消息={}, 重复消息={}, 重复标题={}, 处理成功={}, 通过={}, 未通过={}", 
-                allEntries.size(), newEntries.size(), existingEntries.size(), duplicateCount, rssItemsToProcess.size(), passedCount, rejectedCount);
+            logger.info("统计: 总消息={}, 新消息={}, 跳过重复={}, 重复标题过滤={}, 处理成功={}, 通过={}, 未通过={}",
+                allEntries.size(), newEntries.size(), skippedDuplicateCount, duplicateCount, rssItemsToProcess.size(), passedCount, rejectedCount);
             logger.info("========================================");
             
         } catch (Exception e) {

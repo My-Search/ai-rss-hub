@@ -1,46 +1,33 @@
 package com.rssai.mapper;
 
 import com.rssai.model.KeywordSubscription;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.rssai.util.DateTimeUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Repository
 public class KeywordSubscriptionMapper {
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
 
-    private RowMapper<KeywordSubscription> rowMapper = new RowMapper<KeywordSubscription>() {
-        @Override
-        public KeywordSubscription mapRow(ResultSet rs, int rowNum) throws SQLException {
-            KeywordSubscription subscription = new KeywordSubscription();
-            subscription.setId(rs.getLong("id"));
-            subscription.setUserId(rs.getLong("user_id"));
-            subscription.setKeywords(rs.getString("keywords"));
-            subscription.setEnabled(rs.getBoolean("enabled"));
-            subscription.setCreatedAt(parseDateTime(rs.getString("created_at")));
-            subscription.setUpdatedAt(parseDateTime(rs.getString("updated_at")));
-            return subscription;
-        }
-
-        private LocalDateTime parseDateTime(String dateStr) {
-            if (dateStr == null || dateStr.isEmpty()) {
-                return null;
-            }
-            dateStr = dateStr.replace('T', ' ');
-            if (dateStr.contains(".")) {
-                dateStr = dateStr.substring(0, dateStr.indexOf('.'));
-            }
-            return LocalDateTime.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        }
+    private final RowMapper<KeywordSubscription> rowMapper = (rs, rowNum) -> {
+        KeywordSubscription subscription = new KeywordSubscription();
+        subscription.setId(rs.getLong("id"));
+        subscription.setUserId(rs.getLong("user_id"));
+        subscription.setKeywords(rs.getString("keywords"));
+        subscription.setEnabled(rs.getBoolean("enabled"));
+        subscription.setCreatedAt(DateTimeUtils.parseDateTime(rs.getString("created_at")));
+        subscription.setUpdatedAt(DateTimeUtils.parseDateTime(rs.getString("updated_at")));
+        return subscription;
     };
+    
+    public KeywordSubscriptionMapper(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     public List<KeywordSubscription> findByUserId(Long userId) {
         return jdbcTemplate.query("SELECT * FROM keyword_subscriptions WHERE user_id = ? ORDER BY created_at DESC", rowMapper, userId);

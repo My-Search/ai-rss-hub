@@ -19,11 +19,13 @@ import java.util.Map;
 @Controller
 public class DeviceController {
 
-    @Autowired
-    private JdbcTokenRepositoryImpl tokenRepository;
-
-    @Autowired
-    private UserMapper userMapper;
+    private final JdbcTokenRepositoryImpl tokenRepository;
+    private final UserMapper userMapper;
+    
+    public DeviceController(JdbcTokenRepositoryImpl tokenRepository, UserMapper userMapper) {
+        this.tokenRepository = tokenRepository;
+        this.userMapper = userMapper;
+    }
 
     @GetMapping("/devices")
     public String devicesPage(Authentication auth, Model model, HttpServletRequest request) {

@@ -2,50 +2,36 @@ package com.rssai.mapper;
 
 import com.rssai.config.TimezoneConfig;
 import com.rssai.model.KeywordMatchNotification;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.rssai.util.DateTimeUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Repository
 public class KeywordMatchNotificationMapper {
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
+    private final TimezoneConfig timezoneConfig;
 
-    @Autowired
-    private TimezoneConfig timezoneConfig;
-
-    private RowMapper<KeywordMatchNotification> rowMapper = new RowMapper<KeywordMatchNotification>() {
-        @Override
-        public KeywordMatchNotification mapRow(ResultSet rs, int rowNum) throws SQLException {
-            KeywordMatchNotification notification = new KeywordMatchNotification();
-            notification.setId(rs.getLong("id"));
-            notification.setUserId(rs.getLong("user_id"));
-            notification.setRssItemId(rs.getLong("rss_item_id"));
-            notification.setSubscriptionId(rs.getLong("subscription_id"));
-            notification.setMatchedKeyword(rs.getString("matched_keyword"));
-            notification.setNotified(rs.getBoolean("notified"));
-            notification.setCreatedAt(parseDateTime(rs.getString("created_at")));
-            return notification;
-        }
-
-        private LocalDateTime parseDateTime(String dateStr) {
-            if (dateStr == null || dateStr.isEmpty()) {
-                return null;
-            }
-            dateStr = dateStr.replace('T', ' ');
-            if (dateStr.contains(".")) {
-                dateStr = dateStr.substring(0, dateStr.indexOf('.'));
-            }
-            return LocalDateTime.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        }
+    private final RowMapper<KeywordMatchNotification> rowMapper = (rs, rowNum) -> {
+        KeywordMatchNotification notification = new KeywordMatchNotification();
+        notification.setId(rs.getLong("id"));
+        notification.setUserId(rs.getLong("user_id"));
+        notification.setRssItemId(rs.getLong("rss_item_id"));
+        notification.setSubscriptionId(rs.getLong("subscription_id"));
+        notification.setMatchedKeyword(rs.getString("matched_keyword"));
+        notification.setNotified(rs.getBoolean("notified"));
+        notification.setCreatedAt(DateTimeUtils.parseDateTime(rs.getString("created_at")));
+        return notification;
     };
+    
+    public KeywordMatchNotificationMapper(JdbcTemplate jdbcTemplate, TimezoneConfig timezoneConfig) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.timezoneConfig = timezoneConfig;
+    }
 
     public List<KeywordMatchNotification> findByUserIdAndRssItemId(Long userId, Long rssItemId) {
         return jdbcTemplate.query("SELECT * FROM keyword_match_notifications WHERE user_id = ? AND rss_item_id = ?", rowMapper, userId, rssItemId);

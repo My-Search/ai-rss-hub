@@ -55,6 +55,21 @@
 
         .logs-page .filter-group {
             flex: 1;
+            min-width: 150px;
+        }
+
+        .logs-page .filter-group.filter-result {
+            flex: 0 0 120px;
+            min-width: 120px;
+        }
+
+        .logs-page .filter-group.filter-source {
+            flex: 0 0 180px;
+            min-width: 180px;
+        }
+
+        .logs-page .filter-group.filter-keyword {
+            flex: 2;
             min-width: 200px;
         }
 
@@ -426,6 +441,13 @@
                 flex-direction: column;
             }
 
+            .logs-page .filter-group.filter-result,
+            .logs-page .filter-group.filter-source,
+            .logs-page .filter-group.filter-keyword {
+                flex: 1;
+                min-width: auto;
+            }
+
             .logs-page .logs-table-wrapper {
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
@@ -461,7 +483,7 @@
     </style>
 </head>
 <body>
-    <div th:replace="fragments/header :: header(emailEnabled=${emailEnabled})"></div>
+    <div th:replace="fragments/header :: header"></div>
     
     <div class="logs-page">
         <div class="container">
@@ -473,7 +495,7 @@
             <div class="filter-bar">
                 <h2>筛选条件</h2>
                 <form th:action="@{/filter-logs}" method="get" class="filter-row">
-                    <div class="filter-group">
+                    <div class="filter-group filter-result">
                         <label>筛选结果</label>
                         <select name="filtered">
                             <option value="">全部</option>
@@ -481,15 +503,19 @@
                             <option value="false" th:selected="${filtered == 'false'}">未通过</option>
                         </select>
                     </div>
-                    <div class="filter-group">
+                    <div class="filter-group filter-source">
                         <label>RSS源</label>
                         <select name="source">
                             <option value="">全部</option>
-                            <option th:each="source : ${sources}" 
-                                    th:value="${source}" 
+                            <option th:each="source : ${sources}"
+                                    th:value="${source}"
                                     th:text="${source}"
                                     th:selected="${source == currentSource}"></option>
                         </select>
+                    </div>
+                    <div class="filter-group filter-keyword">
+                        <label>关键词搜索</label>
+                        <input type="text" name="keyword" th:value="${keyword}" placeholder="搜索标题、原因或AI响应...">
                     </div>
                     <div class="filter-group">
                         <label>&nbsp;</label>
@@ -622,7 +648,8 @@
                     pageSize: /*[[${pageSize}]]*/ 20,
                     filters: {
                         filtered: /*[[${filtered}]]*/ '',
-                        source: /*[[${currentSource}]]*/ ''
+                        source: /*[[${currentSource}]]*/ '',
+                        keyword: /*[[${keyword}]]*/ ''
                     }
                 };
 
@@ -640,7 +667,8 @@
                     empty: document.getElementById('empty-state'),
                     filterForm: document.querySelector('.filter-row'),
                     filteredSelect: document.querySelector('select[name="filtered"]'),
-                    sourceSelect: document.querySelector('select[name="source"]')
+                    sourceSelect: document.querySelector('select[name="source"]'),
+                    keywordInput: document.querySelector('input[name="keyword"]')
                 };
 
                 // Initialize
@@ -693,6 +721,16 @@
 
                 this.elements.filteredSelect.addEventListener('change', handleFilterChange);
                 this.elements.sourceSelect.addEventListener('change', handleFilterChange);
+
+                // Keyword input - trigger search on Enter key
+                if (this.elements.keywordInput) {
+                    this.elements.keywordInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            this.resetAndReload();
+                        }
+                    });
+                }
 
                 // Prevent form submission (we handle it via JS)
                 if (this.elements.filterForm) {
@@ -792,6 +830,9 @@
                 }
                 if (this.state.filters.source) {
                     params.append('source', this.state.filters.source);
+                }
+                if (this.state.filters.keyword) {
+                    params.append('keyword', this.state.filters.keyword);
                 }
 
                 return `/api/filter-logs?${params.toString()}`;
@@ -1014,7 +1055,8 @@
                 this.setState({
                     filters: {
                         filtered: this.elements.filteredSelect ? this.elements.filteredSelect.value : '',
-                        source: this.elements.sourceSelect ? this.elements.sourceSelect.value : ''
+                        source: this.elements.sourceSelect ? this.elements.sourceSelect.value : '',
+                        keyword: this.elements.keywordInput ? this.elements.keywordInput.value : ''
                     },
                     currentPage: 1,
                     hasMore: true,
@@ -1049,6 +1091,9 @@
                 }
                 if (this.state.filters.source) {
                     params.append('source', this.state.filters.source);
+                }
+                if (this.state.filters.keyword) {
+                    params.append('keyword', this.state.filters.keyword);
                 }
 
                 const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;

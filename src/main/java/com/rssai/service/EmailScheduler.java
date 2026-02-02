@@ -20,31 +20,26 @@ import java.util.List;
 public class EmailScheduler {
     private static final Logger logger = LoggerFactory.getLogger(EmailScheduler.class);
 
-    @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private UserMapper userMapper;
-
-    @Autowired
-    private RssItemMapper rssItemMapper;
-
-    @Value("${email.enable:false}")
-    private boolean emailEnabled;
+    private final EmailService emailService;
+    private final UserMapper userMapper;
+    private final RssItemMapper rssItemMapper;
 
     @Value("${email.max-items:50}")
     private int maxItems;
 
     @Value("${email.batch-size:100}")
     private int batchSize;
+    
+    public EmailScheduler(EmailService emailService,
+                          UserMapper userMapper,
+                          RssItemMapper rssItemMapper) {
+        this.emailService = emailService;
+        this.userMapper = userMapper;
+        this.rssItemMapper = rssItemMapper;
+    }
 
     @Scheduled(cron = "${email.schedule.cron:0 * * * * ?}")
     public void sendDailyDigest() {
-        if (!emailEnabled) {
-            logger.info("邮件发送功能已禁用，跳过定时任务");
-            return;
-        }
-
         logger.info("开始执行每日摘要邮件发送任务");
 
         LocalTime now = LocalTime.now();

@@ -59,10 +59,30 @@
             </form>
             
             <div class="auth-footer">
-                <p class="forgot-password-link" th:if="${emailEnabled}"><a th:href="@{/forgot-password}">忘记密码？</a></p>
-                <p th:if="${allowRegister}">还没有账号? <a th:href="@{/register}">立即注册</a></p>
+                <p class="forgot-password-link"><a th:href="@{/forgot-password}">忘记密码？</a></p>
+                <p th:if="${allowRegister}">还没有账号? <a th:href="@{/register}" id="registerLink">立即注册</a></p>
+                <p id="firstUserHint" style="display: none; color: #0f4c81; font-weight: 500; margin-top: 8px;">
+                    系统当前没有用户，<a th:href="@{/register}">注册</a>即为管理员
+                </p>
             </div>
         </div>
     </div>
+    
+    <script th:src="@{/js/jquery-3.6.0.min.js}"></script>
+    <script>
+        $(document).ready(function() {
+            // 异步检查是否为第一个用户
+            $.get('/api/check-first-user')
+                .done(function(response) {
+                    if (response.isFirstUser) {
+                        $('#firstUserHint').show();
+                    }
+                })
+                .fail(function() {
+                    // 静默失败，不影响用户体验
+                    console.log('检查用户状态失败');
+                });
+        });
+    </script>
 </body>
 </html>

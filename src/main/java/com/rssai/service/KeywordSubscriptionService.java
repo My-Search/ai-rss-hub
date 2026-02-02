@@ -15,8 +15,11 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class KeywordSubscriptionService {
-    @Autowired
-    private KeywordSubscriptionMapper keywordSubscriptionMapper;
+    private final KeywordSubscriptionMapper keywordSubscriptionMapper;
+    
+    public KeywordSubscriptionService(KeywordSubscriptionMapper keywordSubscriptionMapper) {
+        this.keywordSubscriptionMapper = keywordSubscriptionMapper;
+    }
 
     public List<KeywordSubscription> findByUserId(Long userId) {
         return keywordSubscriptionMapper.findByUserId(userId);

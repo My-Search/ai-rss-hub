@@ -4,7 +4,7 @@ spring:
   profiles:
     active: dev
   datasource:
-    url: jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=30000&journal_mode=WAL&synchronous=NORMAL
+    url: jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=30000&synchronous=NORMAL
     driver-class-name: org.sqlite.JDBC
   thymeleaf:
     cache: false
@@ -14,18 +14,6 @@ spring:
   jackson:
     time-zone: GMT+8
     date-format: yyyy-MM-dd HH:mm:ss
-  mail:
-    host: smtp.qq.com
-    port: 587
-    username:
-    password:
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-    default-encoding: UTF-8
 
 server:
   port: 8080
@@ -42,13 +30,8 @@ rss:
     batch-size: 100
     check-interval-seconds: 10
 
-email:
-  schedule:
-    cron: 0 * * * * ?
-  max-items: 50
-  batch-size: 100
-  enable: true
-  from-alias: AI RSS HUB
-system-config:
-  allow-register: true
+system:
+  log:
+    max-lines: 300
+    console-path: logs/console.log
 

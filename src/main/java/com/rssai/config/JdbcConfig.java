@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
+import java.io.File;
 
 @Configuration
 public class JdbcConfig {
@@ -16,6 +17,7 @@ public class JdbcConfig {
 
     @Bean
     public DataSource dataSource() {
+        ensureDataDirectory();
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.sqlite.JDBC");
         dataSource.setUrl(jdbcUrl);
@@ -30,5 +32,17 @@ public class JdbcConfig {
         jdbcTemplate.execute("PRAGMA journal_mode = WAL");
         jdbcTemplate.execute("PRAGMA synchronous = NORMAL");
         return jdbcTemplate;
+    }
+
+    private void ensureDataDirectory() {
+        String dbPath = jdbcUrl.replace("jdbc:sqlite:", "");
+        if (dbPath.contains("?")) {
+            dbPath = dbPath.substring(0, dbPath.indexOf("?"));
+        }
+        File dbFile = new File(dbPath);
+        File parentDir = dbFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
     }
 }

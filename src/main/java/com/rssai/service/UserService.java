@@ -1,11 +1,12 @@
 package com.rssai.service;
 
+import com.rssai.exception.UserAlreadyExistsException;
 import com.rssai.mapper.UserMapper;
 import com.rssai.mapper.UserRssFeedMapper;
 import com.rssai.model.User;
 import com.rssai.model.UserRssFeed;
 import com.rssai.security.JdbcTokenRepositoryImpl;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -13,28 +14,59 @@ import java.util.UUID;
 
 @Service
 public class UserService {
-    @Autowired
-    private UserMapper userMapper;
-    @Autowired
-    private UserRssFeedMapper userRssFeedMapper;
-    @Autowired
-    private JdbcTokenRepositoryImpl tokenRepository;
-    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final UserMapper userMapper;
+    private final UserRssFeedMapper userRssFeedMapper;
+    private final JdbcTokenRepositoryImpl tokenRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
+    
+    public UserService(UserMapper userMapper,
+                       UserRssFeedMapper userRssFeedMapper,
+                       JdbcTokenRepositoryImpl tokenRepository) {
+        this.userMapper = userMapper;
+        this.userRssFeedMapper = userRssFeedMapper;
+        this.tokenRepository = tokenRepository;
+        this.passwordEncoder = new BCryptPasswordEncoder();
+    }
 
     public User register(String username, String password, String email) {
-        // 检查用户名是否已存在
         User existingUser = userMapper.findByUsername(username);
         if (existingUser != null) {
-            throw new RuntimeException("用户名已被注册");
+            throw new UserAlreadyExistsException("username", username);
         }
         
+        if (email != null && !email.isEmpty()) {
+            User existingEmail = userMapper.findByEmail(email);
+            if (existingEmail != null) {
+                throw new UserAlreadyExistsException("email", email);
+            }
+        }
+        
+        // 检查是否为第一个用户
+        Long userCount = userMapper.countTotalUsers();
+        boolean isFirstUser = (userCount == 0);
+
         User user = new User();
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));
         user.setEmail(email);
-        userMapper.insert(user);
-        
+        user.setIsAdmin(isFirstUser);
+
+        try {
+            userMapper.insert(user);
+        } catch (DuplicateKeyException e) {
+            throw new UserAlreadyExistsException("用户名或邮箱已被注册");
+        }
+
         User savedUser = userMapper.findByUsername(username);
+
+        // 如果是第一个用户，更新为管理员并强制首次登录修改密码
+        if (isFirstUser) {
+            userMapper.updateIsAdmin(savedUser.getId(), true);
+            savedUser.setIsAdmin(true);
+            userMapper.updateForcePasswordChange(savedUser.getId(), true);
+            savedUser.setForcePasswordChange(true);
+        }
+        
         UserRssFeed feed = new UserRssFeed();
         feed.setUserId(savedUser.getId());
         feed.setFeedToken(UUID.randomUUID().toString());
@@ -61,5 +93,22 @@ public class UserService {
             tokenRepository.removeUserTokens(user.getUsername());
         }
         userMapper.updatePassword(userId, passwordEncoder.encode(newPassword));
+    }
+
+    public void updatePasswordAndClearForceChange(Long userId, String newPassword) {
+        updatePassword(userId, newPassword);
+        userMapper.updateForcePasswordChange(userId, false);
+    }
+
+    public boolean needsPasswordChange(User user) {
+        return user.getForcePasswordChange() != null && user.getForcePasswordChange();
+    }
+
+    public Long getTotalUserCount() {
+        return userMapper.countTotalUsers();
+    }
+
+    public void updateEmail(Long userId, String newEmail) {
+        userMapper.updateEmail(userId, newEmail);
     }
 }

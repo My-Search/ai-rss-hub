@@ -13,8 +13,11 @@ import java.util.List;
 @Repository
 public class JdbcTokenRepositoryImpl implements PersistentTokenRepository {
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
+    
+    public JdbcTokenRepositoryImpl(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     @Override
     public void createNewToken(PersistentRememberMeToken token) {

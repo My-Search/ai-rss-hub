@@ -6,7 +6,6 @@ import com.rssai.mapper.UserMapper;
 import com.rssai.model.AiConfig;
 import com.rssai.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,22 +17,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 @RequestMapping("/ai-config")
 public class AiConfigController {
-    @Autowired
-    private AiConfigMapper aiConfigMapper;
-    @Autowired
-    private UserMapper userMapper;
-    @Autowired
-    private RssSourceMapper rssSourceMapper;
-
-    @Value("${email.enable:false}")
-    private boolean emailEnabled;
+    private final AiConfigMapper aiConfigMapper;
+    private final UserMapper userMapper;
+    private final RssSourceMapper rssSourceMapper;
+    
+    public AiConfigController(AiConfigMapper aiConfigMapper,
+                              UserMapper userMapper,
+                              RssSourceMapper rssSourceMapper) {
+        this.aiConfigMapper = aiConfigMapper;
+        this.userMapper = userMapper;
+        this.rssSourceMapper = rssSourceMapper;
+    }
 
     @GetMapping
     public String configPage(Authentication auth, Model model) {
         User user = userMapper.findByUsername(auth.getName());
         AiConfig config = aiConfigMapper.findByUserId(user.getId());
         model.addAttribute("config", config);
-        model.addAttribute("emailEnabled", emailEnabled);
         return "ai-config";
     }
 
@@ -73,6 +73,11 @@ public class AiConfigController {
             config.setRefreshInterval(refreshInterval);
             config.setIsReasoningModel(reasoningModel);
             aiConfigMapper.update(config);
+        }
+
+        // 安全保护：刷新频率必须>=1分钟
+        if (refreshInterval < 1) {
+            refreshInterval = 1;
         }
 
         // 如果勾选了强制刷新到所有RSS源，则更新该用户下所有RSS源的刷新频率

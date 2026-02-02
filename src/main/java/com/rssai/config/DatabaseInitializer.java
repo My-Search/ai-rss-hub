@@ -1,6 +1,8 @@
 package com.rssai.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.rssai.service.SystemConfigService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -9,16 +11,31 @@ import java.io.File;
 
 @Component
 public class DatabaseInitializer implements CommandLineRunner {
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private static final Logger logger = LoggerFactory.getLogger(DatabaseInitializer.class);
+    
+    private final JdbcTemplate jdbcTemplate;
+    private final SystemConfigService systemConfigService;
+    
+    public DatabaseInitializer(JdbcTemplate jdbcTemplate, SystemConfigService systemConfigService) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.systemConfigService = systemConfigService;
+    }
 
     @Override
     public void run(String... args) {
-        // 确保 data 目录存在
+        ensureDataDirectory();
+        createTables();
+        initializeSystemConfigs();
+    }
+
+    private void ensureDataDirectory() {
         File dataDir = new File("data");
         if (!dataDir.exists()) {
             dataDir.mkdirs();
         }
+    }
+
+    private void createTables() {
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS users (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "username TEXT UNIQUE NOT NULL, " +
@@ -28,7 +45,9 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "email_digest_time TEXT DEFAULT '19:00', " +
                 "last_email_sent_at TIMESTAMP, " +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "is_admin BOOLEAN DEFAULT 0, " +
+                "force_password_change BOOLEAN DEFAULT 0)");
 
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_email_digest_time ON users(email_digest_time, email_subscription_enabled)");
 
@@ -65,6 +84,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         try {
             jdbcTemplate.execute("ALTER TABLE rss_sources ADD COLUMN refresh_interval INTEGER DEFAULT 60");
         } catch (Exception e) {
+            logger.debug("列 refresh_interval 可能已存在: {}", e.getMessage());
         }
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS rss_items (" +
@@ -134,5 +154,17 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "series VARCHAR(64) PRIMARY KEY, " +
                 "token VARCHAR(64) NOT NULL, " +
                 "last_used TIMESTAMP NOT NULL)");
+
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS system_configs (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "config_key TEXT UNIQUE NOT NULL, " +
+                "config_value TEXT, " +
+                "description TEXT, " +
+                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    }
+
+    private void initializeSystemConfigs() {
+        systemConfigService.initializeDefaultConfigs();
     }
 }

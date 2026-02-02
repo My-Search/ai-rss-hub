@@ -2,52 +2,41 @@ package com.rssai.mapper;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.rssai.model.User;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.rssai.util.DateTimeUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public class UserMapper {
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-    
-    @Autowired
-    private Cache<String, User> userCache;
+    private final JdbcTemplate jdbcTemplate;
+    private final Cache<String, User> userCache;
 
-    private RowMapper<User> rowMapper = new RowMapper<User>() {
-        @Override
-        public User mapRow(ResultSet rs, int rowNum) throws SQLException {
-            User user = new User();
-            user.setId(rs.getLong("id"));
-            user.setUsername(rs.getString("username"));
-            user.setPassword(rs.getString("password"));
-            user.setEmail(rs.getString("email"));
-            user.setEmailSubscriptionEnabled(rs.getBoolean("email_subscription_enabled"));
-            user.setEmailDigestTime(rs.getString("email_digest_time"));
-            user.setLastEmailSentAt(parseDateTime(rs.getString("last_email_sent_at")));
-            user.setCreatedAt(parseDateTime(rs.getString("created_at")));
-            user.setUpdatedAt(parseDateTime(rs.getString("updated_at")));
-            return user;
-        }
-        
-        private LocalDateTime parseDateTime(String dateStr) {
-            if (dateStr == null || dateStr.isEmpty()) {
-                return null;
-            }
-            dateStr = dateStr.replace('T', ' ');
-            if (dateStr.contains(".")) {
-                dateStr = dateStr.substring(0, dateStr.indexOf('.'));
-            }
-            return LocalDateTime.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        }
+    private final RowMapper<User> rowMapper = (rs, rowNum) -> {
+        User user = new User();
+        user.setId(rs.getLong("id"));
+        user.setUsername(rs.getString("username"));
+        user.setPassword(rs.getString("password"));
+        user.setEmail(rs.getString("email"));
+        user.setEmailSubscriptionEnabled(rs.getBoolean("email_subscription_enabled"));
+        user.setEmailDigestTime(rs.getString("email_digest_time"));
+        user.setLastEmailSentAt(DateTimeUtils.parseDateTime(rs.getString("last_email_sent_at")));
+        user.setCreatedAt(DateTimeUtils.parseDateTime(rs.getString("created_at")));
+        user.setUpdatedAt(DateTimeUtils.parseDateTime(rs.getString("updated_at")));
+        user.setIsAdmin(rs.getBoolean("is_admin"));
+        user.setForcePasswordChange(rs.getBoolean("force_password_change"));
+        return user;
     };
+    
+    public UserMapper(JdbcTemplate jdbcTemplate, Cache<String, User> userCache) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.userCache = userCache;
+    }
 
     public User findByUsername(String username) {
         String cacheKey = "username:" + username;
@@ -141,6 +130,16 @@ public class UserMapper {
         jdbcTemplate.update("UPDATE users SET password = ?, updated_at = datetime('now', 'localtime') WHERE id = ?", password, userId);
         invalidateUserCache(userId);
     }
+
+    public void updateForcePasswordChange(Long userId, Boolean forceChange) {
+        jdbcTemplate.update("UPDATE users SET force_password_change = ?, updated_at = datetime('now', 'localtime') WHERE id = ?", forceChange, userId);
+        invalidateUserCache(userId);
+    }
+
+    public void updateIsAdmin(Long userId, Boolean isAdmin) {
+        jdbcTemplate.update("UPDATE users SET is_admin = ?, updated_at = datetime('now', 'localtime') WHERE id = ?", isAdmin, userId);
+        invalidateUserCache(userId);
+    }
     
     private void invalidateUserCache(Long userId) {
         List<User> users = jdbcTemplate.query("SELECT * FROM users WHERE id = ?", rowMapper, userId);
@@ -152,5 +151,59 @@ public class UserMapper {
                 userCache.invalidate("email:" + user.getEmail());
             }
         }
+    }
+
+    public Long countTotalUsers() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users", Long.class);
+    }
+
+    public Long countTodayRegisteredUsers() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE DATE(created_at) = DATE('now', 'localtime')",
+                Long.class);
+    }
+
+    public Long countYesterdayRegisteredUsers() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE DATE(created_at) = DATE('now', 'localtime', '-1 day')",
+                Long.class);
+    }
+
+    public Long countThisWeekRegisteredUsers() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE created_at >= datetime('now', 'localtime', 'weekday 0', '-7 days')",
+                Long.class);
+    }
+
+    public Long countLastWeekRegisteredUsers() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE created_at >= datetime('now', 'localtime', 'weekday 0', '-14 days') " +
+                "AND created_at < datetime('now', 'localtime', 'weekday 0', '-7 days')",
+                Long.class);
+    }
+
+    public Long countThisMonthRegisteredUsers() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime')",
+                Long.class);
+    }
+
+    public Long countLastMonthRegisteredUsers() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime', '-1 month')",
+                Long.class);
+    }
+
+    public List<Map<String, Object>> countDailyRegisteredUsers(int days) {
+        String sql = "SELECT DATE(created_at) as date, COUNT(*) as count FROM users " +
+                "WHERE DATE(created_at) >= DATE('now', 'localtime', '-" + days + " days') " +
+                "GROUP BY DATE(created_at) ORDER BY DATE(created_at)";
+        return jdbcTemplate.queryForList(sql);
+    }
+
+    public void updateEmail(Long userId, String email) {
+        jdbcTemplate.update("UPDATE users SET email = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
+                email, userId);
+        invalidateUserCache(userId);
     }
 }

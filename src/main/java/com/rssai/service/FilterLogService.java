@@ -9,8 +9,11 @@ import java.util.List;
 
 @Service
 public class FilterLogService {
-    @Autowired
-    private FilterLogMapper filterLogMapper;
+    private final FilterLogMapper filterLogMapper;
+    
+    public FilterLogService(FilterLogMapper filterLogMapper) {
+        this.filterLogMapper = filterLogMapper;
+    }
 
     public void saveFilterLog(Long userId, Long rssItemId, String title, String link, 
                              Boolean aiFiltered, String aiReason, String aiRawResponse, String sourceName) {

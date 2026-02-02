@@ -8,7 +8,7 @@
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 </head>
 <body>
-    <div th:replace="fragments/header :: header(emailEnabled=${emailEnabled})"></div>
+    <div th:replace="fragments/header :: header"></div>
     
     <div class="container">
         <div class="page-header">
@@ -30,14 +30,20 @@
             </div>
         </div>
         
-        <div class="card" th:if="${user != null && emailEnabled}">
+        <div class="card" th:if="${user != null}">
             <div class="card-header">
                 <h2>邮件订阅设置</h2>
             </div>
             <div class="card-body">
+                <div id="emailConfigAlert" class="alert alert-warning" style="display: none; margin-bottom: 15px;">
+                    系统未配置邮件服务，无法修改邮箱地址，请联系管理员。
+                </div>
                 <div class="form-group">
                     <label>邮箱地址</label>
-                    <input type="email" class="form-control" th:value="${user.email}" disabled>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="email" id="emailAddress" class="form-control" th:value="${user.email}" disabled>
+                        <button type="button" id="changeEmailBtn" class="btn btn-secondary" style="display: none; white-space: nowrap;" onclick="showChangeEmailModal()">修改邮箱</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>每日摘要订阅</label>
@@ -58,7 +64,35 @@
             </div>
         </div>
 
-        <div class="card" th:if="${emailEnabled}">
+        <!-- 修改邮箱弹窗 -->
+        <div id="changeEmailModal" class="modal">
+            <div class="modal-content">
+                <h2>修改邮箱地址</h2>
+                <div id="changeEmailStep1">
+                    <div class="form-group">
+                        <label>新邮箱地址</label>
+                        <input type="email" id="newEmailInput" class="form-control" placeholder="请输入新邮箱地址">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn" onclick="hideChangeEmailModal()">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="sendEmailChangeCode()">发送验证码</button>
+                    </div>
+                </div>
+                <div id="changeEmailStep2" style="display: none;">
+                    <div class="form-group">
+                        <label>验证码</label>
+                        <input type="text" id="verificationCodeInput" class="form-control" placeholder="请输入收到的验证码">
+                        <small>验证码已发送到您的新邮箱，请查收</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn" onclick="hideChangeEmailModal()">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="verifyAndChangeEmail()">确认修改</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
             <div class="card-header">
                 <h2>关键词订阅</h2>
             </div>
@@ -149,6 +183,112 @@
     </div>
     
     <script>
+        let currentNewEmail = '';
+
+        // 页面加载时检查邮件配置状态
+        document.addEventListener('DOMContentLoaded', function() {
+            checkEmailConfig();
+        });
+
+        function checkEmailConfig() {
+            fetch('/email/config-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const alertDiv = document.getElementById('emailConfigAlert');
+                        const changeBtn = document.getElementById('changeEmailBtn');
+                        if (data.configured) {
+                            alertDiv.style.display = 'none';
+                            changeBtn.style.display = 'inline-block';
+                        } else {
+                            alertDiv.style.display = 'block';
+                            changeBtn.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('检查邮件配置失败:', error);
+                });
+        }
+
+        function showChangeEmailModal() {
+            document.getElementById('changeEmailModal').style.display = 'flex';
+            document.getElementById('changeEmailStep1').style.display = 'block';
+            document.getElementById('changeEmailStep2').style.display = 'none';
+            document.getElementById('newEmailInput').value = '';
+            document.getElementById('verificationCodeInput').value = '';
+        }
+
+        function hideChangeEmailModal() {
+            document.getElementById('changeEmailModal').style.display = 'none';
+        }
+
+        function sendEmailChangeCode() {
+            const newEmail = document.getElementById('newEmailInput').value.trim();
+            if (!newEmail) {
+                alert('请输入新邮箱地址');
+                return;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+                alert('请输入有效的邮箱地址');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('newEmail', newEmail);
+
+            fetch('/email/change/send-code', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentNewEmail = newEmail;
+                    document.getElementById('changeEmailStep1').style.display = 'none';
+                    document.getElementById('changeEmailStep2').style.display = 'block';
+                    alert(data.message);
+                } else {
+                    alert(data.message || '发送验证码失败');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('发送验证码失败: ' + error.message);
+            });
+        }
+
+        function verifyAndChangeEmail() {
+            const verificationCode = document.getElementById('verificationCodeInput').value.trim();
+            if (!verificationCode) {
+                alert('请输入验证码');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('newEmail', currentNewEmail);
+            formData.append('verificationCode', verificationCode);
+
+            fetch('/email/change/verify', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    hideChangeEmailModal();
+                    window.location.reload();
+                } else {
+                    alert(data.message || '验证失败');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('验证失败: ' + error.message);
+            });
+        }
+
         function copyToClipboard() {
             const text = document.querySelector('.rss-url-box code').textContent;
             navigator.clipboard.writeText(text).then(() => {

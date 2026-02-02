@@ -6,7 +6,6 @@ import com.rssai.mapper.UserMapper;
 import com.rssai.model.FilterLog;
 import com.rssai.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -25,24 +24,27 @@ import java.util.TreeSet;
 
 @Controller
 public class FilterLogController {
-    @Autowired
-    private UserMapper userMapper;
-    @Autowired
-    private FilterLogMapper filterLogMapper;
-    @Autowired
-    private RssSourceMapper rssSourceMapper;
-
-    @Value("${email.enable:false}")
-    private boolean emailEnabled;
+    private final UserMapper userMapper;
+    private final FilterLogMapper filterLogMapper;
+    private final RssSourceMapper rssSourceMapper;
 
     private static final int DEFAULT_PAGE_SIZE = 20;
+    
+    public FilterLogController(UserMapper userMapper,
+                               FilterLogMapper filterLogMapper,
+                               RssSourceMapper rssSourceMapper) {
+        this.userMapper = userMapper;
+        this.filterLogMapper = filterLogMapper;
+        this.rssSourceMapper = rssSourceMapper;
+    }
 
     @GetMapping("/filter-logs")
 public String filterLogs(Authentication auth, Model model,
                             @RequestParam(defaultValue = "1") int page,
                             @RequestParam(defaultValue = "20") int pageSize,
                             @RequestParam(required = false) String filtered,
-                            @RequestParam(required = false) String source) {
+                            @RequestParam(required = false) String source,
+                            @RequestParam(required = false) String keyword) {
         // Guard clause: validate page parameter - Law of Early Exit
         if (page < 1) {
             throw new IllegalArgumentException("page must be >= 1");
@@ -58,23 +60,33 @@ public String filterLogs(Authentication auth, Model model,
         List<FilterLog> logs;
         int totalLogs;
 
-        if (filtered != null && !filtered.isEmpty()) {
-            Boolean isFiltered = Boolean.parseBoolean(filtered);
-            if (source != null && !source.isEmpty()) {
-                logs = filterLogMapper.findByUserIdAndFilteredAndSource(user.getId(), isFiltered, source, page, pageSize);
-                totalLogs = filterLogMapper.countByUserIdAndFilteredAndSource(user.getId(), isFiltered, source);
-            } else {
-                logs = filterLogMapper.findByUserIdAndFilteredWithPagination(user.getId(), isFiltered, page, pageSize);
-                totalLogs = filterLogMapper.countByUserIdAndFiltered(user.getId(), isFiltered);
-            }
+        Boolean isFiltered = hasFilter(filtered) ? Boolean.parseBoolean(filtered) : null;
+        boolean hasKeyword = hasFilter(keyword);
+
+        if (isFiltered != null && hasFilter(source) && hasKeyword) {
+            logs = filterLogMapper.findByUserIdAndFilteredAndSourceAndKeyword(user.getId(), isFiltered, source, keyword, page, pageSize);
+            totalLogs = filterLogMapper.countByUserIdAndFilteredAndSourceAndKeyword(user.getId(), isFiltered, source, keyword);
+        } else if (isFiltered != null && hasFilter(source)) {
+            logs = filterLogMapper.findByUserIdAndFilteredAndSource(user.getId(), isFiltered, source, page, pageSize);
+            totalLogs = filterLogMapper.countByUserIdAndFilteredAndSource(user.getId(), isFiltered, source);
+        } else if (isFiltered != null && hasKeyword) {
+            logs = filterLogMapper.findByUserIdAndFilteredAndKeyword(user.getId(), isFiltered, keyword, page, pageSize);
+            totalLogs = filterLogMapper.countByUserIdAndFilteredAndKeyword(user.getId(), isFiltered, keyword);
+        } else if (hasFilter(source) && hasKeyword) {
+            logs = filterLogMapper.findByUserIdAndSourceAndKeyword(user.getId(), source, keyword, page, pageSize);
+            totalLogs = filterLogMapper.countByUserIdAndSourceAndKeyword(user.getId(), source, keyword);
+        } else if (isFiltered != null) {
+            logs = filterLogMapper.findByUserIdAndFilteredWithPagination(user.getId(), isFiltered, page, pageSize);
+            totalLogs = filterLogMapper.countByUserIdAndFiltered(user.getId(), isFiltered);
+        } else if (hasFilter(source)) {
+            logs = filterLogMapper.findByUserIdAndSource(user.getId(), source, page, pageSize);
+            totalLogs = filterLogMapper.countByUserIdAndSource(user.getId(), source);
+        } else if (hasKeyword) {
+            logs = filterLogMapper.findByUserIdAndKeyword(user.getId(), keyword, page, pageSize);
+            totalLogs = filterLogMapper.countByUserIdAndKeyword(user.getId(), keyword);
         } else {
-            if (source != null && !source.isEmpty()) {
-                logs = filterLogMapper.findByUserIdAndSource(user.getId(), source, page, pageSize);
-                totalLogs = filterLogMapper.countByUserIdAndSource(user.getId(), source);
-            } else {
-                logs = filterLogMapper.findByUserIdWithPagination(user.getId(), page, pageSize);
-                totalLogs = filterLogMapper.countByUserId(user.getId());
-            }
+            logs = filterLogMapper.findByUserIdWithPagination(user.getId(), page, pageSize);
+            totalLogs = filterLogMapper.countByUserId(user.getId());
         }
 
         int totalPages = (int) Math.ceil((double) totalLogs / pageSize);
@@ -89,8 +101,8 @@ public String filterLogs(Authentication auth, Model model,
         model.addAttribute("totalPages", totalPages);
         model.addAttribute("filtered", filtered);
         model.addAttribute("currentSource", source);
+        model.addAttribute("keyword", keyword);
         model.addAttribute("sources", sources);
-        model.addAttribute("emailEnabled", emailEnabled);
 
         return "filter-logs";
     }
@@ -106,7 +118,8 @@ public String filterLogs(Authentication auth, Model model,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) String filtered,
-            @RequestParam(required = false) String source) {
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String keyword) {
 
         // Guard clause: validate page parameter - Law of Early Exit
         if (page < 1) {
@@ -119,8 +132,8 @@ public String filterLogs(Authentication auth, Model model,
             return ResponseEntity.status(401).build();
         }
 
-        List<FilterLog> logs = fetchLogsForUser(user.getId(), filtered, source, page, pageSize);
-        int totalLogs = countLogsForUser(user.getId(), filtered, source);
+        List<FilterLog> logs = fetchLogsForUser(user.getId(), filtered, source, keyword, page, pageSize);
+        int totalLogs = countLogsForUser(user.getId(), filtered, source, keyword);
         int totalPages = calculateTotalPages(totalLogs, pageSize);
         boolean hasMore = page < totalPages;
 
@@ -133,11 +146,20 @@ public String filterLogs(Authentication auth, Model model,
      * Pure function: same inputs always produce same outputs.
      * Refactored to use unified query strategy - eliminates duplicate condition logic.
      */
-    private List<FilterLog> fetchLogsForUser(Long userId, String filtered, String source, int page, int pageSize) {
+    private List<FilterLog> fetchLogsForUser(Long userId, String filtered, String source, String keyword, int page, int pageSize) {
         Boolean isFiltered = hasFilter(filtered) ? Boolean.parseBoolean(filtered) : null;
-        QueryStrategy strategy = determineQueryStrategy(filtered, source);
+        boolean hasKeyword = hasFilter(keyword);
+        QueryStrategy strategy = determineQueryStrategy(filtered, source, hasKeyword);
 
         switch (strategy) {
+            case FILTERED_AND_SOURCE_AND_KEYWORD:
+                return filterLogMapper.findByUserIdAndFilteredAndSourceAndKeyword(userId, isFiltered, source, keyword, page, pageSize);
+            case FILTERED_AND_KEYWORD:
+                return filterLogMapper.findByUserIdAndFilteredAndKeyword(userId, isFiltered, keyword, page, pageSize);
+            case SOURCE_AND_KEYWORD:
+                return filterLogMapper.findByUserIdAndSourceAndKeyword(userId, source, keyword, page, pageSize);
+            case KEYWORD_ONLY:
+                return filterLogMapper.findByUserIdAndKeyword(userId, keyword, page, pageSize);
             case FILTERED_AND_SOURCE:
                 return filterLogMapper.findByUserIdAndFilteredAndSource(userId, isFiltered, source, page, pageSize);
             case FILTERED_ONLY:
@@ -154,11 +176,20 @@ public String filterLogs(Authentication auth, Model model,
      * Counts logs based on filter criteria - Law of Atomic Predictability.
      * Refactored to use unified query strategy - eliminates duplicate condition logic.
      */
-    private int countLogsForUser(Long userId, String filtered, String source) {
+    private int countLogsForUser(Long userId, String filtered, String source, String keyword) {
         Boolean isFiltered = hasFilter(filtered) ? Boolean.parseBoolean(filtered) : null;
-        QueryStrategy strategy = determineQueryStrategy(filtered, source);
+        boolean hasKeyword = hasFilter(keyword);
+        QueryStrategy strategy = determineQueryStrategy(filtered, source, hasKeyword);
 
         switch (strategy) {
+            case FILTERED_AND_SOURCE_AND_KEYWORD:
+                return filterLogMapper.countByUserIdAndFilteredAndSourceAndKeyword(userId, isFiltered, source, keyword);
+            case FILTERED_AND_KEYWORD:
+                return filterLogMapper.countByUserIdAndFilteredAndKeyword(userId, isFiltered, keyword);
+            case SOURCE_AND_KEYWORD:
+                return filterLogMapper.countByUserIdAndSourceAndKeyword(userId, source, keyword);
+            case KEYWORD_ONLY:
+                return filterLogMapper.countByUserIdAndKeyword(userId, keyword);
             case FILTERED_AND_SOURCE:
                 return filterLogMapper.countByUserIdAndFilteredAndSource(userId, isFiltered, source);
             case FILTERED_ONLY:
@@ -183,6 +214,10 @@ public String filterLogs(Authentication auth, Model model,
      * Returns an enum indicating which query pattern to use.
      */
     private enum QueryStrategy {
+        FILTERED_AND_SOURCE_AND_KEYWORD,
+        FILTERED_AND_KEYWORD,
+        SOURCE_AND_KEYWORD,
+        KEYWORD_ONLY,
         FILTERED_AND_SOURCE,
         FILTERED_ONLY,
         SOURCE_ONLY,
@@ -192,11 +227,19 @@ public String filterLogs(Authentication auth, Model model,
     /**
      * Determines query strategy based on filter parameters - Law of Atomic Predictability.
      */
-    private QueryStrategy determineQueryStrategy(String filtered, String source) {
+    private QueryStrategy determineQueryStrategy(String filtered, String source, boolean hasKeyword) {
         boolean hasFiltered = hasFilter(filtered);
         boolean hasSource = hasFilter(source);
 
-        if (hasFiltered && hasSource) {
+        if (hasFiltered && hasSource && hasKeyword) {
+            return QueryStrategy.FILTERED_AND_SOURCE_AND_KEYWORD;
+        } else if (hasFiltered && hasKeyword) {
+            return QueryStrategy.FILTERED_AND_KEYWORD;
+        } else if (hasSource && hasKeyword) {
+            return QueryStrategy.SOURCE_AND_KEYWORD;
+        } else if (hasKeyword) {
+            return QueryStrategy.KEYWORD_ONLY;
+        } else if (hasFiltered && hasSource) {
             return QueryStrategy.FILTERED_AND_SOURCE;
         } else if (hasFiltered) {
             return QueryStrategy.FILTERED_ONLY;

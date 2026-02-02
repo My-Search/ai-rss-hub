@@ -16,10 +16,13 @@ import java.util.regex.Pattern;
 
 @Service
 public class RssGeneratorService {
-    @Autowired
-    private RssItemMapper rssItemMapper;
+    private final RssItemMapper rssItemMapper;
     
     private static final int MAX_DESCRIPTION_LENGTH = 200;
+    
+    public RssGeneratorService(RssItemMapper rssItemMapper) {
+        this.rssItemMapper = rssItemMapper;
+    }
     private static final Pattern IMG_PATTERN = Pattern.compile("<img[^>]+src=[\"']([^\"']+)[\"']", Pattern.CASE_INSENSITIVE);
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
 

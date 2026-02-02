@@ -482,11 +482,11 @@ ai-rss-hub/
 
 ### Q: 如何启用邮箱验证功能？
 
-在 `application.yml` 中配置邮件服务器，并设置 `email.enable: true`。
+登录管理员账号，访问"系统管理"页面，在"邮箱配置"中配置SMTP服务器信息。
 
 ### Q: 如何关闭用户注册功能？
 
-在 `application.yml` 中设置 `system-config.allow-register: false`。
+登录管理员账号，访问"系统管理"页面，在"注册配置"中关闭"允许用户注册"选项。
 
 ### Q: 验证码有效期多久？
 

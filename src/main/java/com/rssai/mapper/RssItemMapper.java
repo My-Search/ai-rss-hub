@@ -2,74 +2,38 @@ package com.rssai.mapper;
 
 import com.rssai.config.TimezoneConfig;
 import com.rssai.model.RssItem;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.rssai.util.DateTimeUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Repository
 public class RssItemMapper {
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
+    private final TimezoneConfig timezoneConfig;
+    
+    public RssItemMapper(JdbcTemplate jdbcTemplate, TimezoneConfig timezoneConfig) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.timezoneConfig = timezoneConfig;
+    }
 
-    @Autowired
-    private TimezoneConfig timezoneConfig;
-
-    private RowMapper<RssItem> rowMapper = new RowMapper<RssItem>() {
-        @Override
-        public RssItem mapRow(ResultSet rs, int rowNum) throws SQLException {
-            RssItem item = new RssItem();
-            item.setId(rs.getLong("id"));
-            item.setSourceId(rs.getLong("source_id"));
-            item.setTitle(rs.getString("title"));
-            item.setLink(rs.getString("link"));
-            item.setDescription(rs.getString("description"));
-            item.setContent(rs.getString("content"));
-            
-            // Parse pub_date - handle both ISO format and SQLite format
-            String pubDateStr = rs.getString("pub_date");
-            if (pubDateStr != null && !pubDateStr.isEmpty()) {
-                item.setPubDate(parseDateTime(pubDateStr));
-            }
-            
-            item.setAiFiltered(rs.getBoolean("ai_filtered"));
-            item.setAiReason(rs.getString("ai_reason"));
-            
-            // Parse created_at
-            String createdAtStr = rs.getString("created_at");
-            if (createdAtStr != null && !createdAtStr.isEmpty()) {
-                item.setCreatedAt(parseDateTime(createdAtStr));
-            }
-            
-            return item;
-        }
-        
-        private LocalDateTime parseDateTime(String dateStr) {
-            if (dateStr == null || dateStr.isEmpty()) {
-                return null;
-            }
-            // Remove milliseconds if present and replace 'T' with space for SQLite format
-            dateStr = dateStr.replace('T', ' ');
-            if (dateStr.contains(".")) {
-                dateStr = dateStr.substring(0, dateStr.indexOf('.'));
-            }
-            // Try parsing with different formats
-            try {
-                return LocalDateTime.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            } catch (Exception e) {
-                try {
-                    return LocalDateTime.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-                } catch (Exception e2) {
-                    return null;
-                }
-            }
-        }
+    private final RowMapper<RssItem> rowMapper = (rs, rowNum) -> {
+        RssItem item = new RssItem();
+        item.setId(rs.getLong("id"));
+        item.setSourceId(rs.getLong("source_id"));
+        item.setTitle(rs.getString("title"));
+        item.setLink(rs.getString("link"));
+        item.setDescription(rs.getString("description"));
+        item.setContent(rs.getString("content"));
+        item.setPubDate(DateTimeUtils.parseDateTime(rs.getString("pub_date")));
+        item.setAiFiltered(rs.getBoolean("ai_filtered"));
+        item.setAiReason(rs.getString("ai_reason"));
+        item.setCreatedAt(DateTimeUtils.parseDateTime(rs.getString("created_at")));
+        return item;
     };
 
     public List<RssItem> findBySourceIdAndFiltered(Long sourceId, Boolean filtered) {
@@ -128,6 +92,19 @@ public class RssItemMapper {
                 "SELECT COUNT(*) FROM rss_items ri JOIN rss_sources rs ON ri.source_id = rs.id WHERE ri.title = ? AND rs.user_id = ? AND ri.created_at >= datetime('now', '-' || ? || ' days')",
                 Integer.class, title, userId, days);
         return count != null && count > 0;
+    }
+
+    /**
+     * 根据link查询已存在的RSS条目（用户隔离）
+     * @param link 链接地址
+     * @param userId 用户ID
+     * @return 如果存在返回RssItem，否则返回null
+     */
+    public RssItem findByLinkAndUserId(String link, Long userId) {
+        List<RssItem> items = jdbcTemplate.query(
+                "SELECT ri.* FROM rss_items ri JOIN rss_sources rs ON ri.source_id = rs.id WHERE ri.link = ? AND rs.user_id = ? LIMIT 1",
+                rowMapper, link, userId);
+        return items.isEmpty() ? null : items.get(0);
     }
 
     public void insert(RssItem item) {

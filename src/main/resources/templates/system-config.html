@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统配置 - AI RSS Hub</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    
+    <div class="system-config-layout">
+        <aside class="config-sidebar">
+            <div class="sidebar-header">
+                <h2>系统配置</h2>
+                <p class="sidebar-subtitle">管理系统全局设置</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="data">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                    <span>数据统计</span>
+                </button>
+                <button class="nav-item" data-tab="email">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    <span>邮箱配置</span>
+                </button>
+                <button class="nav-item" data-tab="register">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                        <line x1="23" y1="11" x2="17" y2="11"></line>
+                    </svg>
+                    <span>注册配置</span>
+                </button>
+                <button class="nav-item" data-tab="logs">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span>系统日志</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="config-status">
+                    <span class="status-dot"></span>
+                    <span>配置已加载</span>
+                </div>
+            </div>
+
+            <!-- 移动端滑动提示 -->
+            <div class="mobile-scroll-hint">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span>滑动查看更多</span>
+            </div>
+        </aside>
+        
+        <main class="config-content">
+            <div class="content-header">
+                <div class="header-title">
+                    <h1>数据统计</h1>
+                    <p>查看系统运行数据统计</p>
+                </div>
+            </div>
+
+            <div class="alert alert-info" id="configAlert">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span>配置修改后立即生效，请谨慎操作。</span>
+            </div>
+
+            <div class="config-tab-content" id="data-tab">
+                <!-- 页面工具栏 -->
+                <div class="stats-toolbar">
+                    <div class="stats-toolbar-left">
+                        <div class="time-range-selector">
+                            <button class="time-btn active" data-range="today">今日</button>
+                            <button class="time-btn" data-range="week">本周</button>
+                            <button class="time-btn" data-range="month">本月</button>
+                            <button class="time-btn" data-range="year">全年</button>
+                        </div>
+                    </div>
+                    <div class="stats-toolbar-right">
+                        <button class="btn btn-secondary btn-refresh" onclick="refreshStats()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                            刷新数据
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 核心指标概览 -->
+                <div class="stats-overview">
+                    <div class="overview-card overview-card-users">
+                        <div class="overview-bg-icon">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+                        <div class="overview-content">
+                            <div class="overview-header">
+                                <span class="overview-label">总用户数</span>
+                                <span class="overview-badge trend-up" id="userGrowthBadge">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                                    </svg>
+                                    <span id="userGrowthRate">-</span>
+                                </span>
+                            </div>
+                            <div class="overview-value" id="totalUsers">-</div>
+                            <div class="overview-footer">
+                                <span class="overview-sublabel" id="userCompareLabel">较昨日</span>
+                                <span class="overview-change positive" id="userGrowthCount">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overview-card overview-card-rss">
+                        <div class="overview-bg-icon">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <path d="M4 11a9 9 0 0 1 9 9"></path>
+                                <path d="M4 4a16 16 0 0 1 16 16"></path>
+                                <circle cx="5" cy="19" r="1"></circle>
+                            </svg>
+                        </div>
+                        <div class="overview-content">
+                            <div class="overview-header">
+                                <span class="overview-label">RSS源总数</span>
+                            </div>
+                            <div class="overview-value" id="totalRssSources">-</div>
+                            <div class="overview-footer">
+                                <span class="overview-sublabel">活跃源</span>
+                                <span class="overview-change positive" id="activeRate">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overview-card overview-card-articles">
+                        <div class="overview-bg-icon">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="overview-content">
+                            <div class="overview-header">
+                                <span class="overview-label">文章筛选总数</span>
+                            </div>
+                            <div class="overview-value" id="totalFilteredArticles">-</div>
+                            <div class="overview-footer">
+                                <span class="overview-sublabel">通过率</span>
+                                <span class="overview-change positive" id="passRate">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overview-card overview-card-system">
+                        <div class="overview-bg-icon">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                            </svg>
+                        </div>
+                        <div class="overview-content">
+                            <div class="overview-header">
+                                <span class="overview-label">系统运行时间</span>
+                                <span class="overview-badge status-running">
+                                    <span class="status-pulse"></span>
+                                    运行中
+                                </span>
+                            </div>
+                            <div class="overview-value" id="systemUptime">-</div>
+                            <div class="overview-footer">
+                                <span class="overview-sublabel">调度器状态</span>
+                                <span class="overview-change neutral" id="schedulerStatusBadge2">正常</span>
+                            </div>
+                            <div class="overview-footer" style="margin-top: 4px;">
+                                <span class="overview-sublabel">启动时间</span>
+                                <span class="overview-change neutral" id="systemStartTime">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数据图表区域 -->
+                <div class="stats-charts-grid">
+                    <div class="chart-card chart-card-large">
+                        <div class="chart-header">
+                            <div class="chart-title">
+                                <h3>用户增长趋势</h3>
+                                <p>近30天用户注册量变化</p>
+                            </div>
+                            <div class="chart-legend">
+                                <span class="legend-item">
+                                    <span class="legend-dot" style="background: #3b82f6;"></span>
+                                    新注册用户
+                                </span>
+                            </div>
+                        </div>
+                        <div class="chart-body">
+                            <div class="chart-placeholder" id="userGrowthChart">
+                                <div class="chart-mock">
+                                    <div class="mock-bars" id="userGrowthBars">
+                                    </div>
+                                    <div class="mock-labels" id="userGrowthLabels">
+                                        <span>30天前</span>
+                                        <span>20天前</span>
+                                        <span>10天前</span>
+                                        <span>今天</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">
+                                <h3>文章筛选分布</h3>
+                                <p>AI筛选结果占比</p>
+                            </div>
+                        </div>
+                        <div class="chart-body">
+                            <div class="chart-placeholder" id="filterDistributionChart">
+                                <div class="donut-chart">
+                                    <div class="donut-ring" id="donutRing">
+                                        <div class="donut-segment" style="--percentage: 65; --color: #10b981;"></div>
+                                        <div class="donut-segment" style="--percentage: 35; --color: #ef4444; --offset: 65;"></div>
+                                    </div>
+                                    <div class="donut-center">
+                                        <span class="donut-value" id="donutValue">65%</span>
+                                        <span class="donut-label">通过率</span>
+                                    </div>
+                                </div>
+                                <div class="donut-legend">
+                                    <div class="legend-row">
+                                        <span class="legend-color" style="background: #10b981;"></span>
+                                        <span class="legend-text">通过</span>
+                                        <span class="legend-value" id="passedCount">-</span>
+                                    </div>
+                                    <div class="legend-row">
+                                        <span class="legend-color" style="background: #ef4444;"></span>
+                                        <span class="legend-text">拒绝</span>
+                                        <span class="legend-value" id="rejectedCount">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RSS抓取状态卡片组 -->
+                <div class="stats-dashboard">
+                    <div class="stats-section-header">
+                        <div class="section-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                        </div>
+                        <div class="section-title">
+                            <h3>RSS抓取状态</h3>
+                            <p>实时监控RSS抓取任务运行状态</p>
+                        </div>
+                        <div class="section-badge" id="schedulerStatusBadge">
+                            <span class="status-dot"></span>
+                            <span id="schedulerStatusText">运行中</span>
+                        </div>
+                    </div>
+                    <div class="stats-cards-row">
+                        <div class="stats-card stats-card-info">
+                            <div class="stats-card-header">
+                                <span class="stats-card-title">等待处理组数</span>
+                                <div class="stats-card-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="stats-card-body">
+                                <span class="stats-card-value" id="pendingGroups">-</span>
+                                <div class="stats-card-trend">
+                                    <span>队列中待处理</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stats-card stats-card-purple">
+                            <div class="stats-card-header">
+                                <span class="stats-card-title">工作线程数</span>
+                                <div class="stats-card-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="stats-card-body">
+                                <span class="stats-card-value" id="activeThreads">-</span>
+                                <div class="stats-card-trend">
+                                    <span>活跃工作线程</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stats-card stats-card-teal">
+                            <div class="stats-card-header">
+                                <span class="stats-card-title">已处理组数</span>
+                                <div class="stats-card-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="stats-card-body">
+                                <span class="stats-card-value" id="totalProcessedGroups">-</span>
+                                <div class="stats-card-trend trend-up">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                                    </svg>
+                                    <span>累计处理</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stats-card stats-card-orange">
+                            <div class="stats-card-header">
+                                <span class="stats-card-title">平均处理时间</span>
+                                <div class="stats-card-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="stats-card-body">
+                                <span class="stats-card-value" id="avgProcessingTime">-</span>
+                                <span class="stats-card-unit">ms</span>
+                                <div class="stats-card-trend">
+                                    <span>每组平均耗时</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-tab-content" id="email-tab" style="display: none;">
+                <div class="config-section">
+                    <div class="section-body">
+                        <form id="emailConfigForm" class="config-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="emailHost">
+                                        SMTP服务器
+                                        <span class="required">*</span>
+                                    </label>
+                                    <input type="text" id="emailHost" name="emailHost" th:value="${emailHost}" placeholder="例如: smtp.qq.com">
+                                    <small>邮件发送服务器地址</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="emailPort">
+                                        SMTP端口
+                                        <span class="required">*</span>
+                                    </label>
+                                    <input type="number" id="emailPort" name="emailPort" th:value="${emailPort}" placeholder="例如: 587">
+                                    <small>常用端口: 25, 465, 587</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="emailUsername">
+                                        邮箱用户名
+                                        <span class="required">*</span>
+                                    </label>
+                                    <input type="email" id="emailUsername" name="emailUsername" th:value="${emailUsername}" placeholder="例如: your_email@qq.com">
+                                    <small>用于发送邮件的邮箱地址</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="emailPassword">
+                                        邮箱密码/授权码
+                                        <span class="required">*</span>
+                                    </label>
+                                    <input type="password" id="emailPassword" name="emailPassword" th:value="${emailPassword}" placeholder="邮箱密码或授权码">
+                                    <small>建议使用授权码而非密码</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="emailFromAlias">邮件发件人别名</label>
+                                <input type="text" id="emailFromAlias" name="emailFromAlias" th:value="${emailFromAlias}" placeholder="例如: AI RSS Hub">
+                                <small>收件人看到的发件人名称</small>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-primary" onclick="saveEmailConfig()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                        <polyline points="7 3 7 8 15 8"></polyline>
+                                    </svg>
+                                    保存配置
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="testEmail()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
+                                    发送测试邮件
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="config-tab-content" id="register-tab" style="display: none;">
+                <div class="config-section">
+                    <div class="section-body">
+                        <form id="registerConfigForm" class="config-form">
+                            <div class="toggle-wrapper">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="allowRegister" th:checked="${allowRegister == 'true'}">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <div class="toggle-info">
+                                    <span class="toggle-label">允许用户注册</span>
+                                    <span class="toggle-desc">关闭后新用户无法自行注册</span>
+                                </div>
+                            </div>
+
+                            <div class="toggle-wrapper">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="requireEmailVerification" th:checked="${requireEmailVerification == 'true'}">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <div class="toggle-info">
+                                    <span class="toggle-label">注册时需要邮箱验证</span>
+                                    <span class="toggle-desc">开启后注册需要通过邮箱验证码验证</span>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-primary" onclick="saveRegisterConfig()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                        <polyline points="7 3 7 8 15 8"></polyline>
+                                    </svg>
+                                    保存配置
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-tab-content" id="logs-tab" style="display: none;">
+                <div class="config-section">
+                    <div class="section-body">
+                        <div class="log-container" id="systemLogContainer">
+                            <div class="log-loading">加载中...</div>
+                        </div>
+                        <div class="log-actions">
+                            <button class="btn btn-secondary" onclick="refreshSystemLogs()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <polyline points="1 20 1 14 7 14"></polyline>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                                刷新
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navItems = document.querySelectorAll('.nav-item');
+            const tabContents = document.querySelectorAll('.config-tab-content');
+            const headerTitle = document.querySelector('.header-title h1');
+            const headerDesc = document.querySelector('.header-title p');
+            const headerActions = document.querySelector('.header-actions');
+
+            const tabTitles = {
+                email: { title: '邮箱配置', desc: '配置SMTP服务器以启用邮件通知功能' },
+                register: { title: '注册配置', desc: '控制用户注册相关功能' },
+                data: { title: '数据统计', desc: '查看系统运行数据统计' },
+                logs: { title: '系统日志', desc: '查看系统控制台日志' }
+            };
+
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    this.classList.add('active');
+
+                    tabContents.forEach(content => {
+                        content.style.display = 'none';
+                    });
+                    document.getElementById(tabId + '-tab').style.display = 'block';
+
+                    headerTitle.textContent = tabTitles[tabId].title;
+                    headerDesc.textContent = tabTitles[tabId].desc;
+
+                    // 切换header-actions显示
+                    if (headerActions) {
+                        headerActions.style.display = tabId === 'email' ? 'block' : 'none';
+                    }
+
+                    // 控制配置提示的显示/隐藏：只在邮箱配置和注册配置页面显示
+                    const configAlert = document.getElementById('configAlert');
+                    if (configAlert) {
+                        const showAlertTabs = ['email', 'register'];
+                        configAlert.style.display = showAlertTabs.includes(tabId) ? 'flex' : 'none';
+                    }
+
+                    // 如果切换到数据统计标签页，自动刷新数据
+                    if (tabId === 'data') {
+                        refreshDataStats();
+                        stopLogAutoRefresh();
+                    }
+                    // 如果切换到系统日志标签页，自动加载日志并启动自动刷新
+                    if (tabId === 'logs') {
+                        refreshSystemLogs();
+                        startLogAutoRefresh();
+                    } else {
+                        stopLogAutoRefresh();
+                    }
+                });
+            });
+
+            // 页面加载时初始化：默认显示数据统计，隐藏配置提示
+            const configAlert = document.getElementById('configAlert');
+            if (configAlert) {
+                configAlert.style.display = 'none';
+            }
+
+            // 页面加载时自动刷新数据统计
+            refreshDataStats();
+
+            // 定时自动刷新数据（每30秒）
+            let dataRefreshInterval = setInterval(refreshDataStats, 30000);
+
+            // 当切换到其他标签页时，停止自动刷新以节省资源
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    if (tabId === 'data') {
+                        // 切换到数据统计页，开始自动刷新
+                        if (!dataRefreshInterval) {
+                            dataRefreshInterval = setInterval(refreshDataStats, 30000);
+                        }
+                        refreshDataStats();
+                    } else {
+                        // 切换到其他页，停止自动刷新
+                        if (dataRefreshInterval) {
+                            clearInterval(dataRefreshInterval);
+                            dataRefreshInterval = null;
+                        }
+                    }
+                });
+            });
+        });
+
+        // 系统日志相关功能
+        let logRefreshInterval = null;
+        let currentLogCount = 0;
+
+        function startLogAutoRefresh() {
+            if (!logRefreshInterval) {
+                logRefreshInterval = setInterval(refreshSystemLogs, 3000);
+            }
+        }
+
+        function stopLogAutoRefresh() {
+            if (logRefreshInterval) {
+                clearInterval(logRefreshInterval);
+                logRefreshInterval = null;
+            }
+        }
+
+        function refreshSystemLogs() {
+            const container = document.getElementById('systemLogContainer');
+            if (!container) return;
+
+            // 第一次加载显示loading，后续静默刷新
+            if (container.querySelector('.log-loading')) {
+                container.innerHTML = '<div class="log-loading">加载中...</div>';
+            }
+
+            fetch('/api/system/logs?limit=300')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const isFirstLoad = currentLogCount === 0;
+                        const prevScrollTop = container.scrollTop;
+                        const prevScrollHeight = container.scrollHeight;
+                        const isAtBottom = (prevScrollTop + container.clientHeight) >= (prevScrollHeight - 10);
+
+                        renderSystemLogs(data.logs);
+                        currentLogCount = data.logs ? data.logs.length : 0;
+
+                        // 如果是第一次加载，或者用户在底部，则滚动到底部
+                        if (isFirstLoad || isAtBottom) {
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    } else {
+                        if (container.querySelector('.log-loading') || container.querySelector('.log-empty')) {
+                            container.innerHTML = '<div class="log-error">加载失败: ' + (data.message || '未知错误') + '</div>';
+                        }
+                    }
+                })
+                .catch(error => {
+                    if (container.querySelector('.log-loading') || container.querySelector('.log-empty')) {
+                        container.innerHTML = '<div class="log-error">加载失败: ' + error.message + '</div>';
+                    }
+                });
+        }
+
+        function renderSystemLogs(logs) {
+            const container = document.getElementById('systemLogContainer');
+            if (!container) return;
+
+            if (!logs || logs.length === 0) {
+                container.innerHTML = '<div class="log-empty">暂无日志</div>';
+                return;
+            }
+
+            // 反转数组，让最新的日志显示在最下面
+            const reversedLogs = [...logs].reverse();
+
+            let html = '<div class="log-list">';
+            reversedLogs.forEach(log => {
+                const levelClass = getLogLevelClass(log.level);
+                html += '<div class="log-item ' + levelClass + '">';
+                html += '<span class="log-time">' + escapeHtml(log.formattedTime) + '</span>';
+                html += '<span class="log-level">' + escapeHtml(log.level) + '</span>';
+                html += '<span class="log-message">' + escapeHtml(log.message) + '</span>';
+                html += '</div>';
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        function getLogLevelClass(level) {
+            if (!level) return 'log-info';
+            const upperLevel = level.toUpperCase();
+            if (upperLevel === 'ERROR') return 'log-error';
+            if (upperLevel === 'WARN' || upperLevel === 'WARNING') return 'log-warn';
+            if (upperLevel === 'DEBUG') return 'log-debug';
+            if (upperLevel === 'TRACE') return 'log-trace';
+            return 'log-info';
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function clearSystemLogs() {
+            const container = document.getElementById('systemLogContainer');
+            if (container) {
+                container.innerHTML = '<div class="log-empty">日志显示已清空（仅清空显示，不影响实际日志）</div>';
+                currentLogCount = 0;
+            }
+        }
+        
+        function resetEmailConfig() {
+            if (confirm('确定要重置邮箱配置吗？所有未保存的更改将丢失。')) {
+                document.getElementById('emailConfigForm').reset();
+            }
+        }
+        
+        function saveEmailConfig() {
+            const formData = {
+                host: document.getElementById('emailHost').value,
+                port: document.getElementById('emailPort').value,
+                username: document.getElementById('emailUsername').value,
+                password: document.getElementById('emailPassword').value,
+                fromAlias: document.getElementById('emailFromAlias').value
+            };
+            
+            fetch('/system-config/email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert('保存失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('请求失败: ' + error.message);
+            });
+        }
+        
+        function testEmail() {
+            const testEmail = prompt('请输入测试邮箱地址:');
+            if (!testEmail) {
+                return;
+            }
+            
+            fetch('/system-config/test-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'testEmail=' + encodeURIComponent(testEmail)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert('发送失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('请求失败: ' + error.message);
+            });
+        }
+        
+        function saveRegisterConfig() {
+            const formData = {
+                allowRegister: document.getElementById('allowRegister').checked,
+                requireEmailVerification: document.getElementById('requireEmailVerification').checked
+            };
+            
+            fetch('/system-config/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert('保存失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('请求失败: ' + error.message);
+            });
+        }
+
+        // 当前选中的时间范围
+        let currentTimeRange = 'today';
+
+        function refreshDataStats() {
+            fetch('/system-config/data-unification?range=' + currentTimeRange)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // ========== 用户统计 - 概览卡片 ==========
+                    const totalUsers = data.userStats.totalUsers;
+                    document.getElementById('totalUsers').textContent = totalUsers.toLocaleString('zh-CN');
+                    
+                    // 增长率和增长数
+                    const growthRate = data.userStats.growthRate;
+                    const growthCount = data.userStats.growthCount;
+                    const compareLabel = data.userStats.compareLabel;
+                    
+                    // 更新增长率badge
+                    const userGrowthRateElem = document.getElementById('userGrowthRate');
+                    const userGrowthBadge = document.getElementById('userGrowthBadge');
+                    if (userGrowthRateElem && userGrowthBadge) {
+                        if (data.userStats.range === 'year') {
+                            userGrowthBadge.style.display = 'none';
+                        } else {
+                            userGrowthBadge.style.display = 'inline-flex';
+                            userGrowthRateElem.textContent = (growthRate >= 0 ? '+' : '') + growthRate + '%';
+                            // 更新趋势样式
+                            if (growthRate >= 0) {
+                                userGrowthBadge.classList.add('trend-up');
+                                userGrowthBadge.classList.remove('trend-down');
+                            } else {
+                                userGrowthBadge.classList.add('trend-down');
+                                userGrowthBadge.classList.remove('trend-up');
+                            }
+                        }
+                    }
+                    
+                    // 更新对比标签和增长数
+                    const userCompareLabelElem = document.getElementById('userCompareLabel');
+                    const userGrowthCountElem = document.getElementById('userGrowthCount');
+                    if (userCompareLabelElem) {
+                        userCompareLabelElem.textContent = compareLabel;
+                    }
+                    if (userGrowthCountElem) {
+                        if (data.userStats.range === 'year') {
+                            userGrowthCountElem.textContent = '-';
+                        } else {
+                            const sign = growthCount >= 0 ? '+' : '';
+                            userGrowthCountElem.textContent = sign + growthCount;
+                            userGrowthCountElem.className = growthCount >= 0 ? 'overview-change positive' : 'overview-change negative';
+                        }
+                    }
+
+                    // ========== RSS源统计 ==========
+                    const rssStats = data.rssStats;
+                    const totalRssSourcesElem = document.getElementById('totalRssSources');
+                    if (totalRssSourcesElem) {
+                        totalRssSourcesElem.textContent = rssStats.totalSources.toLocaleString('zh-CN');
+                    }
+                    const activeRateElem = document.getElementById('activeRate');
+                    if (activeRateElem) {
+                        activeRateElem.textContent = rssStats.activeRate + '%';
+                    }
+
+                    // ========== 文章筛选统计 ==========
+                    const articleStats = data.articleStats;
+                    const totalFilteredArticlesElem = document.getElementById('totalFilteredArticles');
+                    if (totalFilteredArticlesElem) {
+                        totalFilteredArticlesElem.textContent = articleStats.totalFiltered.toLocaleString('zh-CN');
+                    }
+                    const passRateElem = document.getElementById('passRate');
+                    if (passRateElem) {
+                        passRateElem.textContent = articleStats.passRate + '%';
+                    }
+
+                    // ========== 系统运行时间 ==========
+                    const fetchStatus = data.fetchStatus;
+                    const systemUptimeElem = document.getElementById('systemUptime');
+                    if (systemUptimeElem && fetchStatus.uptime) {
+                        systemUptimeElem.textContent = fetchStatus.uptime;
+                    }
+
+                    // 系统启动时间
+                    const systemStartTimeElem = document.getElementById('systemStartTime');
+                    if (systemStartTimeElem && fetchStatus.startTime) {
+                        systemStartTimeElem.textContent = fetchStatus.startTime;
+                    }
+
+                    // 概览卡片中的调度器状态
+                    const schedulerStatusBadge2 = document.getElementById('schedulerStatusBadge2');
+                    if (schedulerStatusBadge2) {
+                        schedulerStatusBadge2.textContent = fetchStatus.running ? '正常' : '已停止';
+                        schedulerStatusBadge2.className = fetchStatus.running ? 'overview-change neutral' : 'overview-change negative';
+                    }
+
+                    // ========== RSS抓取状态卡片组 ==========
+                    const pendingGroupsElem = document.getElementById('pendingGroups');
+                    const activeThreadsElem = document.getElementById('activeThreads');
+                    const totalProcessedGroupsElem = document.getElementById('totalProcessedGroups');
+                    const avgProcessingTimeElem = document.getElementById('avgProcessingTime');
+                    
+                    if (pendingGroupsElem) {
+                        pendingGroupsElem.textContent = (fetchStatus.pendingGroups || 0).toLocaleString('zh-CN');
+                    }
+                    if (activeThreadsElem) {
+                        activeThreadsElem.textContent = (fetchStatus.activeThreads || 0).toLocaleString('zh-CN');
+                    }
+                    if (totalProcessedGroupsElem) {
+                        totalProcessedGroupsElem.textContent = (fetchStatus.totalProcessedGroups || 0).toLocaleString('zh-CN');
+                    }
+                    if (avgProcessingTimeElem) {
+                        avgProcessingTimeElem.textContent = (fetchStatus.avgProcessingTimeMs || 0).toLocaleString('zh-CN');
+                    }
+
+                    // 调度器状态徽章
+                    const schedulerStatusBadge = document.getElementById('schedulerStatusBadge');
+                    const schedulerStatusText = document.getElementById('schedulerStatusText');
+                    if (schedulerStatusBadge && schedulerStatusText) {
+                        schedulerStatusText.textContent = fetchStatus.running ? '运行中' : '已停止';
+                        if (fetchStatus.running) {
+                            schedulerStatusBadge.classList.remove('stopped');
+                        } else {
+                            schedulerStatusBadge.classList.add('stopped');
+                        }
+                    }
+                    
+                    // ========== 更新图表数据 ==========
+                    updateCharts(data);
+                } else {
+                    console.error('获取数据失败:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('请求失败:', error.message);
+            });
+        }
+        
+        // 时间范围切换
+        function initTimeRangeSelector() {
+            const timeBtns = document.querySelectorAll('.time-btn');
+            timeBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // 移除所有active状态
+                    timeBtns.forEach(b => b.classList.remove('active'));
+                    // 添加当前active状态
+                    this.classList.add('active');
+                    // 更新当前时间范围
+                    currentTimeRange = this.getAttribute('data-range');
+                    // 刷新数据
+                    refreshDataStats();
+                });
+            });
+        }
+        
+        // 更新图表数据
+        function updateCharts(data) {
+            // 更新文章筛选分布图表
+            if (data.filterDistribution) {
+                const passRate = data.filterDistribution.passRate;
+                const donutValue = document.getElementById('donutValue');
+                if (donutValue) {
+                    donutValue.textContent = passRate.toFixed(0) + '%';
+                }
+                
+                // 更新环形图
+                const donutRing = document.getElementById('donutRing');
+                if (donutRing) {
+                    donutRing.style.background = `conic-gradient(
+                        #10b981 0deg calc(3.6deg * ${passRate}),
+                        #ef4444 calc(3.6deg * ${passRate}) 360deg
+                    )`;
+                }
+                
+                // 更新图例数值
+                const passedCountElem = document.getElementById('passedCount');
+                const rejectedCountElem = document.getElementById('rejectedCount');
+                if (passedCountElem) {
+                    passedCountElem.textContent = data.filterDistribution.passed.toLocaleString('zh-CN');
+                }
+                if (rejectedCountElem) {
+                    rejectedCountElem.textContent = data.filterDistribution.rejected.toLocaleString('zh-CN');
+                }
+            }
+            
+            // 更新用户增长趋势图表（如果有真实数据）
+            if (data.userGrowthTrend && data.userGrowthTrend.length > 0) {
+                updateUserGrowthChart(data.userGrowthTrend);
+            }
+        }
+        
+        // 更新用户增长趋势图表
+        function updateUserGrowthChart(trendData) {
+            const barsContainer = document.getElementById('userGrowthBars');
+            if (!barsContainer || !trendData || trendData.length === 0) return;
+            
+            // 清空现有内容
+            barsContainer.innerHTML = '';
+            
+            // 找出最大值用于归一化
+            const maxCount = Math.max(...trendData.map(d => d.count), 1);
+            const maxValue = Math.max(maxCount, 1);
+            
+            // 动态生成30个柱子
+            trendData.forEach((dayData, index) => {
+                const bar = document.createElement('div');
+                bar.className = 'mock-bar';
+                const heightPercent = maxValue > 0 ? (dayData.count / maxValue * 100) : 0;
+                bar.style.height = Math.max(heightPercent, 5) + '%';
+                
+                // 格式化日期显示
+                const date = dayData.date;
+                const displayDate = date.substring(5); // 显示 MM-DD
+                bar.title = `${displayDate}: ${dayData.count} 人`;
+                
+                barsContainer.appendChild(bar);
+            });
+        }
+        
+        // 手动刷新统计数据
+        function refreshStats() {
+            const btn = document.querySelector('.btn-refresh');
+            if (btn) {
+                btn.classList.add('refreshing');
+                const svg = btn.querySelector('svg');
+                if (svg) {
+                    svg.style.animation = 'spin 1s linear infinite';
+                }
+            }
+            
+            refreshDataStats();
+            
+            // 模拟刷新动画
+            setTimeout(() => {
+                if (btn) {
+                    btn.classList.remove('refreshing');
+                    const svg = btn.querySelector('svg');
+                    if (svg) {
+                        svg.style.animation = '';
+                    }
+                }
+            }, 1000);
+        }
+        
+        // 添加旋转动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 移动端导航栏滚动检测
+        function initMobileNavScroll() {
+            const sidebar = document.querySelector('.config-sidebar');
+            const nav = document.querySelector('.sidebar-nav');
+            if (!sidebar || !nav) return;
+
+            function checkScrollable() {
+                const isScrollable = nav.scrollWidth > nav.clientWidth;
+                if (isScrollable) {
+                    sidebar.classList.add('has-more');
+                } else {
+                    sidebar.classList.remove('has-more');
+                }
+            }
+
+            // 初始检测
+            checkScrollable();
+
+            // 窗口大小改变时重新检测
+            window.addEventListener('resize', checkScrollable);
+
+            // 滚动时隐藏提示
+            nav.addEventListener('scroll', function() {
+                if (nav.scrollLeft > 10) {
+                    sidebar.classList.add('scrolled');
+                }
+            });
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initMobileNavScroll();
+            initTimeRangeSelector();
+        });
+    </script>
+</body>
+</html>

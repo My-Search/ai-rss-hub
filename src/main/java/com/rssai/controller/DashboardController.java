@@ -7,8 +7,8 @@ import com.rssai.mapper.UserMapper;
 import com.rssai.model.RssItem;
 import com.rssai.model.User;
 import com.rssai.util.HtmlUtils;
+import com.rssai.service.SystemConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,17 +22,23 @@ import java.util.Map;
 
 @Controller
 public class DashboardController {
-    @Autowired
-    private UserMapper userMapper;
-    @Autowired
-    private RssSourceMapper rssSourceMapper;
-    @Autowired
-    private RssItemMapper rssItemMapper;
-    @Autowired
-    private AiConfigMapper aiConfigMapper;
-
-    @Value("${email.enable:false}")
-    private boolean emailEnabled;
+    private final UserMapper userMapper;
+    private final RssSourceMapper rssSourceMapper;
+    private final RssItemMapper rssItemMapper;
+    private final AiConfigMapper aiConfigMapper;
+    private final SystemConfigService systemConfigService;
+    
+    public DashboardController(UserMapper userMapper,
+                               RssSourceMapper rssSourceMapper,
+                               RssItemMapper rssItemMapper,
+                               AiConfigMapper aiConfigMapper,
+                               SystemConfigService systemConfigService) {
+        this.userMapper = userMapper;
+        this.rssSourceMapper = rssSourceMapper;
+        this.rssItemMapper = rssItemMapper;
+        this.aiConfigMapper = aiConfigMapper;
+        this.systemConfigService = systemConfigService;
+    }
 
     @GetMapping("/dashboard")
     public String dashboard(Authentication auth, Model model,
@@ -41,7 +47,6 @@ public class DashboardController {
         User user = userMapper.findByUsername(auth.getName());
         model.addAttribute("user", user);
         model.addAttribute("sources", rssSourceMapper.findByUserId(user.getId()));
-        model.addAttribute("emailEnabled", emailEnabled);
         
         int totalItems = rssItemMapper.countFilteredByUserId(user.getId());
         int totalPages = (int) Math.ceil((double) totalItems / pageSize);

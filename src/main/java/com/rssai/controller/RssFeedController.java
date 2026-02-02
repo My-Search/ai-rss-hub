@@ -14,10 +14,13 @@ import javax.servlet.http.HttpServletRequest;
 
 @Controller
 public class RssFeedController {
-    @Autowired
-    private UserRssFeedMapper userRssFeedMapper;
-    @Autowired
-    private RssGeneratorService rssGeneratorService;
+    private final UserRssFeedMapper userRssFeedMapper;
+    private final RssGeneratorService rssGeneratorService;
+    
+    public RssFeedController(UserRssFeedMapper userRssFeedMapper, RssGeneratorService rssGeneratorService) {
+        this.userRssFeedMapper = userRssFeedMapper;
+        this.rssGeneratorService = rssGeneratorService;
+    }
 
     @GetMapping(value = "/rss/{token}", produces = MediaType.APPLICATION_XML_VALUE)
     @ResponseBody

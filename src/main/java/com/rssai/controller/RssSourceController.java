@@ -8,7 +8,6 @@ import com.rssai.model.RssSource;
 import com.rssai.model.User;
 import com.rssai.service.RssFetchService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,23 +19,25 @@ import java.net.URISyntaxException;
 @Controller
 @RequestMapping("/rss-sources")
 public class RssSourceController {
-    @Autowired
-    private RssSourceMapper rssSourceMapper;
-    @Autowired
-    private UserMapper userMapper;
-    @Autowired
-    private RssFetchService rssFetchService;
-    @Autowired
-    private AiConfigMapper aiConfigMapper;
-
-    @Value("${email.enable:false}")
-    private boolean emailEnabled;
+    private final RssSourceMapper rssSourceMapper;
+    private final UserMapper userMapper;
+    private final RssFetchService rssFetchService;
+    private final AiConfigMapper aiConfigMapper;
+    
+    public RssSourceController(RssSourceMapper rssSourceMapper,
+                               UserMapper userMapper,
+                               RssFetchService rssFetchService,
+                               AiConfigMapper aiConfigMapper) {
+        this.rssSourceMapper = rssSourceMapper;
+        this.userMapper = userMapper;
+        this.rssFetchService = rssFetchService;
+        this.aiConfigMapper = aiConfigMapper;
+    }
 
     @GetMapping
     public String sourcesPage(Authentication auth, Model model) {
         User user = userMapper.findByUsername(auth.getName());
         model.addAttribute("sources", rssSourceMapper.findByUserId(user.getId()));
-        model.addAttribute("emailEnabled", emailEnabled);
 
         // 获取用户默认刷新间隔，用于添加RSS源时回显
         AiConfig aiConfig = aiConfigMapper.findByUserId(user.getId());
@@ -67,6 +68,10 @@ public class RssSourceController {
             AiConfig aiConfig = aiConfigMapper.findByUserId(user.getId());
             refreshInterval = (aiConfig != null && aiConfig.getRefreshInterval() != null)
                     ? aiConfig.getRefreshInterval() : 60;
+        }
+        // 安全保护：刷新频率必须>=1分钟
+        if (refreshInterval < 1) {
+            refreshInterval = 1;
         }
         source.setRefreshInterval(refreshInterval);
 
@@ -123,6 +128,10 @@ public class RssSourceController {
 
             // 如果指定了刷新间隔则更新，否则保持原值
             if (refreshInterval != null && refreshInterval > 0) {
+                // 安全保护：刷新频率必须>=1分钟
+                if (refreshInterval < 1) {
+                    refreshInterval = 1;
+                }
                 source.setRefreshInterval(refreshInterval);
             }
 

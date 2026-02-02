@@ -1,5 +1,6 @@
 package com.rssai.service;
 
+import com.rssai.config.MailConfig;
 import com.rssai.model.RssItem;
 import com.rssai.util.HtmlUtils;
 import org.slf4j.Logger;
@@ -7,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -26,20 +28,39 @@ import java.util.Map;
 public class EmailService {
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
-    @Autowired
-    private JavaMailSender mailSender;
-
-    @Autowired
-    private TemplateEngine templateEngine;
-
-    @Value("${spring.mail.username}")
-    private String fromEmail;
+    private final JavaMailSender mailSender;
+    private final TemplateEngine templateEngine;
+    private final SystemConfigService systemConfigService;
+    private final MailConfig mailConfig;
 
     @Value("${email.max-items:50}")
     private int maxItems;
+    
+    public EmailService(JavaMailSender mailSender,
+                        TemplateEngine templateEngine,
+                        SystemConfigService systemConfigService,
+                        MailConfig mailConfig) {
+        this.mailSender = mailSender;
+        this.templateEngine = templateEngine;
+        this.systemConfigService = systemConfigService;
+        this.mailConfig = mailConfig;
+    }
 
-    @Value("${email.from-alias:AI RSS HUB}")
-    private String fromAlias;
+    private String getFromEmail() {
+        return systemConfigService.getConfigValue("email.username", "");
+    }
+
+    private String getFromAlias() {
+        return systemConfigService.getConfigValue("email.from-alias", "AI RSS HUB");
+    }
+
+    private void updateMailSenderConfig() {
+        if (!(mailSender instanceof JavaMailSenderImpl)) {
+            return;
+        }
+
+        mailConfig.updateMailSenderConfig((JavaMailSenderImpl) mailSender);
+    }
 
     @Async("emailExecutor")
     public void sendDailyDigest(String toEmail, List<RssItem> items, Map<String, String> summaries) throws UnsupportedEncodingException {
@@ -48,11 +69,13 @@ public class EmailService {
             return;
         }
 
+        updateMailSenderConfig();
+
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(fromEmail, fromAlias);
+            helper.setFrom(getFromEmail(), getFromAlias());
             helper.setTo(toEmail);
             helper.setSubject("AI RSS 每日摘要 - " + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
 
@@ -74,13 +97,16 @@ public class EmailService {
 
     public void sendTestEmail(String toEmail, String digestTime) throws UnsupportedEncodingException {
         logger.info("[EmailService] 进入sendTestEmail方法，目标邮箱: {}", toEmail);
-        logger.info("[EmailService] 邮件配置 - fromEmail: {}", fromEmail);
+        logger.info("[EmailService] 邮件配置 - fromEmail: {}", getFromEmail());
+
+        updateMailSenderConfig();
+
         try {
             MimeMessage message = mailSender.createMimeMessage();
             logger.info("[EmailService] MimeMessage创建成功");
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(fromEmail, fromAlias);
+            helper.setFrom(getFromEmail(), getFromAlias());
             helper.setTo(toEmail);
             helper.setSubject("AI RSS Hub 测试邮件");
             logger.info("[EmailService] 设置收件人: {}, 主题: AI RSS Hub 测试邮件", toEmail);
@@ -110,11 +136,13 @@ public class EmailService {
             return;
         }
 
+        updateMailSenderConfig();
+
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(fromEmail, fromAlias);
+            helper.setFrom(getFromEmail(), getFromAlias());
             helper.setTo(toEmail);
             
             helper.setSubject("你订阅的关键字" + keywords + "有更新");
@@ -157,11 +185,13 @@ public class EmailService {
 
     public void sendVerificationCode(String toEmail, String code, String type) throws UnsupportedEncodingException, MessagingException {
         logger.info("[EmailService] 开始发送验证码邮件，目标邮箱: {}, 类型: {}", toEmail, type);
-        
+
+        updateMailSenderConfig();
+
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-        helper.setFrom(fromEmail, fromAlias);
+        helper.setFrom(getFromEmail(), getFromAlias());
         helper.setTo(toEmail);
         helper.setSubject(type.equals("register") ? "注册验证码 - AI RSS Hub" : "密码重置验证码 - AI RSS Hub");
 
@@ -179,5 +209,28 @@ public class EmailService {
         logger.info("[EmailService] 准备发送验证码邮件...");
         mailSender.send(message);
         logger.info("[EmailService] 验证码邮件发送成功，目标邮箱: {}, 验证码: {}", toEmail, code);
+    }
+
+    @Async("emailExecutor")
+    public void sendEmailChangeVerificationCode(String toEmail, String code) throws UnsupportedEncodingException, MessagingException {
+        logger.info("[EmailService] 开始发送邮箱修改验证码邮件，目标邮箱: {}", toEmail);
+
+        updateMailSenderConfig();
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+        helper.setFrom(getFromEmail(), getFromAlias());
+        helper.setTo(toEmail);
+        helper.setSubject("邮箱修改验证码 - AI RSS Hub");
+
+        Context context = new Context();
+        context.setVariable("code", code);
+
+        String htmlContent = templateEngine.process("email-change-code", context);
+        helper.setText(htmlContent, true);
+
+        mailSender.send(message);
+        logger.info("[EmailService] 邮箱修改验证码邮件发送成功，目标邮箱: {}", toEmail);
     }
 }

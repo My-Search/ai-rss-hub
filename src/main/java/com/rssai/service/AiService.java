@@ -18,10 +18,12 @@ import java.util.regex.Pattern;
 public class AiService {
     private static final Logger logger = LoggerFactory.getLogger(AiService.class);
     
-    @Autowired
-    private Cache<String, OkHttpClient> httpClientCache;
-    
+    private final Cache<String, OkHttpClient> httpClientCache;
     private final Gson gson = new Gson();
+    
+    public AiService(Cache<String, OkHttpClient> httpClientCache) {
+        this.httpClientCache = httpClientCache;
+    }
     
     /**
      * 判断是否为思考模型（推理模型）

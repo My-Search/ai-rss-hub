@@ -12,10 +12,12 @@ import java.security.SecureRandom;
 public class VerificationCodeService {
     private static final Logger logger = LoggerFactory.getLogger(VerificationCodeService.class);
     
-    @Autowired
-    private Cache<String, String> verificationCodeCache;
+    private final Cache<String, String> verificationCodeCache;
+    private final SecureRandom random = new SecureRandom();
     
-    private SecureRandom random = new SecureRandom();
+    public VerificationCodeService(Cache<String, String> verificationCodeCache) {
+        this.verificationCodeCache = verificationCodeCache;
+    }
     
     /**
      * 生成6位数字验证码
@@ -89,6 +91,42 @@ public class VerificationCodeService {
             logger.info("用户 {} 密码重置验证码验证成功", email);
         } else {
             logger.warn("用户 {} 密码重置验证码不正确", email);
+        }
+        return isValid;
+    }
+
+    /**
+     * 存储验证码（用于修改邮箱）
+     * @param userId 用户ID
+     * @param newEmail 新邮箱
+     * @param code 验证码
+     */
+    public void storeForEmailChange(Long userId, String newEmail, String code) {
+        String key = "email_change:" + userId + ":" + newEmail;
+        verificationCodeCache.put(key, code);
+        logger.info("已为用户 {} 的新邮箱 {} 存储验证码", userId, newEmail);
+    }
+
+    /**
+     * 验证邮箱修改验证码
+     * @param userId 用户ID
+     * @param newEmail 新邮箱
+     * @param code 用户输入的验证码
+     * @return 验证是否成功
+     */
+    public boolean verifyEmailChangeCode(Long userId, String newEmail, String code) {
+        String key = "email_change:" + userId + ":" + newEmail;
+        String storedCode = verificationCodeCache.getIfPresent(key);
+        if (storedCode == null) {
+            logger.warn("邮箱修改验证码已过期或不存在: userId={}, email={}", userId, newEmail);
+            return false;
+        }
+        boolean isValid = storedCode.equals(code);
+        if (isValid) {
+            verificationCodeCache.invalidate(key);
+            logger.info("用户 {} 的新邮箱 {} 验证码验证成功", userId, newEmail);
+        } else {
+            logger.warn("用户 {} 的新邮箱 {} 验证码不正确", userId, newEmail);
         }
         return isValid;
     }
