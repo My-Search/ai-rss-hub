@@ -17,8 +17,10 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PreDestroy;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -114,12 +116,12 @@ public class RssFetchSchedulerService {
      */
     private void schedulerLoop() {
         logger.info("调度器主循环已启动");
-        
+
         while (running.get()) {
             try {
                 // 查询需要抓取的RSS源
                 List<RssSource> sourcesToFetch = fetchRssSourcesBatch();
-                
+
                 if (sourcesToFetch.isEmpty()) {
                     // 没有任务时休眠
                     logger.debug("当前没有需要抓取的RSS源，休眠{}秒", checkIntervalSeconds);
@@ -128,12 +130,15 @@ public class RssFetchSchedulerService {
                 }
 
                 logger.info("查询到 {} 个RSS源需要抓取", sourcesToFetch.size());
-                
+
                 // 按用户分组
                 Map<Long, List<RssSource>> userGroups = sourcesToFetch.stream()
                         .collect(Collectors.groupingBy(RssSource::getUserId));
 
                 logger.info("分组结果: {} 个用户组", userGroups.size());
+
+                // 创建CountDownLatch等待所有用户组完成
+                CountDownLatch latch = new CountDownLatch(userGroups.size());
 
                 // 更新等待处理组数
                 pendingGroups.set(userGroups.size());
@@ -144,15 +149,17 @@ public class RssFetchSchedulerService {
                     List<RssSource> sources = entry.getValue();
 
                     // 创建用户组抓取任务
-                    UserGroupFetchTask task = new UserGroupFetchTask(userId, sources);
+                    UserGroupFetchTask task = new UserGroupFetchTask(userId, sources, latch);
                     threadPoolExecutor.execute(task);
 
                     logger.info("已提交用户组任务 - 用户ID: {}, RSS源数量: {}", userId, sources.size());
                 }
-                
-                // 等待一段时间后再检查
-                Thread.sleep(checkIntervalSeconds * 1000L);
-                
+
+                // 等待所有用户组处理完成
+                logger.info("等待当前批次的 {} 个用户组全部处理完成...", userGroups.size());
+                latch.await();
+                logger.info("当前批次的所有用户组已处理完成，继续查询下一批");
+
             } catch (InterruptedException e) {
                 logger.info("调度器线程被中断");
                 Thread.currentThread().interrupt();
@@ -167,7 +174,7 @@ public class RssFetchSchedulerService {
                 }
             }
         }
-        
+
         logger.info("调度器主循环已退出");
     }
 
@@ -239,10 +246,12 @@ public class RssFetchSchedulerService {
     private class UserGroupFetchTask implements Runnable {
         private final Long userId;
         private final List<RssSource> sources;
+        private final CountDownLatch latch;
 
-        public UserGroupFetchTask(Long userId, List<RssSource> sources) {
+        public UserGroupFetchTask(Long userId, List<RssSource> sources, CountDownLatch latch) {
             this.userId = userId;
             this.sources = sources;
+            this.latch = latch;
         }
 
         @Override
@@ -257,24 +266,29 @@ public class RssFetchSchedulerService {
             int successCount = 0;
             int failCount = 0;
 
-            for (RssSource source : sources) {
-                try {
-                    logger.info("[{}] 正在抓取RSS源: {} (ID: {})", threadName, source.getName(), source.getId());
-                    rssFetchService.fetchRssSource(source);
-                    successCount++;
-                } catch (Exception e) {
-                    logger.error("[{}] 抓取RSS源失败: {} - {}", threadName, source.getName(), e.getMessage(), e);
-                    failCount++;
+            try {
+                for (RssSource source : sources) {
+                    try {
+                        logger.info("[{}] 正在抓取RSS源: {} (ID: {})", threadName, source.getName(), source.getId());
+                        rssFetchService.fetchRssSource(source);
+                        successCount++;
+                    } catch (Exception e) {
+                        logger.error("[{}] 抓取RSS源失败: {} - {}", threadName, source.getName(), e.getMessage(), e);
+                        failCount++;
+                    }
                 }
+            } finally {
+                long processingTime = System.currentTimeMillis() - startTime;
+                activeThreads.decrementAndGet();
+                totalProcessedGroups.incrementAndGet();
+                totalProcessingTimeMs.addAndGet(processingTime);
+
+                logger.info("[{}] 用户组处理完成 - 用户ID: {}, 成功: {}, 失败: {}, 耗时: {}ms",
+                        threadName, userId, successCount, failCount, processingTime);
+
+                // 通知调度器当前组已完成
+                latch.countDown();
             }
-
-            long processingTime = System.currentTimeMillis() - startTime;
-            activeThreads.decrementAndGet();
-            totalProcessedGroups.incrementAndGet();
-            totalProcessingTimeMs.addAndGet(processingTime);
-
-            logger.info("[{}] 用户组处理完成 - 用户ID: {}, 成功: {}, 失败: {}, 耗时: {}ms",
-                    threadName, userId, successCount, failCount, processingTime);
         }
     }
 

@@ -4,7 +4,8 @@ import com.rometools.rome.feed.synd.*;
 import com.rometools.rome.io.SyndFeedOutput;
 import com.rssai.mapper.RssItemMapper;
 import com.rssai.model.RssItem;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.ZoneId;
@@ -16,6 +17,7 @@ import java.util.regex.Pattern;
 
 @Service
 public class RssGeneratorService {
+    private static final Logger logger = LoggerFactory.getLogger(RssGeneratorService.class);
     private final RssItemMapper rssItemMapper;
     
     private static final int MAX_DESCRIPTION_LENGTH = 200;
@@ -25,6 +27,11 @@ public class RssGeneratorService {
     }
     private static final Pattern IMG_PATTERN = Pattern.compile("<img[^>]+src=[\"']([^\"']+)[\"']", Pattern.CASE_INSENSITIVE);
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
+    // XSS防护：危险标签和属性模式
+    private static final Pattern DANGEROUS_TAG_PATTERN = Pattern.compile(
+        "<script[^>]*>.*?</script>|javascript:|on\\w+\\s*=|data:text/html|<iframe|<object|<embed|<form",
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+    );
 
     public String generateUserRss(Long userId, String baseUrl) {
         try {
@@ -39,7 +46,8 @@ public class RssGeneratorService {
             List<SyndEntry> entries = new ArrayList<>();
             for (RssItem item : items) {
                 SyndEntry entry = new SyndEntryImpl();
-                entry.setTitle(item.getTitle());
+                // XSS防护：转义标题中的特殊字符
+                entry.setTitle(escapeHtml(item.getTitle()));
                 entry.setLink(item.getLink());
                 
                 // 生成简洁的描述内容
@@ -59,9 +67,37 @@ public class RssGeneratorService {
             feed.setEntries(entries);
             return new SyndFeedOutput().outputString(feed);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("生成RSS feed失败", e);
+            return "<?xml version=\"1.0\" encoding=\"UTF-8\"?><error>生成RSS失败</error>";
+        }
+    }
+    
+    /**
+     * HTML转义，防止XSS攻击
+     */
+    private String escapeHtml(String input) {
+        if (input == null || input.isEmpty()) {
             return "";
         }
+        return input
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#x27;")
+            .replace("/", "&#x2F;");
+    }
+    
+    /**
+     * 清理危险的HTML内容
+     */
+    private String sanitizeHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return "";
+        }
+        // 移除危险的标签和属性
+        String sanitized = DANGEROUS_TAG_PATTERN.matcher(html).replaceAll("");
+        return sanitized;
     }
     
     /**

@@ -570,7 +570,7 @@
             refreshDataStats();
 
             // 定时自动刷新数据（每30秒）
-            let dataRefreshInterval = setInterval(refreshDataStats, 30000);
+            let dataRefreshInterval = setInterval(refreshDataStats, 5000);
 
             // 当切换到其他标签页时，停止自动刷新以节省资源
             navItems.forEach(item => {

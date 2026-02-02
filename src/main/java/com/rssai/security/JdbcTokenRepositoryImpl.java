@@ -1,7 +1,9 @@
 package com.rssai.security;
 
 import com.rssai.model.LoginDevice;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.web.authentication.rememberme.PersistentRememberMeToken;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
@@ -12,6 +14,7 @@ import java.util.List;
 
 @Repository
 public class JdbcTokenRepositoryImpl implements PersistentTokenRepository {
+    private static final Logger logger = LoggerFactory.getLogger(JdbcTokenRepositoryImpl.class);
 
     private final JdbcTemplate jdbcTemplate;
     
@@ -21,6 +24,7 @@ public class JdbcTokenRepositoryImpl implements PersistentTokenRepository {
 
     @Override
     public void createNewToken(PersistentRememberMeToken token) {
+        logger.debug("创建新的remember-me token - 用户: {}, series: {}", token.getUsername(), token.getSeries());
         jdbcTemplate.update(
                 "INSERT INTO persistent_logins (username, series, token, last_used) VALUES (?, ?, ?, ?)",
                 token.getUsername(), token.getSeries(), token.getTokenValue(), new Date(token.getDate().getTime())
@@ -29,16 +33,20 @@ public class JdbcTokenRepositoryImpl implements PersistentTokenRepository {
 
     @Override
     public void updateToken(String series, String tokenValue, Date lastUsed) {
-        jdbcTemplate.update(
+        logger.debug("更新remember-me token - series: {}", series);
+        int updated = jdbcTemplate.update(
                 "UPDATE persistent_logins SET token = ?, last_used = ? WHERE series = ?",
                 tokenValue, new Date(lastUsed.getTime()), series
         );
+        if (updated == 0) {
+            logger.warn("更新token失败，series不存在: {}", series);
+        }
     }
 
     @Override
     public PersistentRememberMeToken getTokenForSeries(String seriesId) {
         try {
-            return jdbcTemplate.queryForObject(
+            PersistentRememberMeToken token = jdbcTemplate.queryForObject(
                     "SELECT username, series, token, last_used FROM persistent_logins WHERE series = ?",
                     (rs, rowNum) -> new PersistentRememberMeToken(
                             rs.getString("username"),
@@ -48,7 +56,15 @@ public class JdbcTokenRepositoryImpl implements PersistentTokenRepository {
                     ),
                     seriesId
             );
+            if (token != null) {
+                logger.debug("找到remember-me token - series: {}, 用户: {}", seriesId, token.getUsername());
+            }
+            return token;
+        } catch (EmptyResultDataAccessException e) {
+            logger.debug("未找到remember-me token - series: {}", seriesId);
+            return null;
         } catch (Exception e) {
+            logger.error("查询remember-me token失败 - series: {}", seriesId, e);
             return null;
         }
     }

@@ -109,25 +109,20 @@ public class RssItemMapper {
 
     public void insert(RssItem item) {
         String timeClause = String.format("datetime('now', '%s')", timezoneConfig.getTimezoneModifier());
-        
+
         // 先尝试插入
         int affectedRows = jdbcTemplate.update(
             "INSERT OR IGNORE INTO rss_items (source_id, title, link, description, content, pub_date, ai_filtered, ai_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, " + timeClause + ")",
             item.getSourceId(), item.getTitle(), item.getLink(), item.getDescription(), item.getContent(), item.getPubDate(), item.getAiFiltered(), item.getAiReason());
-        
-        if (affectedRows > 0) {
-            // 插入成功，获取生成的ID
-            Long id = jdbcTemplate.queryForObject("SELECT last_insert_rowid()", Long.class);
+
+        // 无论插入成功还是记录已存在，都通过 link 查询记录ID
+        // 避免使用 last_insert_rowid()，因为在多线程环境下可能返回不正确的值
+        Long id = jdbcTemplate.queryForObject(
+            "SELECT id FROM rss_items WHERE link = ? LIMIT 1",
+            Long.class,
+            item.getLink());
+        if (id != null) {
             item.setId(id);
-        } else {
-            // 插入失败（记录已存在），查找现有记录的ID
-            Long id = jdbcTemplate.queryForObject(
-                "SELECT id FROM rss_items WHERE link = ? LIMIT 1", 
-                Long.class, 
-                item.getLink());
-            if (id != null) {
-                item.setId(id);
-            }
         }
     }
 

@@ -4,7 +4,7 @@ spring:
   profiles:
     active: dev
   datasource:
-    url: jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=30000&synchronous=NORMAL
+    url: jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=30000&journal_mode=DELETE&synchronous=NORMAL
     driver-class-name: org.sqlite.JDBC
   thymeleaf:
     cache: false
@@ -19,7 +19,6 @@ server:
   port: 8080
 
 rss:
-  default-refresh-interval: 10
   timezone: GMT+8
   fetch:
     thread-pool:
@@ -34,4 +33,23 @@ system:
   log:
     max-lines: 300
     console-path: logs/console.log
+
+security:
+  remember-me-key: ${REMEMBER_ME_KEY:rss-ai-hub-remember-me-key}
+  encryption-key: ${ENCRYPTION_KEY:ai-rss-hub-default-key}
+
+ai:
+  timeout:
+    connect: 10000
+    read: 60000
+    read-thinking: 300000
+    write: 10000
+  content:
+    max-title-length: 200
+    max-description-length: 500
+  retry:
+    max-attempts: 3
+    initial-delay: 1000
+  batch:
+    size: 10
 

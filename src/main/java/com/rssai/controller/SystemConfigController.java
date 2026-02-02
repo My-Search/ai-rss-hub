@@ -36,26 +36,26 @@ public class SystemConfigController {
     private final MailConfig mailConfig;
     private final JavaMailSender mailSender;
     private final RssFetchSchedulerService rssFetchSchedulerService;
+    private final RssSourceMapper rssSourceMapper;
+    private final FilterLogMapper filterLogMapper;
     
     public SystemConfigController(SystemConfigService systemConfigService,
                                   EmailService emailService,
                                   UserMapper userMapper,
                                   MailConfig mailConfig,
                                   JavaMailSender mailSender,
-                                  RssFetchSchedulerService rssFetchSchedulerService) {
+                                  RssFetchSchedulerService rssFetchSchedulerService,
+                                  RssSourceMapper rssSourceMapper,
+                                  FilterLogMapper filterLogMapper) {
         this.systemConfigService = systemConfigService;
         this.emailService = emailService;
         this.userMapper = userMapper;
         this.mailConfig = mailConfig;
         this.mailSender = mailSender;
         this.rssFetchSchedulerService = rssFetchSchedulerService;
+        this.rssSourceMapper = rssSourceMapper;
+        this.filterLogMapper = filterLogMapper;
     }
-
-    @Autowired
-    private RssSourceMapper rssSourceMapper;
-
-    @Autowired
-    private FilterLogMapper filterLogMapper;
 
     @GetMapping("/system-config")
     public String systemConfigPage(Authentication auth, Model model) {
