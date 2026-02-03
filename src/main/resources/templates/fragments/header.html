@@ -32,8 +32,10 @@
         (function() {
             try {
                 const savedTheme = localStorage.getItem('theme');
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                // 默认深色主题，只有用户明确切换到亮色时才使用亮色
+                if (savedTheme === 'light') {
+                    document.documentElement.removeAttribute('data-theme');
+                } else {
                     document.documentElement.setAttribute('data-theme', 'dark');
                 }
             } catch (e) {}
@@ -153,11 +155,15 @@
                 });
                 
                 const savedTheme = localStorage.getItem('theme');
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 const sunIcon = document.getElementById('sunIcon');
                 const moonIcon = document.getElementById('moonIcon');
                 
-                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                // 默认深色主题，只有用户明确切换到亮色时才使用亮色
+                if (savedTheme === 'light') {
+                    document.documentElement.removeAttribute('data-theme');
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                } else {
                     document.documentElement.setAttribute('data-theme', 'dark');
                     sunIcon.style.display = 'none';
                     moonIcon.style.display = 'block';
