@@ -6,3 +6,4 @@ data/
 *.iml
 .DS_Store
 .opencode/
+.feisuan/

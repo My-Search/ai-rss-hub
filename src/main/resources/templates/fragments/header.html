@@ -3,22 +3,35 @@
 <head>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <style>
-        /* Prevent FOUC - default to dark to avoid white flash */
-        html { background-color: #1a1a1a; color: #e0e0e0; }
+        html[data-theme="dark"] {
+            background-color: #272727;
+            color: #f1f5f9;
+        }
+        html[data-theme="dark"] body {
+            background-color: #272727;
+            color: #f1f5f9;
+        }
+        html[data-theme="dark"] .navbar {
+            background: #171616;
+            border-bottom-color: #334155;
+        }
+        html[data-theme="dark"] .nav-brand {
+            color: #3b82f6;
+        }
+        html[data-theme="dark"] .nav-link {
+            color: #cbd5e1;
+        }
+        html[data-theme="dark"] .card {
+            background: #171616;
+        }
     </style>
     <script>
         (function() {
             try {
                 const savedTheme = localStorage.getItem('theme');
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-                if (isDark) {
+                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
                     document.documentElement.setAttribute('data-theme', 'dark');
-                    // Inline styles already set dark colors in <style> above
-                } else {
-                    // Switch to light theme by removing the dark override
-                    document.documentElement.style.backgroundColor = '';
-                    document.documentElement.style.color = '';
                 }
             } catch (e) {}
         })();

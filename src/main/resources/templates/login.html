@@ -7,20 +7,53 @@
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <style>
-        /* Prevent FOUC - default to dark to avoid white flash */
-        html { background-color: #1a1a1a; color: #e0e0e0; }
+        html[data-theme="dark"] {
+            background-color: #272727;
+            color: #f1f5f9;
+        }
+        html[data-theme="dark"] body {
+            background-color: #272727;
+            color: #f1f5f9;
+        }
+        html[data-theme="dark"] .auth-card {
+            background: #171616;
+            border-color: #334155;
+        }
+        html[data-theme="dark"] .auth-card h1 {
+            color: #f1f5f9;
+        }
+        html[data-theme="dark"] .subtitle {
+            color: #94a3b8;
+        }
+        html[data-theme="dark"] .form-group label {
+            color: #cbd5e1;
+        }
+        html[data-theme="dark"] .form-group input {
+            background: #272727;
+            border-color: #475569;
+            color: #f1f5f9;
+        }
+        html[data-theme="dark"] .form-group input::placeholder {
+            color: #64748b;
+        }
+        html[data-theme="dark"] .checkbox-text {
+            color: #cbd5e1;
+        }
+        html[data-theme="dark"] .auth-footer {
+            color: #94a3b8;
+            border-top-color: #334155;
+        }
+        html[data-theme="dark"] .auth-footer a {
+            color: #3b82f6;
+        }
     </style>
     <script>
         (function() {
             try {
                 const savedTheme = localStorage.getItem('theme');
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-                if (isDark) {
+                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
                     document.documentElement.setAttribute('data-theme', 'dark');
-                } else {
-                    document.documentElement.style.backgroundColor = '';
-                    document.documentElement.style.color = '';
                 }
             } catch (e) {}
         })();
