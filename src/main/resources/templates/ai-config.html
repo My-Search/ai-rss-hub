@@ -41,8 +41,8 @@
                     <div class="form-group">
                         <label>模型类型</label>
                         <select name="isReasoningModel">
-                            <option value="" th:selected="${config?.isReasoningModel == null}">🤖 自动识别</option>
-                            <option value="true" th:selected="${config?.isReasoningModel == 1}">🧠 思考模型（推理模型）</option>
+                            <option value="" th:selected="${config?.isReasoningModel == null}">自动</option>
+                            <option value="true" th:selected="${config?.isReasoningModel == 1}">🧠 思考模型</option>
                             <option value="false" th:selected="${config?.isReasoningModel == 0}">⚡ 标准模型</option>
                         </select>
                         <small class="form-hint">思考模型（如 o1, deepseek-r1）需要更长响应时间，默认超时5分钟。留空则根据模型名称自动识别</small>
