@@ -1,14 +1,32 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <style>
         :root {
             color-scheme: light dark;
         }
+        html {
+            background-color: #f8fafc;
+        }
         html[data-theme="dark"] {
             background-color: #272727;
             color: #f1f5f9;
+        }
+        body {
+            background-color: #f8fafc;
+            margin: 0;
         }
         html[data-theme="dark"] body {
             background-color: #272727;
@@ -28,17 +46,6 @@
             background: #171616;
         }
     </style>
-    <script>
-        (function() {
-            try {
-                const savedTheme = localStorage.getItem('theme');
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                }
-            } catch (e) {}
-        })();
-    </script>
 </head>
 <body>
     <nav th:fragment="header" class="navbar">

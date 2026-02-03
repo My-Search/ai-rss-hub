@@ -1,9 +1,26 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的RSS订阅 - AI RSS Hub</title>
+    <style>
+        html { background-color: #f8fafc; }
+        html[data-theme="dark"] { background-color: #272727; color: #f1f5f9; }
+        body { background-color: #f8fafc; margin: 0; }
+        html[data-theme="dark"] body { background-color: #272727; color: #f1f5f9; }
+    </style>
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 </head>
