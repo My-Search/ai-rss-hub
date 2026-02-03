@@ -73,7 +73,8 @@ public class SystemConfigController {
         model.addAttribute("emailHost", configMap.getOrDefault("email.host", ""));
         model.addAttribute("emailPort", configMap.getOrDefault("email.port", ""));
         model.addAttribute("emailUsername", configMap.getOrDefault("email.username", ""));
-        model.addAttribute("emailPassword", configMap.getOrDefault("email.password", ""));
+        // 使用 getConfigValue 获取解密后的真实密码，而不是 findAll 返回的掩码值
+        model.addAttribute("emailPassword", systemConfigService.getConfigValue("email.password", ""));
         model.addAttribute("emailFromAlias", configMap.getOrDefault("email.from-alias", ""));
         model.addAttribute("allowRegister", configMap.getOrDefault("system-config.allow-register", "true"));
         model.addAttribute("requireEmailVerification", configMap.getOrDefault("system-config.require-email-verification", "false"));
@@ -105,7 +106,9 @@ public class SystemConfigController {
             systemConfigService.updateConfig("email.password", password);
             systemConfigService.updateConfig("email.from-alias", fromAlias);
 
-            mailConfig.updateMailSenderConfig((JavaMailSenderImpl) mailSender);
+            if (mailSender instanceof JavaMailSenderImpl) {
+                mailConfig.updateMailSenderConfig((JavaMailSenderImpl) mailSender);
+            }
 
             result.put("success", true);
             result.put("message", "邮箱配置已保存");
