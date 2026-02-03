@@ -6,6 +6,8 @@
     <title>系统配置 - AI RSS Hub</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
 <body>
     <div th:replace="fragments/header :: header"></div>
@@ -64,7 +66,7 @@
             <!-- 移动端滑动提示 -->
             <div class="mobile-scroll-hint">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="9 18 15 12 9 6"></polyline>
+                    <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
                 <span>滑动查看更多</span>
             </div>
@@ -504,6 +506,25 @@
     </div>
 
     <script>
+        // 获取 CSRF Token
+        function getCsrfToken() {
+            const token = document.querySelector('meta[name="_csrf"]')?.content;
+            const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+            return { token, header };
+        }
+
+        // 创建带 CSRF Token 的请求头
+        function createHeaders(contentType = 'application/x-www-form-urlencoded') {
+            const headers = {
+                'Content-Type': contentType
+            };
+            const csrf = getCsrfToken();
+            if (csrf.token && csrf.header) {
+                headers[csrf.header] = csrf.token;
+            }
+            return headers;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const navItems = document.querySelectorAll('.nav-item');
             const tabContents = document.querySelectorAll('.config-tab-content');
@@ -716,17 +737,20 @@
             
             fetch('/system-config/email', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
+                headers: createHeaders(),
                 body: new URLSearchParams(formData)
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('服务器响应错误: ' + response.status);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
+                    alert(data.message || '保存成功');
                 } else {
-                    alert('保存失败: ' + data.message);
+                    alert('保存失败: ' + (data.message || '未知错误'));
                 }
             })
             .catch(error => {
@@ -742,9 +766,7 @@
             
             fetch('/system-config/test-email', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
+                headers: createHeaders(),
                 body: 'testEmail=' + encodeURIComponent(testEmail)
             })
             .then(response => response.json())
@@ -768,9 +790,7 @@
             
             fetch('/system-config/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
+                headers: createHeaders(),
                 body: new URLSearchParams(formData)
             })
             .then(response => response.json())
@@ -796,7 +816,33 @@
                 if (data.success) {
                     // ========== 用户统计 - 概览卡片 ==========
                     const totalUsers = data.userStats.totalUsers;
-                    document.getElementById('totalUsers').textContent = totalUsers.toLocaleString('zh-CN');
+                    const currentPeriodUsers = data.userStats.currentPeriodUsers;
+                    const range = data.userStats.range;
+                    
+                    // 根据时间范围显示不同的用户数
+                    let userDisplayValue = '-';
+                    let userDisplayLabel = '总用户数';
+                    if (range === 'year') {
+                        userDisplayValue = totalUsers.toLocaleString('zh-CN');
+                        userDisplayLabel = '累计用户';
+                    } else {
+                        userDisplayValue = currentPeriodUsers.toLocaleString('zh-CN');
+                        if (range === 'today') {
+                            userDisplayLabel = '今日用户';
+                        } else if (range === 'week') {
+                            userDisplayLabel = '本周用户';
+                        } else if (range === 'month') {
+                            userDisplayLabel = '本月用户';
+                        }
+                    }
+                    
+                    document.getElementById('totalUsers').textContent = userDisplayValue;
+                    
+                    // 更新标签文本
+                    const userLabelElem = document.querySelector('.overview-card-users .overview-label');
+                    if (userLabelElem) {
+                        userLabelElem.textContent = userDisplayLabel;
+                    }
                     
                     // 增长率和增长数
                     const growthRate = data.userStats.growthRate;
@@ -827,7 +873,19 @@
                     const userCompareLabelElem = document.getElementById('userCompareLabel');
                     const userGrowthCountElem = document.getElementById('userGrowthCount');
                     if (userCompareLabelElem) {
-                        userCompareLabelElem.textContent = compareLabel;
+                        if (range === 'year') {
+                            userCompareLabelElem.textContent = compareLabel;
+                        } else {
+                            let periodText = '';
+                            if (range === 'today') {
+                                periodText = '今日';
+                            } else if (range === 'week') {
+                                periodText = '本周';
+                            } else if (range === 'month') {
+                                periodText = '本月';
+                            }
+                            userCompareLabelElem.textContent = periodText + currentPeriodUsers.toLocaleString('zh-CN') + ' ' + compareLabel;
+                        }
                     }
                     if (userGrowthCountElem) {
                         if (data.userStats.range === 'year') {

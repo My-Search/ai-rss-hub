@@ -6,13 +6,21 @@
     <title>登录 - AI RSS Hub</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <style>
+        /* Prevent FOUC - default to dark to avoid white flash */
+        html { background-color: #1a1a1a; color: #e0e0e0; }
+    </style>
     <script>
         (function() {
             try {
                 const savedTheme = localStorage.getItem('theme');
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+                if (isDark) {
                     document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.style.backgroundColor = '';
+                    document.documentElement.style.color = '';
                 }
             } catch (e) {}
         })();

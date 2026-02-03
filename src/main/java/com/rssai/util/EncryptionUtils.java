@@ -19,8 +19,30 @@ public class EncryptionUtils {
     @Value("${security.encryption-key:ai-rss-hub-default-key}")
     private String encryptionKey;
     
-    private static volatile String staticEncryptionKey = "ai-rss-hub-default-key";
+    private static volatile String staticEncryptionKey;
     private static volatile boolean initialized = false;
+    
+    // 静态初始化块：确保密钥在类加载时就正确处理为16字节
+    static {
+        String defaultKey = "ai-rss-hub-default-key";
+        staticEncryptionKey = processKey(defaultKey);
+    }
+    
+    /**
+     * 处理密钥长度，确保为16字节（AES-128）
+     */
+    private static String processKey(String key) {
+        if (key == null || key.isEmpty()) {
+            key = "ai-rss-hub-default-key";
+        }
+        // 确保密钥长度为16字节（AES-128）
+        if (key.length() < 16) {
+            return String.format("%-16s", key).replace(' ', '0');
+        } else if (key.length() > 16) {
+            return key.substring(0, 16);
+        }
+        return key;
+    }
     
     @PostConstruct
     public void init() {
@@ -31,17 +53,9 @@ public class EncryptionUtils {
      * 初始化加密密钥（用于测试或外部配置）
      */
     public static synchronized void initializeKey(String key) {
-        if (key == null || key.isEmpty()) {
-            key = "ai-rss-hub-default-key";
-        }
-        staticEncryptionKey = key;
-        // 确保密钥长度为16字节（AES-128）
-        if (staticEncryptionKey.length() < 16) {
-            staticEncryptionKey = String.format("%-16s", staticEncryptionKey).replace(' ', '0');
-        } else if (staticEncryptionKey.length() > 16) {
-            staticEncryptionKey = staticEncryptionKey.substring(0, 16);
-        }
+        staticEncryptionKey = processKey(key);
         initialized = true;
+        logger.debug("加密密钥已初始化，长度: {} bytes", staticEncryptionKey.length());
     }
     
     /**
@@ -82,7 +96,10 @@ public class EncryptionUtils {
             byte[] decrypted = cipher.doFinal(decoded);
             return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            logger.error("解密失败，可能是明文存储的旧数据", e);
+            // 记录详细的密钥信息用于诊断，但注意实际生产环境可能需要隐藏敏感信息
+            logger.error("解密失败，可能是明文存储的旧数据或密钥不匹配。当前密钥长度: {} bytes, 初始化状态: {}", 
+                staticEncryptionKey.length(), initialized);
+            logger.debug("详细错误:", e);
             return encryptedValue;
         }
     }

@@ -43,7 +43,8 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/email/**"),
                     new AntPathRequestMatcher("/api/**"),
                     new AntPathRequestMatcher("/send-register-code"),
-                    new AntPathRequestMatcher("/send-reset-code")
+                    new AntPathRequestMatcher("/send-reset-code"),
+                    new AntPathRequestMatcher("/system-config/**")
                 )
             )
             .authorizeHttpRequests(auth -> auth

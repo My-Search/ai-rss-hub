@@ -82,6 +82,7 @@ public class RssFetchService {
             Response response = httpClient.newCall(request).execute();
             if (!response.isSuccessful()) {
                 logger.error("HTTP请求失败: {}", response.code());
+                rssSourceMapper.updateLastFetchTime(source.getId());
                 return;
             }
 
@@ -93,6 +94,7 @@ public class RssFetchService {
             AiConfig aiConfig = aiConfigMapper.findByUserId(source.getUserId());
             if (aiConfig == null) {
                 logger.warn("用户 {} 未配置AI，跳过筛选", source.getUserId());
+                rssSourceMapper.updateLastFetchTime(source.getId());
                 return;
             }
             logger.info("使用AI配置: 模型={}, BaseURL={}", aiConfig.getModel(), aiConfig.getBaseUrl());
@@ -128,7 +130,6 @@ public class RssFetchService {
 
             if (newEntries.isEmpty()) {
                 logger.info("没有新消息需要处理，跳过 {} 条重复消息", skippedDuplicateCount);
-                rssSourceMapper.updateLastFetchTime(source.getId());
                 logger.info("========================================");
                 return;
             }
@@ -145,7 +146,6 @@ public class RssFetchService {
 
             if (filteredEntries.isEmpty()) {
                 logger.info("过滤后没有消息需要处理");
-                rssSourceMapper.updateLastFetchTime(source.getId());
                 logger.info("========================================");
                 return;
             }
@@ -182,7 +182,6 @@ public class RssFetchService {
             
             if (rssItemsToProcess.isEmpty()) {
                 logger.info("没有有效的RSS条目需要处理");
-                rssSourceMapper.updateLastFetchTime(source.getId());
                 logger.info("========================================");
                 return;
             }
@@ -239,8 +238,6 @@ public class RssFetchService {
                 );
             }
 
-            rssSourceMapper.updateLastFetchTime(source.getId());
-
             logger.info("========================================");
             logger.info("抓取完成: {}", source.getName());
             logger.info("统计: 总消息={}, 新消息={}, 跳过重复={}, 重复标题过滤={}, 处理成功={}, 通过={}, 未通过={}",
@@ -249,6 +246,9 @@ public class RssFetchService {
             
         } catch (Exception e) {
             logger.error("抓取RSS源失败: {} - {}", source.getName(), e.getMessage(), e);
+        } finally {
+            rssSourceMapper.updateLastFetchTime(source.getId());
+            logger.info("已更新最后抓取时间 - RSS源: {} (ID: {})", source.getName(), source.getId());
         }
     }
 
