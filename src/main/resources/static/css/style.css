@@ -2425,7 +2425,7 @@ body {
 @media (max-width: 768px) {
     .config-sidebar {
         position: sticky;
-        top: 70px;
+        top: 60px;
         z-index: 100;
         background: white;
     }
