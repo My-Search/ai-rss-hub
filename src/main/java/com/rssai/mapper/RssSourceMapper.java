@@ -1,5 +1,6 @@
 package com.rssai.mapper;
 
+import com.rssai.config.TimezoneConfig;
 import com.rssai.model.RssSource;
 import com.rssai.util.DateTimeUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,6 +14,7 @@ import java.util.List;
 @Repository
 public class RssSourceMapper {
     private final JdbcTemplate jdbcTemplate;
+    private final TimezoneConfig timezoneConfig;
 
     private final RowMapper<RssSource> rowMapper = (rs, rowNum) -> {
         RssSource source = new RssSource();
@@ -28,8 +30,9 @@ public class RssSourceMapper {
         return source;
     };
     
-    public RssSourceMapper(JdbcTemplate jdbcTemplate) {
+    public RssSourceMapper(JdbcTemplate jdbcTemplate, TimezoneConfig timezoneConfig) {
         this.jdbcTemplate = jdbcTemplate;
+        this.timezoneConfig = timezoneConfig;
     }
 
     public List<RssSource> findByUserId(Long userId) {
@@ -56,7 +59,9 @@ public class RssSourceMapper {
     }
 
     public void updateLastFetchTime(Long id) {
-        jdbcTemplate.update("UPDATE rss_sources SET last_fetch_time = datetime('now', 'localtime') WHERE id = ?", id);
+        String timeModifier = timezoneConfig.getTimezoneModifier();
+        String sql = String.format("UPDATE rss_sources SET last_fetch_time = datetime('now', '%s') WHERE id = ?", timeModifier);
+        jdbcTemplate.update(sql, id);
     }
 
     public void delete(Long id, Long userId) {
