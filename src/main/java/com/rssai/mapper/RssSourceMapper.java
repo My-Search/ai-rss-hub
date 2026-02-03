@@ -80,4 +80,8 @@ public class RssSourceMapper {
     public Long countEnabledSources() {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM rss_sources WHERE enabled = 1", Long.class);
     }
+
+    public Long countByUserId(Long userId) {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM rss_sources WHERE user_id = ?", Long.class, userId);
+    }
 }

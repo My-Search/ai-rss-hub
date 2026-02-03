@@ -1,16 +1,19 @@
 package com.rssai.mapper;
 
 import com.rssai.config.TimezoneConfig;
+import com.rssai.constant.RssConstants;
 import com.rssai.model.RssItem;
 import com.rssai.util.DateTimeUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.List;
 
+/**
+ * RSS条目数据访问层
+ * 使用常量定义查询限制和重复检查天数
+ */
 @Repository
 public class RssItemMapper {
     private final JdbcTemplate jdbcTemplate;
@@ -37,14 +40,15 @@ public class RssItemMapper {
     };
 
     public List<RssItem> findBySourceIdAndFiltered(Long sourceId, Boolean filtered) {
-        return jdbcTemplate.query("SELECT * FROM rss_items WHERE source_id = ? AND ai_filtered = ? ORDER BY pub_date DESC LIMIT 100", 
-                rowMapper, sourceId, filtered);
+        return jdbcTemplate.query(
+            "SELECT * FROM rss_items WHERE source_id = ? AND ai_filtered = ? ORDER BY pub_date DESC LIMIT ?", 
+            rowMapper, sourceId, filtered, RssConstants.DEFAULT_RSS_ITEM_LIMIT);
     }
 
     public List<RssItem> findFilteredByUserId(Long userId) {
         return jdbcTemplate.query(
-                "SELECT ri.* FROM rss_items ri JOIN rss_sources rs ON ri.source_id = rs.id WHERE rs.user_id = ? AND ri.ai_filtered = 1 ORDER BY ri.pub_date DESC LIMIT 100",
-                rowMapper, userId);
+                "SELECT ri.* FROM rss_items ri JOIN rss_sources rs ON ri.source_id = rs.id WHERE rs.user_id = ? AND ri.ai_filtered = 1 ORDER BY ri.pub_date DESC LIMIT ?",
+                rowMapper, userId, RssConstants.DEFAULT_RSS_ITEM_LIMIT);
     }
 
     public List<RssItem> findFilteredByUserIdWithPagination(Long userId, int page, int pageSize) {
@@ -68,10 +72,6 @@ public class RssItemMapper {
 
     /**
      * 检查指定天数内是否存在相同的link（用户隔离）
-     * @param link 链接地址
-     * @param days 天数限制
-     * @param userId 用户ID
-     * @return 如果存在返回true，否则返回false
      */
     public boolean existsByLinkWithinDays(String link, int days, Long userId) {
         Integer count = jdbcTemplate.queryForObject(
@@ -82,10 +82,6 @@ public class RssItemMapper {
 
     /**
      * 检查指定天数内是否存在相同的title（用户隔离）
-     * @param title 标题
-     * @param days 天数限制
-     * @param userId 用户ID
-     * @return 如果存在返回true，否则返回false
      */
     public boolean existsByTitleWithinDays(String title, int days, Long userId) {
         Integer count = jdbcTemplate.queryForObject(

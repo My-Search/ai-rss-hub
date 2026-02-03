@@ -55,4 +55,8 @@ public class KeywordSubscriptionMapper {
     public List<KeywordSubscription> findEnabledByUserId(Long userId) {
         return jdbcTemplate.query("SELECT * FROM keyword_subscriptions WHERE user_id = ? AND enabled = 1 ORDER BY created_at DESC", rowMapper, userId);
     }
+
+    public Long countByUserId(Long userId) {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM keyword_subscriptions WHERE user_id = ?", Long.class, userId);
+    }
 }

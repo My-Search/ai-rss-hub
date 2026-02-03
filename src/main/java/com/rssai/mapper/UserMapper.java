@@ -30,6 +30,8 @@ public class UserMapper {
         user.setUpdatedAt(DateTimeUtils.parseDateTime(rs.getString("updated_at")));
         user.setIsAdmin(rs.getBoolean("is_admin"));
         user.setForcePasswordChange(rs.getBoolean("force_password_change"));
+        user.setIsBanned(rs.getBoolean("is_banned"));
+        user.setLastLoginAt(DateTimeUtils.parseDateTime(rs.getString("last_login_at")));
         return user;
     };
     
@@ -204,6 +206,42 @@ public class UserMapper {
     public void updateEmail(Long userId, String email) {
         jdbcTemplate.update("UPDATE users SET email = ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
                 email, userId);
+        invalidateUserCache(userId);
+    }
+
+    public List<User> findAllUsers() {
+        return jdbcTemplate.query("SELECT * FROM users ORDER BY created_at DESC", rowMapper);
+    }
+
+    public List<User> findUsersWithPagination(int offset, int limit, String keyword) {
+        String sql;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String searchPattern = "%" + keyword.trim() + "%";
+            sql = "SELECT * FROM users WHERE username LIKE ? OR email LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+            return jdbcTemplate.query(sql, rowMapper, searchPattern, searchPattern, limit, offset);
+        } else {
+            sql = "SELECT * FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?";
+            return jdbcTemplate.query(sql, rowMapper, limit, offset);
+        }
+    }
+
+    public Long countUsers(String keyword) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String searchPattern = "%" + keyword.trim() + "%";
+            String sql = "SELECT COUNT(*) FROM users WHERE username LIKE ? OR email LIKE ?";
+            return jdbcTemplate.queryForObject(sql, Long.class, searchPattern, searchPattern);
+        } else {
+            return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users", Long.class);
+        }
+    }
+
+    public void updateIsBanned(Long userId, Boolean isBanned) {
+        jdbcTemplate.update("UPDATE users SET is_banned = ?, updated_at = datetime('now', 'localtime') WHERE id = ?", isBanned, userId);
+        invalidateUserCache(userId);
+    }
+
+    public void updateLastLoginAt(Long userId) {
+        jdbcTemplate.update("UPDATE users SET last_login_at = datetime('now', 'localtime'), updated_at = datetime('now', 'localtime') WHERE id = ?", userId);
         invalidateUserCache(userId);
     }
 }

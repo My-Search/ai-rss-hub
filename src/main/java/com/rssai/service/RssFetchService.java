@@ -4,6 +4,7 @@ import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
+import com.rssai.constant.RssConstants;
 import com.rssai.mapper.*;
 import com.rssai.model.*;
 import okhttp3.OkHttpClient;
@@ -108,11 +109,13 @@ public class RssFetchService {
                 String title = entry.getTitle();
                 String link = entry.getLink();
 
-                // 检查30天内是否已存在相同的link（用户隔离）
-                boolean duplicateLink = rssItemMapper.existsByLinkWithinDays(link, 30, source.getUserId());
-                // 检查30天内是否已存在相同的title（仅当title不为空时，用户隔离）
+                // 检查是否已存在相同的link（用户隔离）
+                boolean duplicateLink = rssItemMapper.existsByLinkWithinDays(
+                    link, RssConstants.DUPLICATE_CHECK_DAYS, source.getUserId());
+                // 检查是否已存在相同的title（仅当title不为空时，用户隔离）
                 boolean duplicateTitle = title != null && !title.trim().isEmpty()
-                        && rssItemMapper.existsByTitleWithinDays(title.trim(), 30, source.getUserId());
+                        && rssItemMapper.existsByTitleWithinDays(
+                            title.trim(), RssConstants.DUPLICATE_CHECK_DAYS, source.getUserId());
 
                 if (!duplicateLink && !duplicateTitle) {
                     newEntries.add(entry);

@@ -57,11 +57,16 @@
             <div class="card-body">
                 <div class="rss-items" id="rss-items">
                     <div class="rss-item" th:each="item : ${items}">
-                        <h3><a th:href="${item.link}" target="_blank" th:text="${item.title}"></a></h3>
-                        <p class="item-desc" th:text="${item.description}"></p>
-                        <div class="item-meta">
-                            <span th:if="${item.pubDate != null}" th:text="${#temporals.format(item.pubDate, 'yyyy-MM-dd')}" class="pub-date" th:data-time="${#temporals.format(item.pubDate, 'HH:mm')}"></span>
-                            <span th:if="${item.pubDate == null}">未知时间</span>
+                        <div class="rss-item-content">
+                            <h3><a th:href="${item.link}" target="_blank" th:text="${item.title}"></a></h3>
+                            <p class="item-desc" th:text="${item.description}"></p>
+                            <div class="item-meta">
+                                <span th:if="${item.pubDate != null}" th:text="${#temporals.format(item.pubDate, 'yyyy-MM-dd')}" class="pub-date" th:data-time="${#temporals.format(item.pubDate, 'HH:mm')}"></span>
+                                <span th:if="${item.pubDate == null}">未知时间</span>
+                            </div>
+                        </div>
+                        <div class="rss-item-image" th:if="${item.imageUrl != null}">
+                            <img th:src="${item.imageUrl}" th:alt="${item.title}" />
                         </div>
                     </div>
                     <div th:if="${#lists.isEmpty(items)}" class="empty-state">
@@ -117,12 +122,20 @@
                 items.forEach(function(item) {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'rss-item';
+                    
+                    const imageHtml = item.imageUrl 
+                        ? `<div class="rss-item-image"><img src="${item.imageUrl}" alt="${item.title}" /></div>` 
+                        : '';
+                    
                     itemDiv.innerHTML = `
-                        <h3><a href="${item.link}" target="_blank">${item.title}</a></h3>
-                        <p class="item-desc">${item.description}</p>
-                        <div class="item-meta">
-                            ${item.pubDate ? `<span class="pub-date">${formatPubDate(item.pubDate)}</span>` : '<span>未知时间</span>'}
+                        <div class="rss-item-content">
+                            <h3><a href="${item.link}" target="_blank">${item.title}</a></h3>
+                            <p class="item-desc">${item.description}</p>
+                            <div class="item-meta">
+                                ${item.pubDate ? `<span class="pub-date">${formatPubDate(item.pubDate)}</span>` : '<span>未知时间</span>'}
+                            </div>
                         </div>
+                        ${imageHtml}
                     `;
                     rssItemsContainer.appendChild(itemDiv);
                 });

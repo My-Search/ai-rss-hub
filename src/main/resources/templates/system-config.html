@@ -61,6 +61,15 @@
                     </svg>
                     <span>注册配置</span>
                 </button>
+                <button class="nav-item" data-tab="users">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>用户管理</span>
+                </button>
                 <button class="nav-item" data-tab="logs">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -71,6 +80,7 @@
                     </svg>
                     <span>系统日志</span>
                 </button>
+
             </nav>
 
             <!-- 移动端滑动提示 -->
@@ -512,6 +522,70 @@
                     </div>
                 </div>
             </div>
+
+            <div class="config-tab-content" id="users-tab" style="display: none;">
+                <div class="config-section">
+                    <div class="section-body">
+                        <div class="users-toolbar">
+                            <div class="users-search">
+                                <input type="text" id="userSearchInput" placeholder="搜索用户名或邮箱..." oninput="onSearchInput()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </div>
+                            <button class="btn btn-secondary" onclick="refreshUsers()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <polyline points="1 20 1 14 7 14"></polyline>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                                刷新
+                            </button>
+                        </div>
+                        <div class="users-table-container">
+                            <table class="users-table" id="usersTable">
+                                <thead>
+                                    <tr>
+                                        <th>用户名</th>
+                                        <th>邮箱</th>
+                                        <th>RSS源数</th>
+                                        <th>关键词订阅</th>
+                                        <th>定时订阅</th>
+                                        <th>最近登录</th>
+                                        <th>注册时间</th>
+                                        <th>状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody">
+                                    <tr>
+                                        <td colspan="9" class="loading-cell">加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="pagination-container" id="paginationContainer">
+                            <span class="pagination-info">共 <span id="totalCount">0</span> 条记录，第 <span id="currentPage">1</span> / <span id="totalPages">1</span> 页</span>
+                            <div class="pagination-controls">
+                                <button class="btn btn-sm" id="prevPageBtn" onclick="goToPage(currentPage - 1)" disabled>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="15 18 9 12 15 6"></polyline>
+                                    </svg>
+                                    上一页
+                                </button>
+                                <div class="page-numbers" id="pageNumbers"></div>
+                                <button class="btn btn-sm" id="nextPageBtn" onclick="goToPage(currentPage + 1)" disabled>
+                                    下一页
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -546,7 +620,8 @@
                 email: { title: '邮箱配置', desc: '配置SMTP服务器以启用邮件通知功能' },
                 register: { title: '注册配置', desc: '控制用户注册相关功能' },
                 data: { title: '数据统计', desc: '查看系统运行数据统计' },
-                logs: { title: '系统日志', desc: '查看系统控制台日志' }
+                logs: { title: '系统日志', desc: '查看系统控制台日志' },
+                users: { title: '用户管理', desc: '管理系统用户，包括封禁/解封用户' }
             };
 
             navItems.forEach(item => {
@@ -587,6 +662,11 @@
                         startLogAutoRefresh();
                     } else {
                         stopLogAutoRefresh();
+                    }
+
+                    // 如果切换到用户管理标签页，加载用户列表
+                    if (tabId === 'users') {
+                        refreshUsers();
                     }
                 });
             });
@@ -1141,6 +1221,179 @@
             initMobileNavScroll();
             initTimeRangeSelector();
         });
+
+        // ========== 用户管理功能 ==========
+        let currentPage = 1;
+        const pageSize = 20;
+        let totalPages = 1;
+        let totalCount = 0;
+        let currentKeyword = '';
+        let searchTimeout = null;
+
+        function refreshUsers() {
+            loadUsers(currentPage, pageSize, currentKeyword);
+        }
+
+        function loadUsers(page, size, keyword) {
+            const tbody = document.getElementById('usersTableBody');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="9" class="loading-cell">加载中...</td></tr>';
+            }
+
+            let url = '/system-config/users?page=' + page + '&pageSize=' + size;
+            if (keyword && keyword.trim()) {
+                url += '&keyword=' + encodeURIComponent(keyword.trim());
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentPage = data.currentPage || 1;
+                        // pageSize 固定为 20
+                        totalPages = data.totalPages || 1;
+                        totalCount = data.totalCount || 0;
+                        renderUsersTable(data.users || []);
+                        updatePagination();
+                    } else {
+                        if (tbody) {
+                            tbody.innerHTML = '<tr><td colspan="9" class="error-cell">加载失败: ' + (data.message || '未知错误') + '</td></tr>';
+                        }
+                    }
+                })
+                .catch(error => {
+                    if (tbody) {
+                        tbody.innerHTML = '<tr><td colspan="9" class="error-cell">加载失败: ' + error.message + '</td></tr>';
+                    }
+                });
+        }
+
+        function renderUsersTable(users) {
+            const tbody = document.getElementById('usersTableBody');
+            if (!tbody) return;
+
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">暂无用户</td></tr>';
+                return;
+            }
+
+            let html = '';
+            users.forEach(user => {
+                const isBanned = user.isBanned;
+                const statusClass = isBanned ? 'status-banned' : 'status-normal';
+                const statusText = isBanned ? '已封禁' : '正常';
+                const banBtnText = isBanned ? '解封' : '封禁';
+                const banBtnClass = isBanned ? 'btn-success' : 'btn-danger';
+
+                html += '<tr>';
+                html += '<td>' + escapeHtml(user.username) + (user.isAdmin ? ' <span class="admin-tag">管理员</span>' : '') + '</td>';
+                html += '<td>' + escapeHtml(user.email || '-') + '</td>';
+                html += '<td>' + (user.rssSourceCount || 0) + '</td>';
+                html += '<td>' + (user.keywordSubscriptionCount || 0) + '</td>';
+                html += '<td>' + (user.emailSubscriptionEnabled ? (user.emailDigestTime || '已启用') : '未启用') + '</td>';
+                html += '<td>' + formatDateTime(user.lastLoginAt) + '</td>';
+                html += '<td>' + formatDateTime(user.createdAt) + '</td>';
+                html += '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>';
+                html += '<td>';
+                if (!user.isAdmin) {
+                    html += '<button class="btn btn-sm ' + banBtnClass + '" onclick="toggleBanUser(' + user.id + ', ' + !isBanned + ')">' + banBtnText + '</button>';
+                } else {
+                    html += '<button class="btn btn-sm btn-disabled" disabled title="管理员不可封禁">封禁</button>';
+                }
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function updatePagination() {
+            // 更新分页信息
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('currentPage').textContent = currentPage;
+            document.getElementById('totalPages').textContent = totalPages;
+
+            // 更新按钮状态
+            document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+            document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
+
+            // 更新页码显示
+            renderPageNumbers();
+        }
+
+        function renderPageNumbers() {
+            // 不显示页码数字按钮，只保留上一页/下一页
+            const container = document.getElementById('pageNumbers');
+            if (container) {
+                container.innerHTML = '';
+            }
+        }
+
+        function goToPage(page) {
+            if (page < 1 || page > totalPages || page === currentPage) return;
+            loadUsers(page, pageSize, currentKeyword);
+        }
+
+        function onSearchInput() {
+            const searchInput = document.getElementById('userSearchInput');
+            if (!searchInput) return;
+
+            const keyword = searchInput.value.trim();
+
+            // 清除之前的定时器
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            // 延迟搜索，避免频繁请求
+            searchTimeout = setTimeout(() => {
+                currentKeyword = keyword;
+                currentPage = 1;
+                loadUsers(currentPage, pageSize, currentKeyword);
+            }, 300);
+        }
+
+        function toggleBanUser(userId, banned) {
+            const action = banned ? '封禁' : '解封';
+            if (!confirm('确定要' + action + '该用户吗？')) {
+                return;
+            }
+
+            fetch('/system-config/users/ban', {
+                method: 'POST',
+                headers: createHeaders(),
+                body: 'userId=' + encodeURIComponent(userId) + '&banned=' + encodeURIComponent(banned)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    refreshUsers();
+                } else {
+                    alert('操作失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                alert('请求失败: ' + error.message);
+            });
+        }
+
+        function formatDateTime(dateTimeStr) {
+            if (!dateTimeStr) return '-';
+            try {
+                const date = new Date(dateTimeStr);
+                if (isNaN(date.getTime())) return '-';
+                return date.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return '-';
+            }
+        }
     </script>
 </body>
 </html>

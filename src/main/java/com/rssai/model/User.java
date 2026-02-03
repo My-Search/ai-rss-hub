@@ -17,4 +17,6 @@ public class User {
     private LocalDateTime updatedAt;
     private Boolean isAdmin;
     private Boolean forcePasswordChange;
+    private Boolean isBanned;
+    private LocalDateTime lastLoginAt;
 }

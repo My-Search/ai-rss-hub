@@ -4,6 +4,7 @@ import com.rssai.config.MailConfig;
 import com.rssai.mapper.UserMapper;
 import com.rssai.mapper.RssSourceMapper;
 import com.rssai.mapper.FilterLogMapper;
+import com.rssai.mapper.KeywordSubscriptionMapper;
 import com.rssai.model.SystemConfig;
 import com.rssai.model.User;
 import com.rssai.service.SystemConfigService;
@@ -13,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.session.SessionInformation;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,7 +41,9 @@ public class SystemConfigController {
     private final RssFetchSchedulerService rssFetchSchedulerService;
     private final RssSourceMapper rssSourceMapper;
     private final FilterLogMapper filterLogMapper;
-    
+    private final KeywordSubscriptionMapper keywordSubscriptionMapper;
+    private final SessionRegistry sessionRegistry;
+
     public SystemConfigController(SystemConfigService systemConfigService,
                                   EmailService emailService,
                                   UserMapper userMapper,
@@ -46,15 +51,19 @@ public class SystemConfigController {
                                   JavaMailSender mailSender,
                                   RssFetchSchedulerService rssFetchSchedulerService,
                                   RssSourceMapper rssSourceMapper,
-                                  FilterLogMapper filterLogMapper) {
+                                  FilterLogMapper filterLogMapper,
+                                  KeywordSubscriptionMapper keywordSubscriptionMapper,
+                                  SessionRegistry sessionRegistry) {
         this.systemConfigService = systemConfigService;
         this.emailService = emailService;
         this.userMapper = userMapper;
+        this.sessionRegistry = sessionRegistry;
         this.mailConfig = mailConfig;
         this.mailSender = mailSender;
         this.rssFetchSchedulerService = rssFetchSchedulerService;
         this.rssSourceMapper = rssSourceMapper;
         this.filterLogMapper = filterLogMapper;
+        this.keywordSubscriptionMapper = keywordSubscriptionMapper;
     }
 
     @GetMapping("/system-config")
@@ -343,5 +352,143 @@ public class SystemConfigController {
         }
 
         return result;
+    }
+
+    @GetMapping("/system-config/users")
+    @ResponseBody
+    public Map<String, Object> getAllUsers(Authentication auth,
+                                           @RequestParam(defaultValue = "1") int page,
+                                           @RequestParam(defaultValue = "10") int pageSize,
+                                           @RequestParam(required = false) String keyword) {
+        Map<String, Object> result = new HashMap<>();
+
+        User currentUser = userMapper.findByUsername(auth.getName());
+        if (currentUser.getIsAdmin() == null || !currentUser.getIsAdmin()) {
+            result.put("success", false);
+            result.put("message", "无权限访问");
+            return result;
+        }
+
+        try {
+            // 参数校验
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            if (pageSize > 100) pageSize = 100;
+
+            int offset = (page - 1) * pageSize;
+
+            // 获取总数
+            Long totalCount = userMapper.countUsers(keyword);
+            int totalPages = (int) Math.ceil((double) totalCount / pageSize);
+
+            // 获取分页数据
+            List<User> users = userMapper.findUsersWithPagination(offset, pageSize, keyword);
+            List<Map<String, Object>> userList = new ArrayList<>();
+
+            for (User user : users) {
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("id", user.getId());
+                userInfo.put("username", user.getUsername());
+                userInfo.put("email", user.getEmail());
+                userInfo.put("isAdmin", user.getIsAdmin());
+                userInfo.put("isBanned", user.getIsBanned());
+                userInfo.put("createdAt", user.getCreatedAt());
+                userInfo.put("lastLoginAt", user.getLastLoginAt());
+                userInfo.put("emailSubscriptionEnabled", user.getEmailSubscriptionEnabled());
+                userInfo.put("emailDigestTime", user.getEmailDigestTime());
+
+                // 获取RSS源数量
+                Long rssCount = rssSourceMapper.countByUserId(user.getId());
+                userInfo.put("rssSourceCount", rssCount != null ? rssCount : 0);
+
+                // 获取关键词订阅数量
+                Long keywordCount = keywordSubscriptionMapper.countByUserId(user.getId());
+                userInfo.put("keywordSubscriptionCount", keywordCount != null ? keywordCount : 0);
+
+                userList.add(userInfo);
+            }
+
+            result.put("success", true);
+            result.put("users", userList);
+            result.put("totalCount", totalCount);
+            result.put("totalPages", totalPages);
+            result.put("currentPage", page);
+            result.put("pageSize", pageSize);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "获取用户列表失败: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    @PostMapping("/system-config/users/ban")
+    @ResponseBody
+    public Map<String, Object> banUser(Authentication auth, @RequestParam Long userId, @RequestParam boolean banned) {
+        Map<String, Object> result = new HashMap<>();
+
+        User currentUser = userMapper.findByUsername(auth.getName());
+        if (currentUser.getIsAdmin() == null || !currentUser.getIsAdmin()) {
+            result.put("success", false);
+            result.put("message", "无权限操作");
+            return result;
+        }
+
+        // 不能封禁自己
+        if (currentUser.getId().equals(userId)) {
+            result.put("success", false);
+            result.put("message", "不能封禁自己");
+            return result;
+        }
+
+        try {
+            User targetUser = userMapper.findById(userId);
+            if (targetUser == null) {
+                result.put("success", false);
+                result.put("message", "用户不存在");
+                return result;
+            }
+
+            // 不能封禁管理员
+            if (targetUser.getIsAdmin() != null && targetUser.getIsAdmin()) {
+                result.put("success", false);
+                result.put("message", "不能封禁管理员");
+                return result;
+            }
+
+            userMapper.updateIsBanned(userId, banned);
+
+            // 如果是封禁操作，使该用户的所有登录会话失效
+            if (banned) {
+                invalidateUserSessions(targetUser.getUsername());
+            }
+
+            result.put("success", true);
+            result.put("message", banned ? "用户已封禁" : "用户已解封");
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "操作失败: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * 使指定用户的所有会话失效
+     */
+    private void invalidateUserSessions(String username) {
+        List<Object> principals = sessionRegistry.getAllPrincipals();
+        for (Object principal : principals) {
+            if (principal instanceof org.springframework.security.core.userdetails.User) {
+                org.springframework.security.core.userdetails.User user =
+                        (org.springframework.security.core.userdetails.User) principal;
+                if (user.getUsername().equals(username)) {
+                    List<SessionInformation> sessions = sessionRegistry.getAllSessions(principal, false);
+                    for (SessionInformation session : sessions) {
+                        session.expireNow();
+                    }
+                }
+            }
+        }
     }
 }

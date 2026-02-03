@@ -16,4 +16,7 @@ public class RssItem {
     private Boolean aiFiltered;
     private String aiReason;
     private LocalDateTime createdAt;
+    
+    // 临时字段，用于前端显示
+    private String imageUrl;
 }

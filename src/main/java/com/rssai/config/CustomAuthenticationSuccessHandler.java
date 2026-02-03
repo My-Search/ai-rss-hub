@@ -21,10 +21,15 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         User user = userMapper.findByUsername(authentication.getName());
-        if (user != null && user.getForcePasswordChange() != null && user.getForcePasswordChange()) {
-            response.sendRedirect("/change-password");
-        } else {
-            response.sendRedirect("/dashboard");
+        if (user != null) {
+            // 更新最后登录时间
+            userMapper.updateLastLoginAt(user.getId());
+
+            if (user.getForcePasswordChange() != null && user.getForcePasswordChange()) {
+                response.sendRedirect("/change-password");
+                return;
+            }
         }
+        response.sendRedirect("/dashboard");
     }
 }

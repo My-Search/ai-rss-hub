@@ -1,5 +1,6 @@
 package com.rssai.util;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class HtmlUtils {
@@ -7,6 +8,7 @@ public class HtmlUtils {
     private static final Pattern HTML_ENTITY_PATTERN = Pattern.compile("&[a-zA-Z]+;");
     private static final Pattern MULTIPLE_SPACES_PATTERN = Pattern.compile("\\s+");
     private static final Pattern MULTIPLE_NEWLINES_PATTERN = Pattern.compile("\\n{3,}");
+    private static final Pattern IMG_SRC_PATTERN = Pattern.compile("<img[^>]+src=[\"']([^\"']+)[\"'][^>]*>", Pattern.CASE_INSENSITIVE);
 
     public static String stripHtmlTags(String html) {
         if (html == null || html.trim().isEmpty()) {
@@ -51,5 +53,17 @@ public class HtmlUtils {
             return text;
         }
         return text.substring(0, maxLength) + "...";
+    }
+
+    public static String extractFirstImage(String html) {
+        if (html == null || html.trim().isEmpty()) {
+            return null;
+        }
+        
+        Matcher matcher = IMG_SRC_PATTERN.matcher(html);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 }

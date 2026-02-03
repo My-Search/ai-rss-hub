@@ -1,5 +1,6 @@
 package com.rssai.config;
 
+import com.rssai.constant.RssConstants;
 import com.rssai.security.CustomPersistentTokenBasedRememberMeServices;
 import com.rssai.security.JdbcTokenRepositoryImpl;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,14 +8,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
-import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
+/**
+ * Spring Security配置
+ * 使用常量定义Remember Me有效期
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -22,16 +29,19 @@ public class SecurityConfig {
     private final JdbcTokenRepositoryImpl tokenRepository;
     private final UserDetailsService userDetailsService;
     private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
+    private final CustomAuthenticationFailureHandler authenticationFailureHandler;
 
     @Value("${security.remember-me-key:rss-ai-hub-remember-me-key}")
     private String rememberMeKey;
 
     public SecurityConfig(JdbcTokenRepositoryImpl tokenRepository,
                           UserDetailsService userDetailsService,
-                          CustomAuthenticationSuccessHandler authenticationSuccessHandler) {
+                          CustomAuthenticationSuccessHandler authenticationSuccessHandler,
+                          CustomAuthenticationFailureHandler authenticationFailureHandler) {
         this.tokenRepository = tokenRepository;
         this.userDetailsService = userDetailsService;
         this.authenticationSuccessHandler = authenticationSuccessHandler;
+        this.authenticationFailureHandler = authenticationFailureHandler;
     }
 
     @Bean
@@ -56,7 +66,7 @@ public class SecurityConfig {
             .formLogin(form -> form
                 .loginPage("/login")
                 .successHandler(authenticationSuccessHandler)
-                .failureUrl("/login?error")
+                .failureHandler(authenticationFailureHandler)
                 .permitAll()
             )
             .rememberMe(remember -> remember
@@ -67,6 +77,7 @@ public class SecurityConfig {
                 .maximumSessions(-1)
                 .maxSessionsPreventsLogin(false)
                 .expiredUrl("/login?expired")
+                .sessionRegistry(sessionRegistry())
             )
             .logout(logout -> logout
                 .logoutSuccessUrl("/login")
@@ -88,9 +99,19 @@ public class SecurityConfig {
                 userDetailsService,
                 tokenRepository
         );
-        services.setTokenValiditySeconds(1209600); // 14天
+        services.setTokenValiditySeconds(RssConstants.REMEMBER_ME_VALIDITY_SECONDS);
         services.setCookieName("remember-me");
         services.setAlwaysRemember(false);
         return services;
+    }
+
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
     }
 }

@@ -55,6 +55,12 @@ public class DashboardController {
         for (RssItem item : items) {
             String cleanDesc = HtmlUtils.stripHtml(item.getDescription());
             item.setDescription(HtmlUtils.truncate(cleanDesc, 200));
+            // 提取第一张图片
+            String imageUrl = HtmlUtils.extractFirstImage(item.getContent());
+            if (imageUrl == null) {
+                imageUrl = HtmlUtils.extractFirstImage(item.getDescription());
+            }
+            item.setImageUrl(imageUrl);
         }
         
         model.addAttribute("items", items);
@@ -79,6 +85,12 @@ public class DashboardController {
         for (RssItem item : items) {
             String cleanDesc = HtmlUtils.stripHtml(item.getDescription());
             item.setDescription(HtmlUtils.truncate(cleanDesc, 200));
+            // 提取第一张图片
+            String imageUrl = HtmlUtils.extractFirstImage(item.getContent());
+            if (imageUrl == null) {
+                imageUrl = HtmlUtils.extractFirstImage(item.getDescription());
+            }
+            item.setImageUrl(imageUrl);
         }
         
         Map<String, Object> result = new HashMap<>();

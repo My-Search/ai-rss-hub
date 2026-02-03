@@ -47,7 +47,9 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "is_admin BOOLEAN DEFAULT 0, " +
-                "force_password_change BOOLEAN DEFAULT 0)");
+                "force_password_change BOOLEAN DEFAULT 0, " +
+                "is_banned BOOLEAN DEFAULT 0, " +
+                "last_login_at TIMESTAMP)");
 
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_email_digest_time ON users(email_digest_time, email_subscription_enabled)");
 
@@ -85,6 +87,19 @@ public class DatabaseInitializer implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE rss_sources ADD COLUMN refresh_interval INTEGER DEFAULT 60");
         } catch (Exception e) {
             logger.debug("列 refresh_interval 可能已存在: {}", e.getMessage());
+        }
+
+        // 添加用户表新字段（如果尚不存在）
+        try {
+            jdbcTemplate.execute("ALTER TABLE users ADD COLUMN is_banned BOOLEAN DEFAULT 0");
+        } catch (Exception e) {
+            logger.debug("列 is_banned 可能已存在: {}", e.getMessage());
+        }
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP");
+        } catch (Exception e) {
+            logger.debug("列 last_login_at 可能已存在: {}", e.getMessage());
         }
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS rss_items (" +

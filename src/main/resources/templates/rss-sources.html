@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <script>
@@ -67,12 +67,15 @@
                                             th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval}"
                                             onclick="showEditModalFromData(this)">编辑</button>
                                     <form th:action="@{/rss-sources/{id}/toggle(id=${source.id})}" method="post" style="display:inline;">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                         <button type="submit" class="btn btn-sm" th:text="${source.enabled} ? '禁用' : '启用'"></button>
                                     </form>
                                     <form th:action="@{/rss-sources/{id}/fetch(id=${source.id})}" method="post" style="display:inline;" th:if="${source.enabled}">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                         <button type="submit" class="btn btn-sm btn-primary">立即抓取</button>
                                     </form>
                                     <form th:action="@{/rss-sources/{id}/delete(id=${source.id})}" method="post" style="display:inline;">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                         <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除?')">删除</button>
                                     </form>
                                 </td>
@@ -109,12 +112,15 @@
                                     th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval}"
                                     onclick="showEditModalFromData(this)">编辑</button>
                             <form th:action="@{/rss-sources/{id}/toggle(id=${source.id})}" method="post" style="display:inline;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                 <button type="submit" class="btn btn-sm" th:text="${source.enabled} ? '禁用' : '启用'"></button>
                             </form>
                             <form th:action="@{/rss-sources/{id}/fetch(id=${source.id})}" method="post" style="display:inline;" th:if="${source.enabled}">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                 <button type="submit" class="btn btn-sm btn-primary">抓取</button>
                             </form>
                             <form th:action="@{/rss-sources/{id}/delete(id=${source.id})}" method="post" style="display:inline;">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                 <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除?')">删除</button>
                             </form>
                         </div>
@@ -131,6 +137,7 @@
         <div class="modal-content">
             <h2>添加RSS源</h2>
             <form th:action="@{/rss-sources}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <div class="form-group">
                     <label>名称</label>
                     <input type="text" name="name" placeholder="留空则自动从URL提取域名">
@@ -156,6 +163,7 @@
         <div class="modal-content">
             <h2>编辑RSS源</h2>
             <form id="editForm" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <input type="hidden" id="editId" name="id">
                 <div class="form-group">
                     <label>名称</label>
