@@ -59,12 +59,10 @@ public class UserService {
 
         User savedUser = userMapper.findByUsername(username);
 
-        // 如果是第一个用户，更新为管理员并强制首次登录修改密码
+        // 如果是第一个用户，更新为管理员
         if (isFirstUser) {
             userMapper.updateIsAdmin(savedUser.getId(), true);
             savedUser.setIsAdmin(true);
-            userMapper.updateForcePasswordChange(savedUser.getId(), true);
-            savedUser.setForcePasswordChange(true);
         }
         
         UserRssFeed feed = new UserRssFeed();
