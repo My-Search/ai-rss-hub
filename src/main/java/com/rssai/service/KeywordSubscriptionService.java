@@ -25,6 +25,10 @@ public class KeywordSubscriptionService {
         return keywordSubscriptionMapper.findByUserId(userId);
     }
 
+    public List<KeywordSubscription> findEnabledByUserId(Long userId) {
+        return keywordSubscriptionMapper.findEnabledByUserId(userId);
+    }
+
     public KeywordSubscription findById(Long id, Long userId) {
         return keywordSubscriptionMapper.findById(id, userId);
     }

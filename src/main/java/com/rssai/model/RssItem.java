@@ -26,4 +26,7 @@ public class RssItem {
     
     // 临时字段，用于前端显示
     private String imageUrl;
+    
+    // 源名称，用于前端显示
+    private String sourceName;
 }

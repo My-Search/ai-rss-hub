@@ -75,7 +75,7 @@
             <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
             
             <!-- 第一个用户提示 -->
-            <div th:if="${isFirstUser}" class="alert alert-info" style="background: linear-gradient(135deg, #0f4c81 0%, #1a6fc4 100%); color: white; border: none; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+            <div th:if="${isFirstUser}" class="alert alert-info first-user-alert">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
                         <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2"/>

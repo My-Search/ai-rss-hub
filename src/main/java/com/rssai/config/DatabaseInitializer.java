@@ -12,10 +12,10 @@ import java.io.File;
 @Component
 public class DatabaseInitializer implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseInitializer.class);
-    
+
     private final JdbcTemplate jdbcTemplate;
     private final SystemConfigService systemConfigService;
-    
+
     public DatabaseInitializer(JdbcTemplate jdbcTemplate, SystemConfigService systemConfigService) {
         this.jdbcTemplate = jdbcTemplate;
         this.systemConfigService = systemConfigService;
@@ -36,6 +36,7 @@ public class DatabaseInitializer implements CommandLineRunner {
     }
 
     private void createTables() {
+        // 用户表
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS users (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "username TEXT UNIQUE NOT NULL, " +
@@ -53,26 +54,23 @@ public class DatabaseInitializer implements CommandLineRunner {
 
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_email_digest_time ON users(email_digest_time, email_subscription_enabled)");
 
-        // 创建表（包含 is_reasoning_model, service_status, last_status_change_at）
-        jdbcTemplate.execute(
-                "CREATE TABLE IF NOT EXISTS ai_configs (" +
-                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                        "user_id INTEGER NOT NULL, " +
-                        "base_url TEXT NOT NULL, " +
-                        "model TEXT NOT NULL, " +
-                        "api_key TEXT NOT NULL, " +
-                        "system_prompt TEXT, " +
-                        "refresh_interval INTEGER DEFAULT 10, " +
-                        "is_reasoning_model INTEGER DEFAULT NULL, " + // NULL=自动识别,1=思考,0=普通
-                        "service_status INTEGER DEFAULT 0, " + // 0=正常,1=异常
-                        "last_status_change_at TEXT, " +
-                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                        "FOREIGN KEY (user_id) REFERENCES users(id)" +
-                        ")"
-        );
+        // AI配置表
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS ai_configs (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "user_id INTEGER NOT NULL, " +
+                "base_url TEXT NOT NULL, " +
+                "model TEXT NOT NULL, " +
+                "api_key TEXT NOT NULL, " +
+                "system_prompt TEXT, " +
+                "refresh_interval INTEGER DEFAULT 10, " +
+                "is_reasoning_model INTEGER DEFAULT NULL, " +
+                "service_status INTEGER DEFAULT 0, " +
+                "last_status_change_at TEXT, " +
+                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "FOREIGN KEY (user_id) REFERENCES users(id))");
 
-
+        // RSS源表
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS rss_sources (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "user_id INTEGER NOT NULL, " +
@@ -80,30 +78,13 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "url TEXT NOT NULL, " +
                 "enabled BOOLEAN DEFAULT 1, " +
                 "refresh_interval INTEGER DEFAULT 60, " +
+                "ai_filter_enabled BOOLEAN DEFAULT 1, " +
                 "last_fetch_time TIMESTAMP, " +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "FOREIGN KEY (user_id) REFERENCES users(id))");
 
-        try {
-            jdbcTemplate.execute("ALTER TABLE rss_sources ADD COLUMN refresh_interval INTEGER DEFAULT 60");
-        } catch (Exception e) {
-            logger.debug("列 refresh_interval 可能已存在: {}", e.getMessage());
-        }
-
-        // 添加用户表新字段（如果尚不存在）
-        try {
-            jdbcTemplate.execute("ALTER TABLE users ADD COLUMN is_banned BOOLEAN DEFAULT 0");
-        } catch (Exception e) {
-            logger.debug("列 is_banned 可能已存在: {}", e.getMessage());
-        }
-
-        try {
-            jdbcTemplate.execute("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP");
-        } catch (Exception e) {
-            logger.debug("列 last_login_at 可能已存在: {}", e.getMessage());
-        }
-
+        // RSS条目表
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS rss_items (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "source_id INTEGER NOT NULL, " +
@@ -119,9 +100,9 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "FOREIGN KEY (source_id) REFERENCES rss_sources(id))");
 
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_rss_items_created_at ON rss_items(created_at)");
-
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_rss_items_pub_date ON rss_items(pub_date)");
 
+        // 用户RSS订阅表
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS user_rss_feeds (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "user_id INTEGER NOT NULL, " +
@@ -129,6 +110,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "FOREIGN KEY (user_id) REFERENCES users(id))");
 
+        // 过滤日志表
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS filter_logs (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "user_id INTEGER NOT NULL, " +
@@ -143,6 +125,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "FOREIGN KEY (user_id) REFERENCES users(id), " +
                 "FOREIGN KEY (rss_item_id) REFERENCES rss_items(id))");
 
+        // 关键词订阅表
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS keyword_subscriptions (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "user_id INTEGER NOT NULL, " +
@@ -152,6 +135,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "FOREIGN KEY (user_id) REFERENCES users(id))");
 
+        // 关键词匹配通知表
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS keyword_match_notifications (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "user_id INTEGER NOT NULL, " +
@@ -167,12 +151,14 @@ public class DatabaseInitializer implements CommandLineRunner {
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_keyword_match_notifications_user_rss ON keyword_match_notifications(user_id, rss_item_id)");
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_keyword_match_notifications_notified ON keyword_match_notifications(notified, user_id)");
 
+        // 持久化登录表（Spring Security Remember-Me）
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS persistent_logins (" +
                 "username VARCHAR(64) NOT NULL, " +
                 "series VARCHAR(64) PRIMARY KEY, " +
                 "token VARCHAR(64) NOT NULL, " +
                 "last_used TIMESTAMP NOT NULL)");
 
+        // 系统配置表
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS system_configs (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "config_key TEXT UNIQUE NOT NULL, " +

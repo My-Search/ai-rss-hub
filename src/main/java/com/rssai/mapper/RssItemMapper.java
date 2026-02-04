@@ -49,6 +49,14 @@ public class RssItemMapper {
             item.setNeedsRetry(false);
         }
         
+        // 解析 source_name 字段（如果存在）
+        try {
+            String sourceName = rs.getString("source_name");
+            item.setSourceName(sourceName);
+        } catch (Exception e) {
+            item.setSourceName(null);
+        }
+        
         return item;
     };
 
@@ -67,7 +75,7 @@ public class RssItemMapper {
     public List<RssItem> findFilteredByUserIdWithPagination(Long userId, int page, int pageSize) {
         int offset = (page - 1) * pageSize;
         return jdbcTemplate.query(
-                "SELECT ri.* FROM rss_items ri JOIN rss_sources rs ON ri.source_id = rs.id WHERE rs.user_id = ? AND ri.ai_filtered = 1 ORDER BY ri.pub_date DESC LIMIT ? OFFSET ?",
+                "SELECT ri.*, rs.name as source_name FROM rss_items ri JOIN rss_sources rs ON ri.source_id = rs.id WHERE rs.user_id = ? AND ri.ai_filtered = 1 ORDER BY ri.pub_date DESC LIMIT ? OFFSET ?",
                 rowMapper, userId, pageSize, offset);
     }
 

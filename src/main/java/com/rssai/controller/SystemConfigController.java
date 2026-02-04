@@ -458,13 +458,17 @@ public class SystemConfigController {
 
             userMapper.updateIsBanned(userId, banned);
 
-            // 如果是封禁操作，使该用户的所有登录会话失效
+            // 如果是封禁操作，使该用户的所有登录会话失效，并禁用其所有RSS源
             if (banned) {
                 invalidateUserSessions(targetUser.getUsername());
+                rssSourceMapper.updateEnabledByUserId(userId, false);
+            } else {
+                // 解封时，启用其所有RSS源
+                rssSourceMapper.updateEnabledByUserId(userId, true);
             }
 
             result.put("success", true);
-            result.put("message", banned ? "用户已封禁" : "用户已解封");
+            result.put("message", banned ? "用户已封禁，其所有RSS源已禁用" : "用户已解封，其所有RSS源已启用");
         } catch (Exception e) {
             result.put("success", false);
             result.put("message", "操作失败: " + e.getMessage());

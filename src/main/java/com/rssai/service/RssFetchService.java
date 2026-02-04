@@ -19,10 +19,7 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -194,7 +191,43 @@ public class RssFetchService {
 
             // 进行关键词匹配和邮件通知（在AI过滤之前）
             processKeywordMatches(source.getUserId(), rssItemsToProcess);
-            
+
+            // 检查该RSS源是否启用了AI过滤
+            Boolean aiFilterEnabled = source.getAiFilterEnabled();
+            if (aiFilterEnabled == null) {
+                aiFilterEnabled = true; // 默认为开启
+            }
+
+            if (!aiFilterEnabled) {
+                // 如果AI过滤被禁用，将所有条目标记为通过（无需AI过滤）
+                logger.info("RSS源 {} 已禁用AI过滤，跳过AI筛选", source.getName());
+                for (RssItem item : rssItemsToProcess) {
+                    item.setAiFiltered(true);
+                    item.setAiReason("通过 - AI过滤已禁用");
+                    item.setNeedsRetry(false);
+                    rssItemMapper.update(item);
+
+                    // 保存筛选日志
+                    filterLogService.saveFilterLog(
+                        source.getUserId(),
+                        item.getId(),
+                        item.getTitle(),
+                        item.getLink(),
+                        true,
+                        "通过 - AI过滤已禁用",
+                        "该RSS源已禁用AI过滤功能",
+                        source.getName()
+                    );
+                }
+
+                logger.info("========================================");
+                logger.info("抓取完成: {}", source.getName());
+                logger.info("统计: 总消息={}, 新消息={}, 跳过重复={}, 重复标题过滤={}, 处理成功={}, AI过滤=已禁用",
+                    allEntries.size(), newEntries.size(), skippedDuplicateCount, duplicateCount, rssItemsToProcess.size());
+                logger.info("========================================");
+                return;
+            }
+
             // 准备批量筛选数据
             List<AiService.RssItemData> itemsToFilter = new ArrayList<>();
             for (RssItem item : rssItemsToProcess) {
@@ -219,7 +252,7 @@ public class RssFetchService {
                 String aiReason = filterResults.getOrDefault(i, "未通过 - 处理失败");
                 String aiRawResponse = rawResponses.getOrDefault(i, "未找到响应");
                 boolean filtered = aiReason.startsWith("通过");
-                
+
                 // 判断是否为AI服务不可用
                 boolean isServiceUnavailable = false;
                 if (filtered) {
@@ -231,9 +264,9 @@ public class RssFetchService {
                         aiServiceFailureCount++;
                     }
                 }
-                
+
                 logger.info("消息 #{}: {} - {}", i + 1, item.getTitle(), aiReason);
-                
+
                 item.setAiFiltered(filtered);
                 item.setAiReason(aiReason);
                 item.setNeedsRetry(isServiceUnavailable); // 设置是否需要重试
@@ -253,7 +286,7 @@ public class RssFetchService {
             }
 
             // 检查是否需要发送AI服务异常告警
-            checkAndSendAiServiceAlert(source.getUserId(), source.getName(), aiConfig, 
+            checkAndSendAiServiceAlert(source.getUserId(), source.getName(), aiConfig,
                     aiServiceFailureCount, rssItemsToProcess.size(), passedCount);
 
             logger.info("========================================");
@@ -286,44 +319,77 @@ public class RssFetchService {
             return;
         }
 
-        Map<KeywordSubscription, List<RssItem>> matchingMap = keywordSubscriptionService.findMatchingItemsForUser(userId, newRssItems);
-        if (matchingMap.isEmpty()) {
-            logger.info("用户 {} 没有匹配的关键词订阅", userId);
+        List<KeywordSubscription> subscriptions = keywordSubscriptionService.findEnabledByUserId(userId);
+        if (subscriptions.isEmpty()) {
+            logger.info("用户 {} 没有启用的关键词订阅", userId);
             return;
         }
 
-        for (Map.Entry<KeywordSubscription, List<RssItem>> entry : matchingMap.entrySet()) {
-            KeywordSubscription subscription = entry.getKey();
-            List<RssItem> matchingItems = entry.getValue();
-            List<RssItem> itemsToNotify = new ArrayList<>();
+        // 按RSS条目分组，收集每个条目匹配的所有关键词
+        Map<RssItem, List<String>> itemToKeywordsMap = new LinkedHashMap<>();
+        // 记录需要保存的通知（用于去重检查）
+        Map<RssItem, List<KeywordSubscription>> itemToSubscriptionsMap = new HashMap<>();
 
-            for (RssItem item : matchingItems) {
-                // 检查item的ID是否有效
-                if (item.getId() == null) {
-                    logger.warn("RSS条目ID为空，跳过关键词匹配通知 - 标题: {}", item.getTitle());
-                    continue;
-                }
-                
+        for (RssItem item : newRssItems) {
+            // 检查item的ID是否有效
+            if (item.getId() == null) {
+                logger.warn("RSS条目ID为空，跳过关键词匹配 - 标题: {}", item.getTitle());
+                continue;
+            }
+
+            List<String> matchedKeywords = new ArrayList<>();
+            List<KeywordSubscription> matchedSubscriptions = new ArrayList<>();
+
+            for (KeywordSubscription subscription : subscriptions) {
+                // 检查是否已经通知过该组合
                 KeywordMatchNotification existingNotification = keywordMatchNotificationMapper.findByUserIdAndSubscriptionIdAndRssItemId(
                         userId, subscription.getId(), item.getId());
 
                 if (existingNotification == null) {
-                    KeywordMatchNotification notification = new KeywordMatchNotification();
-                    notification.setUserId(userId);
-                    notification.setRssItemId(item.getId());
-                    notification.setSubscriptionId(subscription.getId());
-                    notification.setMatchedKeyword(subscription.getKeywords());
-                    notification.setNotified(true);
-                    keywordMatchNotificationMapper.insert(notification);
-                    itemsToNotify.add(item);
-                    logger.info("记录关键词匹配通知 - 用户: {}, 关键词: {}, RSS: {}, 标题: {}",
-                            userId, subscription.getKeywords(), item.getId(), item.getTitle());
+                    // 检查是否匹配
+                    if (keywordSubscriptionService.matchKeywords(item.getTitle(), subscription.getKeywords()) ||
+                        keywordSubscriptionService.matchKeywords(item.getDescription(), subscription.getKeywords())) {
+                        matchedKeywords.add(subscription.getKeywords());
+                        matchedSubscriptions.add(subscription);
+                    }
                 }
             }
 
-            if (!itemsToNotify.isEmpty()) {
-                emailService.sendKeywordMatchNotification(user.getEmail(), subscription.getKeywords(), itemsToNotify);
+            if (!matchedKeywords.isEmpty()) {
+                itemToKeywordsMap.put(item, matchedKeywords);
+                itemToSubscriptionsMap.put(item, matchedSubscriptions);
             }
+        }
+
+        if (itemToKeywordsMap.isEmpty()) {
+            logger.info("用户 {} 没有新的关键词匹配", userId);
+            return;
+        }
+
+        // 保存通知记录并发送邮件
+        for (Map.Entry<RssItem, List<String>> entry : itemToKeywordsMap.entrySet()) {
+            RssItem item = entry.getKey();
+            List<String> keywords = entry.getValue();
+            List<KeywordSubscription> matchedSubscriptions = itemToSubscriptionsMap.get(item);
+
+            // 保存通知记录
+            for (KeywordSubscription subscription : matchedSubscriptions) {
+                KeywordMatchNotification notification = new KeywordMatchNotification();
+                notification.setUserId(userId);
+                notification.setRssItemId(item.getId());
+                notification.setSubscriptionId(subscription.getId());
+                notification.setMatchedKeyword(subscription.getKeywords());
+                notification.setNotified(true);
+                keywordMatchNotificationMapper.insert(notification);
+                logger.info("记录关键词匹配通知 - 用户: {}, 关键词: {}, RSS: {}, 标题: {}",
+                        userId, subscription.getKeywords(), item.getId(), item.getTitle());
+            }
+
+            // 合并关键词，发送一封邮件
+            String combinedKeywords = String.join("、", keywords);
+            List<RssItem> singleItemList = new ArrayList<>();
+            singleItemList.add(item);
+            emailService.sendKeywordMatchNotification(user.getEmail(), combinedKeywords, singleItemList);
         }
     }
 

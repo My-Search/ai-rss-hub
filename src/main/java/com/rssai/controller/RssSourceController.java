@@ -44,6 +44,10 @@ public class RssSourceController {
         Integer defaultRefreshInterval = (aiConfig != null && aiConfig.getRefreshInterval() != null)
                 ? aiConfig.getRefreshInterval() : 60;
         model.addAttribute("defaultRefreshInterval", defaultRefreshInterval);
+        
+        // 检查用户是否配置了AI
+        boolean hasAiConfig = (aiConfig != null);
+        model.addAttribute("hasAiConfig", hasAiConfig);
 
         return "rss-sources";
     }
@@ -52,7 +56,9 @@ public class RssSourceController {
     public String addSource(Authentication auth,
                            @RequestParam(required = false) String name,
                            @RequestParam String url,
-                           @RequestParam(required = false) Integer refreshInterval) {
+                           @RequestParam(required = false) Integer refreshInterval,
+                           @RequestParam(required = false) Boolean aiFilterEnabled,
+                           Model model) {
         User user = userMapper.findByUsername(auth.getName());
         RssSource source = new RssSource();
         source.setUserId(user.getId());
@@ -62,10 +68,13 @@ public class RssSourceController {
         source.setName(name);
         source.setUrl(url);
         source.setEnabled(true);
+        // 默认开启AI过滤
+        boolean aiFilterEnabledValue = aiFilterEnabled != null ? aiFilterEnabled : true;
+        source.setAiFilterEnabled(aiFilterEnabledValue);
 
         // 如果没有指定刷新间隔，使用用户默认配置
+        AiConfig aiConfig = aiConfigMapper.findByUserId(user.getId());
         if (refreshInterval == null || refreshInterval <= 0) {
-            AiConfig aiConfig = aiConfigMapper.findByUserId(user.getId());
             refreshInterval = (aiConfig != null && aiConfig.getRefreshInterval() != null)
                     ? aiConfig.getRefreshInterval() : 60;
         }
@@ -76,6 +85,16 @@ public class RssSourceController {
         source.setRefreshInterval(refreshInterval);
 
         rssSourceMapper.insert(source);
+        
+        // 检查是否需要提示配置AI
+        if (aiFilterEnabledValue && aiConfig == null) {
+            model.addAttribute("needConfigAi", true);
+            model.addAttribute("sources", rssSourceMapper.findByUserId(user.getId()));
+            model.addAttribute("defaultRefreshInterval", 60);
+            model.addAttribute("hasAiConfig", false);
+            return "rss-sources";
+        }
+        
         return "redirect:/rss-sources";
     }
 
@@ -116,7 +135,9 @@ public class RssSourceController {
                               Authentication auth,
                               @RequestParam(required = false) String name,
                               @RequestParam String url,
-                              @RequestParam(required = false) Integer refreshInterval) {
+                              @RequestParam(required = false) Integer refreshInterval,
+                              @RequestParam(required = false) Boolean aiFilterEnabled,
+                              Model model) {
         User user = userMapper.findByUsername(auth.getName());
         RssSource source = rssSourceMapper.findById(id, user.getId());
         if (source != null) {
@@ -135,7 +156,24 @@ public class RssSourceController {
                 source.setRefreshInterval(refreshInterval);
             }
 
+            // 更新AI过滤设置
+            boolean aiFilterEnabledValue = aiFilterEnabled != null ? aiFilterEnabled : false;
+            if (aiFilterEnabled != null) {
+                source.setAiFilterEnabled(aiFilterEnabledValue);
+            }
+
             rssSourceMapper.update(source);
+            
+            // 检查是否需要提示配置AI
+            AiConfig aiConfig = aiConfigMapper.findByUserId(user.getId());
+            if (aiFilterEnabledValue && aiConfig == null) {
+                model.addAttribute("needConfigAi", true);
+                model.addAttribute("sources", rssSourceMapper.findByUserId(user.getId()));
+                Integer defaultRefreshInterval = 60;
+                model.addAttribute("defaultRefreshInterval", defaultRefreshInterval);
+                model.addAttribute("hasAiConfig", false);
+                return "rss-sources";
+            }
         }
         return "redirect:/rss-sources";
     }

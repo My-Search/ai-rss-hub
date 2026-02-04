@@ -63,6 +63,7 @@
                             <div class="item-meta">
                                 <span th:if="${item.pubDate != null}" th:text="${#temporals.format(item.pubDate, 'yyyy-MM-dd')}" class="pub-date" th:data-time="${#temporals.format(item.pubDate, 'HH:mm')}"></span>
                                 <span th:if="${item.pubDate == null}">未知时间</span>
+                                <span th:if="${item.sourceName != null}" th:text="${item.sourceName}" class="source-name" style="margin-left: 8px; color: #666;"></span>
                             </div>
                         </div>
                         <div class="rss-item-image" th:if="${item.imageUrl != null}">
@@ -153,6 +154,7 @@
                             <p class="item-desc">${item.description}</p>
                             <div class="item-meta">
                                 ${item.pubDate ? `<span class="pub-date">${formatPubDate(item.pubDate)}</span>` : '<span>未知时间</span>'}
+                                ${item.sourceName ? `<span class="source-name" style="margin-left: 8px; color: #666;">${item.sourceName}</span>` : ''}
                             </div>
                         </div>
                         ${imageHtml}

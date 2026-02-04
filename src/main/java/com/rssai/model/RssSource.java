@@ -12,6 +12,7 @@ public class RssSource {
     private String url;
     private Boolean enabled;
     private Integer refreshInterval;
+    private Boolean aiFilterEnabled;
     private LocalDateTime lastFetchTime;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -6,21 +6,52 @@
 
 :root {
     color-scheme: light dark;
+    /* 主题色 - 在这里统一修改主题颜色 */
     --primary: #0f4c81;
     --primary-dark: #0a3d6b;
     --primary-light: #1a5a8f;
+    --primary-gradient: linear-gradient(135deg, #0f4c81 0%, #1a6fc4 100%);
+    
+    /* 功能色 */
     --success: #10b981;
+    --success-light: #d1fae5;
+    --success-dark: #065f46;
     --danger: #dc2626;
+    --danger-light: #fee2e2;
+    --danger-dark: #991b1b;
     --warning: #f59e0b;
+    --warning-light: #fef3c7;
+    --warning-dark: #92400e;
+    --info: #3b82f6;
+    --info-light: #dbeafe;
+    --info-dark: #1e40af;
+    
+    /* 灰度色 */
     --gray-50: #f8fafc;
     --gray-100: #f1f5f9;
     --gray-200: #e2e8f0;
     --gray-300: #cbd5e1;
     --gray-400: #94a3b8;
+    --gray-500: #64748b;
     --gray-600: #475569;
     --gray-700: #334155;
     --gray-800: #1e293b;
     --gray-900: #0f172a;
+    
+    /* 背景色 */
+    --bg-body: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-input: #f8fafc;
+    
+    /* 边框色 */
+    --border-color: #e2e8f0;
+    
+    /* 文字色 */
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    
+    /* 阴影 */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -28,21 +59,52 @@
 }
 
 [data-theme="dark"] {
+    /* 暗色主题 - 主题色 */
     --primary: #3b82f6;
     --primary-dark: #2563eb;
     --primary-light: #60a5fa;
+    --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+    
+    /* 暗色主题 - 功能色 */
     --success: #22c55e;
+    --success-light: #065f46;
+    --success-dark: #d1fae5;
     --danger: #ef4444;
+    --danger-light: #991b1b;
+    --danger-dark: #fee2e2;
     --warning: #f59e0b;
+    --warning-light: #92400e;
+    --warning-dark: #fef3c7;
+    --info: #3b82f6;
+    --info-light: #1e40af;
+    --info-dark: #dbeafe;
+    
+    /* 暗色主题 - 灰度色 */
     --gray-50: #272727;
     --gray-100: #171616;
     --gray-200: #334155;
     --gray-300: #475569;
     --gray-400: #64748b;
+    --gray-500: #94a3b8;
     --gray-600: #94a3b8;
     --gray-700: #cbd5e1;
     --gray-800: #e2e8f0;
     --gray-900: #f1f5f9;
+    
+    /* 暗色主题 - 背景色 */
+    --bg-body: #272727;
+    --bg-card: #171616;
+    --bg-input: #272727;
+    
+    /* 暗色主题 - 边框色 */
+    --border-color: #334155;
+    
+    /* 暗色主题 - 文字色 */
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    
+    /* 暗色主题 - 阴影 */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
@@ -51,10 +113,14 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: var(--gray-50);
-    color: var(--gray-900);
+    background: var(--bg-body);
+    color: var(--text-primary);
     line-height: 1.6;
     padding-top: 70px;
+}
+
+html {
+    background-color: var(--bg-body);
 }
 
 .navbar {
@@ -277,6 +343,9 @@ body {
     font-weight: 600;
     transition: all 0.2s ease;
     box-shadow: var(--shadow-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn:hover {
@@ -365,6 +434,22 @@ body {
 .badge-success {
     background: #d1fae5;
     color: #065f46;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.badge-clickable:hover {
+    opacity: 0.8;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .badge-secondary {
@@ -1806,6 +1891,16 @@ body {
     color: #6ee7b7;
 }
 
+[data-theme="dark"] .badge-warning {
+    background: #78350f;
+    color: #fcd34d;
+}
+
+[data-theme="dark"] .badge-clickable:hover {
+    opacity: 0.9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
 [data-theme="dark"] .badge-secondary {
     background: var(--gray-300);
     color: var(--gray-900);
@@ -1814,7 +1909,7 @@ body {
 [data-theme="dark"] .alert-success {
     background: #064e3b;
     color: #6ee7b7;
-    border-color: #059669;
+    border-color: #3b82f6;
 }
 
 [data-theme="dark"] .alert-danger {
@@ -3024,7 +3119,7 @@ body {
 }
 
 .stats-card-primary .stats-card-icon { background: #dbeafe; color: #2563eb; }
-.stats-card-success .stats-card-icon { background: #d1fae5; color: #059669; }
+.stats-card-success .stats-card-icon { background: #d1fae5; color: #3b82f6; }
 .stats-card-warning .stats-card-icon { background: #fef3c7; color: #d97706; }
 .stats-card-info .stats-card-icon { background: #cffafe; color: #0891b2; }
 .stats-card-purple .stats-card-icon { background: #ede9fe; color: #7c3aed; }
@@ -3060,7 +3155,7 @@ body {
 }
 
 .stats-card-trend.trend-up {
-    color: #059669;
+    color: #3b82f6;
 }
 
 .stats-card-trend.trend-down {
@@ -3387,7 +3482,7 @@ body {
 
 .overview-badge.trend-up {
     background: #d1fae5;
-    color: #059669;
+    color: #3b82f6;
 }
 
 .overview-badge.trend-down {
@@ -3437,7 +3532,7 @@ body {
 }
 
 .overview-change.positive {
-    color: #059669;
+    color: #3b82f6;
 }
 
 .overview-change.negative {
@@ -4587,4 +4682,55 @@ body {
         font-size: 0.75rem;
         text-align: center;
     }
+}
+
+/* ==================== 主题色统一管理类 ==================== */
+
+/* 首次用户提示框 - 使用主题色渐变 */
+.first-user-alert {
+    background: var(--primary-gradient) !important;
+    color: white !important;
+    border: none !important;
+    padding: 16px !important;
+    border-radius: 8px !important;
+    margin-bottom: 20px !important;
+}
+
+/* 图表颜色 - 使用主题色 */
+.chart-color-primary {
+    background: var(--primary);
+}
+
+.chart-color-success {
+    background: var(--success);
+}
+
+.chart-color-danger {
+    background: var(--danger);
+}
+
+/* 图例点颜色 */
+.legend-dot-primary {
+    background: var(--primary);
+}
+
+.legend-dot-success {
+    background: var(--success);
+}
+
+.legend-dot-danger {
+    background: var(--danger);
+}
+
+/* 深色主题下的图表颜色 */
+[data-theme="dark"] .chart-color-primary {
+    background: var(--primary);
+}
+
+[data-theme="dark"] .chart-color-success {
+    background: var(--success);
+}
+
+[data-theme="dark"] .chart-color-danger {
+    background: var(--danger);
 }

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <script>
@@ -48,6 +48,7 @@
                                 <th>URL</th>
                                 <th>刷新频率(分钟)</th>
                                 <th>状态</th>
+                                <th>AI过滤</th>
                                 <th>最后抓取</th>
                                 <th>操作</th>
                             </tr>
@@ -61,10 +62,14 @@
                                     <span class="badge" th:classappend="${source.enabled} ? 'badge-success' : 'badge-secondary'"
                                           th:text="${source.enabled} ? '启用' : '禁用'"></span>
                                 </td>
+                                <td>
+                                    <span class="badge" th:classappend="${source.aiFilterEnabled} ? 'badge-success' : 'badge-secondary'"
+                                          th:text="${source.aiFilterEnabled} ? '开启' : '关闭'"></span>
+                                </td>
                                 <td th:text="${source.lastFetchTime != null ? #temporals.format(source.lastFetchTime, 'yyyy-MM-dd HH:mm') : '未抓取'}"></td>
                                 <td>
                                     <button class="btn btn-sm btn-primary"
-                                            th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval}"
+                                            th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval},data-ai-filter=${source.aiFilterEnabled}"
                                             onclick="showEditModalFromData(this)">编辑</button>
                                     <form th:action="@{/rss-sources/{id}/toggle(id=${source.id})}" method="post" style="display:inline;">
                                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -103,13 +108,20 @@
                                 <span class="source-card-value" th:text="${source.refreshInterval} + ' 分钟'"></span>
                             </div>
                             <div class="source-card-row">
+                                <span class="source-card-label">AI过滤:</span>
+                                <span class="source-card-value">
+                                    <span class="badge" th:classappend="${source.aiFilterEnabled} ? 'badge-success' : 'badge-secondary'"
+                                          th:text="${source.aiFilterEnabled} ? '开启' : '关闭'"></span>
+                                </span>
+                            </div>
+                            <div class="source-card-row">
                                 <span class="source-card-label">最后抓取:</span>
                                 <span class="source-card-value" th:text="${source.lastFetchTime != null ? #temporals.format(source.lastFetchTime, 'yyyy-MM-dd HH:mm') : '未抓取'}"></span>
                             </div>
                         </div>
                         <div class="source-card-actions">
                             <button class="btn btn-sm btn-primary"
-                                    th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval}"
+                                    th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval},data-ai-filter=${source.aiFilterEnabled}"
                                     onclick="showEditModalFromData(this)">编辑</button>
                             <form th:action="@{/rss-sources/{id}/toggle(id=${source.id})}" method="post" style="display:inline;">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -151,6 +163,13 @@
                     <input type="number" name="refreshInterval" th:value="${defaultRefreshInterval}" min="1" max="1440" required>
                     <small class="form-hint">留空则使用用户默认配置</small>
                 </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="aiFilterEnabled" value="true" checked>
+                        <span>启用AI过滤</span>
+                    </label>
+                    <small class="form-hint">开启后，该RSS源的文章将通过AI进行智能筛选</small>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn" onclick="hideAddModal()">取消</button>
                     <button type="submit" class="btn btn-primary">添加</button>
@@ -178,6 +197,13 @@
                     <input type="number" id="editRefreshInterval" name="refreshInterval" min="1" max="1440" required>
                     <small class="form-hint">RSS源的抓取间隔</small>
                 </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="editAiFilterEnabled" name="aiFilterEnabled" value="true">
+                        <span>启用AI过滤</span>
+                    </label>
+                    <small class="form-hint">开启后，该RSS源的文章将通过AI进行智能筛选</small>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn" onclick="hideEditModal()">取消</button>
                     <button type="submit" class="btn btn-primary">保存</button>
@@ -186,27 +212,51 @@
         </div>
     </div>
     
+    <!-- AI配置提示模态框 -->
+    <div id="aiConfigPromptModal" class="modal" th:if="${needConfigAi}" style="display: flex;">
+        <div class="modal-content">
+            <h2>⚠️ 需要配置AI</h2>
+            <p style="margin: 1.5rem 0; line-height: 1.8;">
+                您已启用AI过滤功能，但还未配置AI服务。<br>
+                没有AI配置，RSS源将无法进行智能筛选。
+            </p>
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="hideAiConfigPrompt()">稍后配置</button>
+                <a th:href="@{/ai-config}" class="btn btn-primary" style="text-decoration: none;">立即配置AI</a>
+            </div>
+        </div>
+    </div>
+    
     <script>
         function showAddModal() { document.getElementById('addModal').style.display = 'flex'; }
         function hideAddModal() { document.getElementById('addModal').style.display = 'none'; }
         
+        function hideAiConfigPrompt() {
+            var modal = document.getElementById('aiConfigPromptModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
         function showEditModalFromData(btn) {
             var id = btn.getAttribute('data-id');
             var name = btn.getAttribute('data-name');
             var url = btn.getAttribute('data-url');
             var interval = btn.getAttribute('data-interval');
-            showEditModal(id, name, url, interval);
+            var aiFilter = btn.getAttribute('data-ai-filter');
+            showEditModal(id, name, url, interval, aiFilter);
         }
 
-        function showEditModal(id, name, url, interval) {
+        function showEditModal(id, name, url, interval, aiFilter) {
             document.getElementById('editId').value = id;
             document.getElementById('editName').value = name;
             document.getElementById('editUrl').value = url;
             document.getElementById('editRefreshInterval').value = interval || 60;
+            document.getElementById('editAiFilterEnabled').checked = aiFilter !== 'false';
             document.getElementById('editForm').action = '/rss-sources/' + id + '/update';
             document.getElementById('editModal').style.display = 'flex';
         }
-        
+
         function hideEditModal() { document.getElementById('editModal').style.display = 'none'; }
     </script>
 </body>

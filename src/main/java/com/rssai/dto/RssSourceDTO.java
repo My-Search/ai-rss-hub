@@ -19,9 +19,11 @@ public class RssSourceDTO {
     @Min(value = 1, message = "刷新间隔最小为1分钟")
     @Max(value = 1440, message = "刷新间隔最大为1440分钟（24小时）")
     private Integer refreshInterval;
-    
+
     private Boolean enabled;
-    
+
+    private Boolean aiFilterEnabled;
+
     public Long getId() {
         return id;
     }
@@ -57,8 +59,16 @@ public class RssSourceDTO {
     public Boolean getEnabled() {
         return enabled;
     }
-    
+
     public void setEnabled(Boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public Boolean getAiFilterEnabled() {
+        return aiFilterEnabled;
+    }
+
+    public void setAiFilterEnabled(Boolean aiFilterEnabled) {
+        this.aiFilterEnabled = aiFilterEnabled;
     }
 }

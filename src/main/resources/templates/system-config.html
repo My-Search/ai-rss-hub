@@ -239,7 +239,7 @@
                             </div>
                             <div class="chart-legend">
                                 <span class="legend-item">
-                                    <span class="legend-dot" style="background: #3b82f6;"></span>
+                                    <span class="legend-dot legend-dot-primary"></span>
                                     新注册用户
                                 </span>
                             </div>
@@ -270,8 +270,8 @@
                             <div class="chart-placeholder" id="filterDistributionChart">
                                 <div class="donut-chart">
                                     <div class="donut-ring" id="donutRing">
-                                        <div class="donut-segment" style="--percentage: 65; --color: #10b981;"></div>
-                                        <div class="donut-segment" style="--percentage: 35; --color: #ef4444; --offset: 65;"></div>
+                                        <div class="donut-segment" style="--percentage: 65; --color: var(--success);"></div>
+                                        <div class="donut-segment" style="--percentage: 35; --color: var(--danger); --offset: 65;"></div>
                                     </div>
                                     <div class="donut-center">
                                         <span class="donut-value" id="donutValue">65%</span>
@@ -280,12 +280,12 @@
                                 </div>
                                 <div class="donut-legend">
                                     <div class="legend-row">
-                                        <span class="legend-color" style="background: #10b981;"></span>
+                                        <span class="legend-color chart-color-success"></span>
                                         <span class="legend-text">通过</span>
                                         <span class="legend-value" id="passedCount">-</span>
                                     </div>
                                     <div class="legend-row">
-                                        <span class="legend-color" style="background: #ef4444;"></span>
+                                        <span class="legend-color chart-color-danger"></span>
                                         <span class="legend-text">拒绝</span>
                                         <span class="legend-value" id="rejectedCount">-</span>
                                     </div>
@@ -1088,9 +1088,13 @@
                 // 更新环形图
                 const donutRing = document.getElementById('donutRing');
                 if (donutRing) {
+                    // 使用CSS变量获取主题色
+                    const successColor = getComputedStyle(document.documentElement).getPropertyValue('--success').trim();
+                    const dangerColor = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim();
+                    
                     donutRing.style.background = `conic-gradient(
-                        #10b981 0deg calc(3.6deg * ${passRate}),
-                        #ef4444 calc(3.6deg * ${passRate}) 360deg
+                        ${successColor} 0deg calc(3.6deg * ${passRate}),
+                        ${dangerColor} calc(3.6deg * ${passRate}) 360deg
                     )`;
                 }
                 
