@@ -1089,7 +1089,7 @@ html {
 }
 
 /* 移动端导航菜单 */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .hamburger {
         display: flex;
     }
@@ -2018,7 +2018,7 @@ html {
 }
 
 /* 移动端适配 */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .input-with-checkbox {
         flex-direction: row;
         align-items: center;
@@ -2427,7 +2427,7 @@ html {
 }
 
 /* 系统管理页面响应式设计 */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .system-config-layout {
         flex-direction: column;
     }
@@ -2901,7 +2901,7 @@ html {
 }
 
 /* 深色模式下侧边栏在移动端 */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     [data-theme="dark"] .config-sidebar {
         border-bottom-color: var(--gray-300);
     }
@@ -3256,7 +3256,7 @@ html {
 }
 
 /* 响应式优化 */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .stats-toolbar {
         flex-direction: column;
         gap: 1rem;

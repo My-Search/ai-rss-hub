@@ -1178,7 +1178,7 @@
         `;
         document.head.appendChild(style);
 
-        // 移动端导航栏滚动检测
+        // 移动端导航栏滚动检测（支持鼠标拖拽）
         function initMobileNavScroll() {
             const sidebar = document.querySelector('.config-sidebar');
             const nav = document.querySelector('.sidebar-nav');
@@ -1204,6 +1204,64 @@
                 if (nav.scrollLeft > 10) {
                     sidebar.classList.add('scrolled');
                 }
+            });
+
+            // PC端鼠标拖拽支持
+            let isDragging = false;
+            let startX = 0;
+            let scrollLeft = 0;
+
+            // 鼠标按下
+            nav.addEventListener('mousedown', function(e) {
+                // 如果点击的是按钮，不触发拖拽
+                if (e.target.closest('.nav-item')) return;
+
+                isDragging = true;
+                nav.style.cursor = 'grabbing';
+                nav.style.userSelect = 'none';
+                startX = e.pageX - nav.offsetLeft;
+                scrollLeft = nav.scrollLeft;
+            });
+
+            // 鼠标移动
+            nav.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                const x = e.pageX - nav.offsetLeft;
+                const walk = (x - startX) * 1.5; // 滚动速度系数
+                nav.scrollLeft = scrollLeft - walk;
+            });
+
+            // 鼠标释放
+            nav.addEventListener('mouseup', function() {
+                isDragging = false;
+                nav.style.cursor = '';
+                nav.style.userSelect = '';
+            });
+
+            // 鼠标离开
+            nav.addEventListener('mouseleave', function() {
+                isDragging = false;
+                nav.style.cursor = '';
+                nav.style.userSelect = '';
+            });
+
+            // 为导航按钮添加点击事件，防止与拖拽冲突
+            const navItems = nav.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                let dragStartX = 0;
+
+                item.addEventListener('mousedown', function(e) {
+                    dragStartX = e.pageX;
+                });
+
+                item.addEventListener('click', function(e) {
+                    // 如果发生了拖拽，不触发点击
+                    if (Math.abs(e.pageX - dragStartX) > 5) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                });
             });
         }
 

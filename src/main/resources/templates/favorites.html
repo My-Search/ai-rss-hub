@@ -146,13 +146,17 @@
 
         /* 统计信息 */
         .favorites-stats {
-            background: #222222;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             color: white;
             padding: 1.5rem 2rem;
             border-radius: 12px;
             margin-bottom: 1.5rem;
             position: relative;
             overflow: hidden;
+        }
+
+        html[data-theme="dark"] .favorites-stats {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
         }
 
         /* 淡色爱心背景 */
@@ -257,26 +261,6 @@
             </div>
         </div>
     </div>
-
-    <footer class="dashboard-footer">
-        <div class="footer-content">
-            <div class="footer-left">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/>
-                </svg>
-                <span class="footer-brand">AI RSS Hub</span>
-                <span class="footer-version" th:text="'v' + ${appVersion}">v1.0.0</span>
-                <span class="footer-divider">|</span>
-                <span class="footer-copyright">版权所有 &copy; <span th:text="${#dates.year(#dates.createNow())}">2024</span> AI RSS Hub</span>
-                <span class="footer-divider">|</span>
-                <span class="footer-slogan">让信息获取更智能</span>
-            </div>
-
-            <div class="footer-right">
-                <a href="https://github.com/My-Search/ai-rss-hub" target="_blank">GitHub</a>
-            </div>
-        </div>
-    </footer>
 
     <script th:inline="javascript">
         document.addEventListener('DOMContentLoaded', function() {
@@ -434,6 +418,16 @@
                             itemDiv.style.transform = 'translateX(-20px)';
                             setTimeout(() => {
                                 itemDiv.remove();
+                                // 更新收藏数量
+                                const statsNumber = document.querySelector('.favorites-stats .stats-number');
+                                if (statsNumber) {
+                                    const currentCount = parseInt(statsNumber.textContent) || 0;
+                                    const newCount = currentCount - 1;
+                                    statsNumber.textContent = newCount;
+                                    if (newCount <= 0) {
+                                        document.querySelector('.favorites-stats').style.display = 'none';
+                                    }
+                                }
                                 // 检查是否还有收藏项
                                 const remainingItems = document.querySelectorAll('.rss-item');
                                 if (remainingItems.length === 0) {
