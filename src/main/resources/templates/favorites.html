@@ -14,152 +14,172 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>控制台 - AI RSS Hub</title>
+    <title>我的收藏 - AI RSS Hub</title>
     <style>
         html { background-color: #f8fafc; }
         html[data-theme="dark"] { background-color: #272727; color: #f1f5f9; }
         body { background-color: #f8fafc; margin: 0; }
         html[data-theme="dark"] body { background-color: #272727; color: #f1f5f9; }
 
-        /* 收藏按钮样式 - 内联在meta中 */
-        .favorite-btn-inline {
+        /* 收藏按钮样式 */
+        .favorite-btn {
             background: none;
             border: none;
             cursor: pointer;
-            padding: 2px 6px;
-            margin-left: 4px;
+            padding: 4px 8px;
             border-radius: 4px;
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 3px;
-            font-size: 0.75rem;
+            gap: 4px;
+            font-size: 0.875rem;
             color: #64748b;
-            vertical-align: middle;
         }
 
-        .favorite-btn-inline:hover {
-            background: rgba(99, 102, 241, 0.1);
+        .favorite-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
         }
 
-        .favorite-btn-inline svg {
-            width: 12px;
-            height: 12px;
+        .favorite-btn svg {
+            width: 16px;
+            height: 16px;
             transition: all 0.2s;
             fill: none !important;
             stroke: currentColor !important;
         }
 
-        .favorite-btn-inline.is-favorite svg {
+        .favorite-btn.is-favorite svg {
             fill: #ef4444 !important;
             stroke: #ef4444 !important;
         }
 
-        .favorite-btn-inline.is-favorite {
+        .favorite-btn.is-favorite {
             color: #ef4444;
         }
 
-        .favorite-btn-inline:not(.is-favorite) svg {
+        .favorite-btn:not(.is-favorite) svg {
             fill: none;
             stroke: currentColor;
         }
 
-        .favorite-btn-inline:hover svg {
+        .favorite-btn:hover svg {
             transform: scale(1.1);
         }
 
-        html[data-theme="dark"] .favorite-btn-inline {
+        html[data-theme="dark"] .favorite-btn {
             color: #94a3b8;
         }
 
-        /* 折角收藏入口样式 */
-        .stat-card {
+        .item-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        /* 页面标题栏 */
+        .page-header-with-action {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .page-header-with-action h1 {
+            margin: 0;
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #6366f1;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+            background: #4f46e5;
+        }
+
+        .btn-back svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #64748b;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            stroke: #94a3b8;
+        }
+
+        .empty-state p {
+            font-size: 1.125rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #6366f1;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .empty-state .btn:hover {
+            background: #4f46e5;
+        }
+
+        /* 统计信息 */
+        .favorites-stats {
+            background: #222222;
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
             position: relative;
             overflow: hidden;
         }
 
-        .corner-favorite {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 70px;
-            height: 70px;
-            cursor: pointer;
-            text-decoration: none;
-            z-index: 10;
-        }
-
-        .corner-favorite::before {
+        /* 淡色爱心背景 */
+        .favorites-stats::before {
             content: '';
             position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 0;
-            height: 0;
-            border-style: solid;
-            border-width: 0 0 70px 70px;
-            border-color: transparent transparent #222222 transparent;
-            transition: all 0.3s ease;
-        }
-
-        .corner-favorite:hover::before {
-            border-color: transparent transparent #333333 transparent;
-        }
-
-        .corner-favorite svg {
-            position: absolute;
-            bottom: 12px;
-            right: 12px;
-            width: 22px;
-            height: 22px;
-            fill: #6366f1;
-            stroke: #6366f1;
-            z-index: 11;
+            right: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100px;
+            height: 100px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff' opacity='0.06'%3E%3Cpath d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
             pointer-events: none;
         }
 
-        .corner-favorite:hover svg {
-            fill: #4f46e5;
-            stroke: #4f46e5;
+        .favorites-stats h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+            opacity: 0.9;
         }
 
-        .corner-favorite-tooltip {
-            position: absolute;
-            bottom: 75px;
-            right: 0;
-            background: #1e293b;
-            color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.2s ease;
-            pointer-events: none;
-        }
-
-        .corner-favorite:hover .corner-favorite-tooltip {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        html[data-theme="dark"] .corner-favorite::before {
-            border-color: transparent transparent #222222 transparent;
-        }
-
-        html[data-theme="dark"] .corner-favorite:hover::before {
-            border-color: transparent transparent #333333 transparent;
-        }
-
-        html[data-theme="dark"] .corner-favorite svg {
-            fill: #818cf8;
-            stroke: #818cf8;
-        }
-
-        html[data-theme="dark"] .corner-favorite:hover svg {
-            fill: #a5b4fc;
-            stroke: #a5b4fc;
+        .favorites-stats .stats-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
         }
     </style>
     <link rel="stylesheet" th:href="@{/css/style.css}">
@@ -169,62 +189,61 @@
     <div th:replace="fragments/header :: header"></div>
 
     <div class="container">
-        <div class="page-header">
-            <h1>控制台</h1>
-            <p>欢迎回来, <span th:text="${user.username}"></span></p>
+        <div class="page-header-with-action">
+            <h1>我的收藏</h1>
+            <a th:href="@{/dashboard}" class="btn-back">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                返回控制台
+            </a>
         </div>
 
-        <div class="alert alert-warning" th:if="${aiConfig == null}">
-            <strong>提示:</strong> 请先配置AI设置才能使用RSS筛选功能。
-            <a th:href="@{/ai-config}" class="btn btn-sm">立即配置</a>
+        <div class="favorites-stats" th:if="${totalItems > 0}">
+            <h3>已收藏文章</h3>
+            <p class="stats-number" th:text="${totalItems}">0</p>
         </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-value" th:text="${#lists.size(sources)}">0</div>
-                <div class="stat-label">RSS源</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" th:text="${totalItems}">0</div>
-                <div class="stat-label">筛选文章</div>
-                <a th:href="@{/favorites}" class="corner-favorite" title="查看我的收藏">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                    </svg>
-                    <span class="corner-favorite-tooltip">查看我的收藏</span>
-                </a>
-            </div>
-        </div>
-
 
         <div class="card">
             <div class="card-header">
-                <h2>最新筛选文章</h2>
+                <h2>收藏列表</h2>
             </div>
             <div class="card-body">
                 <div class="rss-items" id="rss-items">
-                    <div class="rss-item" th:each="item : ${items}" th:data-item-id="${item.id}">
+                    <div class="rss-item" th:each="favorite : ${favorites}" th:data-item-id="${favorite.rssItem.id}">
                         <div class="rss-item-content">
-                            <h3><a th:href="${item.link}" target="_blank" th:text="${item.title}"></a></h3>
-                            <p class="item-desc" th:text="${item.description}"></p>
+                            <h3><a th:href="${favorite.rssItem.link}" target="_blank" th:text="${favorite.rssItem.title}"></a></h3>
+                            <p class="item-desc" th:text="${favorite.rssItem.description}"></p>
                             <div class="item-meta">
-                                <span th:if="${item.sourceName != null}" th:text="${item.sourceName}" class="source-name"></span>
-                                <span th:if="${item.pubDate != null}" th:text="${#temporals.format(item.pubDate, 'yyyy-MM-dd')}" class="pub-date" th:data-time="${#temporals.format(item.pubDate, 'HH:mm')}"></span>
-                                <span th:if="${item.pubDate == null}">未知时间</span>
-                                <button class="favorite-btn-inline" th:data-item-id="${item.id}" onclick="toggleFavorite(this)">
+                                <span th:if="${favorite.rssItem.sourceName != null}" th:text="${favorite.rssItem.sourceName}" class="source-name"></span>
+                                <span th:if="${favorite.rssItem.pubDate != null}" th:text="${#temporals.format(favorite.rssItem.pubDate, 'yyyy-MM-dd')}" class="pub-date" th:data-time="${#temporals.format(favorite.rssItem.pubDate, 'HH:mm')}"></span>
+                                <span th:if="${favorite.rssItem.pubDate == null}">未知时间</span>
+                                <span style="color: #94a3b8; margin-left: 8px;">
+                                    收藏于 <span th:text="${#temporals.format(favorite.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                                </span>
+                            </div>
+                            <div class="item-actions">
+                                <button class="favorite-btn is-favorite" th:data-item-id="${favorite.rssItem.id}" onclick="toggleFavorite(this)">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                                     </svg>
-                                    <span class="favorite-text">收藏</span>
+                                    <span class="favorite-text">取消收藏</span>
                                 </button>
                             </div>
                         </div>
-                        <div class="rss-item-image" th:if="${item.imageUrl != null}">
-                            <img th:src="${item.imageUrl}" th:alt="${item.title}" onerror="this.style.display='none'; this.parentElement.style.display='none';" />
+                        <div class="rss-item-image" th:if="${favorite.rssItem.imageUrl != null}">
+                            <img th:src="${favorite.rssItem.imageUrl}" th:alt="${favorite.rssItem.title}" onerror="this.style.display='none'; this.parentElement.style.display='none';" />
                         </div>
                     </div>
-                    <div th:if="${#lists.isEmpty(items)}" class="empty-state">
-                        <p>暂无筛选文章</p>
+
+                    <!-- 空状态 -->
+                    <div th:if="${#lists.isEmpty(favorites)}" class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                        <p>还没有收藏任何文章</p>
+                        <a th:href="@{/dashboard}" class="btn">去控制台浏览文章</a>
                     </div>
                 </div>
 
@@ -233,7 +252,7 @@
                 </div>
 
                 <div id="no-more" class="no-more" style="display: none; text-align: center; padding: 20px; color: #999;">
-                    没有更多文章了
+                    没有更多收藏了
                 </div>
             </div>
         </div>
@@ -272,9 +291,6 @@
                 }
             });
 
-            // 加载用户收藏状态
-            loadFavoriteStatus();
-
             let currentPage = /*[[${currentPage}]]*/ 1;
             const totalPages = /*[[${totalPages}]]*/ 1;
             const pageSize = /*[[${pageSize}]]*/ 20;
@@ -295,8 +311,14 @@
                 return dateStr + ' ' + timeStr;
             }
 
-            function appendItems(items) {
-                items.forEach(function(item) {
+            function formatDateTime(dateTime) {
+                const date = new Date(dateTime);
+                return date.toISOString().split('T')[0] + ' ' + date.toTimeString().split(' ')[0].substring(0, 5);
+            }
+
+            function appendItems(favorites) {
+                favorites.forEach(function(favorite) {
+                    const item = favorite.rssItem;
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'rss-item';
                     itemDiv.setAttribute('data-item-id', item.id);
@@ -312,11 +334,16 @@
                             <div class="item-meta">
                                 ${item.sourceName ? `<span class="source-name">${item.sourceName}</span>` : ''}
                                 ${item.pubDate ? `<span class="pub-date">${formatPubDate(item.pubDate)}</span>` : '<span>未知时间</span>'}
-                                <button class="favorite-btn-inline" data-item-id="${item.id}" onclick="toggleFavorite(this)">
+                                <span style="color: #94a3b8; margin-left: 8px;">
+                                    收藏于 ${formatDateTime(favorite.createdAt)}
+                                </span>
+                            </div>
+                            <div class="item-actions">
+                                <button class="favorite-btn is-favorite" data-item-id="${item.id}" onclick="toggleFavorite(this)">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                                     </svg>
-                                    <span class="favorite-text">收藏</span>
+                                    <span class="favorite-text">取消收藏</span>
                                 </button>
                             </div>
                         </div>
@@ -324,8 +351,6 @@
                     `;
                     rssItemsContainer.appendChild(itemDiv);
                 });
-                // 加载新添加项的收藏状态
-                loadFavoriteStatus();
             }
 
             function loadMoreItems() {
@@ -334,11 +359,11 @@
                 isLoading = true;
                 loadingEl.style.display = 'block';
 
-                fetch(`/dashboard/items?page=${currentPage + 1}&pageSize=${pageSize}`)
+                fetch(`/favorites/items?page=${currentPage + 1}&pageSize=${pageSize}`)
                     .then(response => response.json())
                     .then(data => {
-                        if (data.items && data.items.length > 0) {
-                            appendItems(data.items);
+                        if (data.favorites && data.favorites.length > 0) {
+                            appendItems(data.favorites);
                         }
                         currentPage = data.currentPage;
                         hasMore = data.hasMore;
@@ -369,24 +394,6 @@
             window.addEventListener('scroll', handleScroll);
         });
 
-        // 加载用户收藏状态
-        function loadFavoriteStatus() {
-            fetch('/favorites/ids')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.favoriteIds) {
-                        data.favoriteIds.forEach(id => {
-                            const btn = document.querySelector(`.favorite-btn-inline[data-item-id="${id}"]`);
-                            if (btn) {
-                                btn.classList.add('is-favorite');
-                                btn.querySelector('.favorite-text').textContent = '已收藏';
-                            }
-                        });
-                    }
-                })
-                .catch(error => console.error('加载收藏状态失败:', error));
-        }
-
         // 获取CSRF Token
         function getCsrfToken() {
             const cookie = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
@@ -396,6 +403,7 @@
         // 切换收藏状态
         function toggleFavorite(btn) {
             const itemId = btn.getAttribute('data-item-id');
+            const isFavorite = btn.classList.contains('is-favorite');
             const textSpan = btn.querySelector('.favorite-text');
 
             fetch('/favorites/toggle?rssItemId=' + itemId, {
@@ -414,19 +422,26 @@
             })
             .then(data => {
                 if (data && data.success) {
-                    const svg = btn.querySelector('svg');
                     if (data.isFavorite) {
                         btn.classList.add('is-favorite');
-                        textSpan.textContent = '已收藏';
-                        svg.setAttribute('fill', '#ef4444');
-                        svg.setAttribute('stroke', '#ef4444');
+                        textSpan.textContent = '取消收藏';
                     } else {
-                        btn.classList.remove('is-favorite');
-                        textSpan.textContent = '收藏';
-                        svg.setAttribute('fill', 'none');
-                        svg.setAttribute('stroke', 'currentColor');
+                        // 在收藏页面，取消收藏后移除该项
+                        const itemDiv = btn.closest('.rss-item');
+                        if (itemDiv) {
+                            itemDiv.style.transition = 'all 0.3s';
+                            itemDiv.style.opacity = '0';
+                            itemDiv.style.transform = 'translateX(-20px)';
+                            setTimeout(() => {
+                                itemDiv.remove();
+                                // 检查是否还有收藏项
+                                const remainingItems = document.querySelectorAll('.rss-item');
+                                if (remainingItems.length === 0) {
+                                    location.reload(); // 刷新显示空状态
+                                }
+                            }, 300);
+                        }
                     }
-                    btn.offsetHeight;
                 }
             })
             .catch(error => {

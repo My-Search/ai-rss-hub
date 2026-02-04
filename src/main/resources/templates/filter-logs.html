@@ -485,28 +485,78 @@
             }
 
             .logs-page .logs-table .log-reason {
-                min-width: 100px;
-            }
-
-            .logs-page .loading-indicator {
-                padding: 1.5rem;
-            }
-
-            .logs-page .loading-spinner {
-                width: 28px;
-                height: 28px;
-            }
+            min-width: 100px;
         }
+
+        .logs-page .loading-indicator {
+            padding: 1.5rem;
+        }
+
+        .logs-page .loading-spinner {
+            width: 28px;
+            height: 28px;
+        }
+
+        /* 查看收藏按钮 */
+        .btn-favorites {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+
+        .btn-favorites:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-favorites svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .page-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .page-header-flex .header-content {
+            flex: 1;
+        }
+
+        .page-header-flex .header-content h1 {
+            margin: 0 0 0.5rem 0;
+        }
+
+        .page-header-flex .header-content p {
+            margin: 0;
+            color: #94a3b8;
+        }
+    }
     </style>
 </head>
 <body>
     <div th:replace="fragments/header :: header"></div>
-    
+
     <div class="logs-page">
         <div class="container">
-            <div class="page-header">
-                <h1>筛选日志</h1>
-                <p>查看所有RSS消息的AI筛选记录</p>
+            <div class="page-header page-header-flex">
+                <div class="header-content">
+                    <h1>筛选日志</h1>
+                    <p>查看所有RSS消息的AI筛选记录</p>
+                </div>
             </div>
             
             <div class="filter-bar">
