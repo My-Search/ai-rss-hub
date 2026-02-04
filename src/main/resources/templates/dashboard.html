@@ -34,7 +34,7 @@
             align-items: center;
             gap: 3px;
             font-size: 0.75rem;
-            color: #64748b;
+            color: #94a3b8;
             vertical-align: middle;
         }
 
@@ -69,63 +69,50 @@
         }
 
         html[data-theme="dark"] .favorite-btn-inline {
-            color: #94a3b8;
+            color: #64748b;
         }
 
-        /* 折角收藏入口样式 */
+        /* 收藏入口样式 - 仅爱心图标 */
         .stat-card {
             position: relative;
-            overflow: hidden;
         }
 
         .corner-favorite {
             position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 70px;
-            height: 70px;
+            bottom: 22px;
+            right: 1.5rem;
             cursor: pointer;
             text-decoration: none;
             z-index: 10;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .corner-favorite::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 0;
-            height: 0;
-            border-style: solid;
-            border-width: 0 0 70px 70px;
-            border-color: transparent transparent #222222 transparent;
-            transition: all 0.3s ease;
-        }
-
-        .corner-favorite:hover::before {
-            border-color: transparent transparent #333333 transparent;
+        .corner-favorite:hover {
+            background: rgba(99, 102, 241, 0.1);
         }
 
         .corner-favorite svg {
-            position: absolute;
-            bottom: 12px;
-            right: 12px;
-            width: 22px;
-            height: 22px;
-            fill: #6366f1;
-            stroke: #6366f1;
-            z-index: 11;
-            pointer-events: none;
+            width: 24px;
+            height: 24px;
+            fill: #a5b4fc;
+            stroke: #a5b4fc;
+            transition: all 0.2s ease;
         }
 
         .corner-favorite:hover svg {
-            fill: #4f46e5;
-            stroke: #4f46e5;
+            fill: #818cf8;
+            stroke: #818cf8;
+            transform: scale(1.1);
         }
 
         .corner-favorite-tooltip {
             position: absolute;
-            bottom: 75px;
+            bottom: 45px;
             right: 0;
             background: #1e293b;
             color: white;
@@ -142,14 +129,6 @@
         .corner-favorite:hover .corner-favorite-tooltip {
             opacity: 1;
             visibility: visible;
-        }
-
-        html[data-theme="dark"] .corner-favorite::before {
-            border-color: transparent transparent #222222 transparent;
-        }
-
-        html[data-theme="dark"] .corner-favorite:hover::before {
-            border-color: transparent transparent #333333 transparent;
         }
 
         html[data-theme="dark"] .corner-favorite svg {
