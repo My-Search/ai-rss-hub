@@ -31,4 +31,16 @@ public class AiConfig {
      * 0 = 标准模型
      */
     private Integer isReasoningModel;
+    
+    /**
+     * AI服务状态
+     * 0 = 正常
+     * 1 = 异常（已告警）
+     */
+    private Integer serviceStatus;
+    
+    /**
+     * 最后一次状态变更时间
+     */
+    private LocalDateTime lastStatusChangeAt;
 }

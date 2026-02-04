@@ -24,8 +24,10 @@ public class AiConfigMapper {
         config.setSystemPrompt(rs.getString("system_prompt"));
         config.setRefreshInterval(rs.getInt("refresh_interval"));
         config.setIsReasoningModel(parseReasoningModel(rs));
+        config.setServiceStatus(parseServiceStatus(rs));
         config.setCreatedAt(DateTimeUtils.parseDateTime(rs.getString("created_at")));
         config.setUpdatedAt(DateTimeUtils.parseDateTime(rs.getString("updated_at")));
+        config.setLastStatusChangeAt(DateTimeUtils.parseDateTime(rs.getString("last_status_change_at")));
         return config;
     };
     
@@ -44,6 +46,18 @@ public class AiConfigMapper {
             return null;
         }
     }
+    
+    private Integer parseServiceStatus(ResultSet rs) throws SQLException {
+        try {
+            Object statusObj = rs.getObject("service_status");
+            if (statusObj instanceof Number) {
+                return ((Number) statusObj).intValue();
+            }
+            return 0; // 默认正常
+        } catch (SQLException e) {
+            return 0; // 默认正常
+        }
+    }
 
     public AiConfig findByUserId(Long userId) {
         List<AiConfig> configs = jdbcTemplate.query("SELECT * FROM ai_configs WHERE user_id = ?", rowMapper, userId);
@@ -58,5 +72,17 @@ public class AiConfigMapper {
     public void update(AiConfig config) {
         jdbcTemplate.update("UPDATE ai_configs SET base_url = ?, model = ?, api_key = ?, system_prompt = ?, refresh_interval = ?, is_reasoning_model = ?, updated_at = datetime('now', 'localtime') WHERE user_id = ?",
                 config.getBaseUrl(), config.getModel(), config.getApiKey(), config.getSystemPrompt(), config.getRefreshInterval(), config.getIsReasoningModel(), config.getUserId());
+    }
+    
+    /**
+     * 更新AI服务状态
+     * @param userId 用户ID
+     * @param status 状态：0=正常，1=异常
+     */
+    public void updateServiceStatus(Long userId, Integer status) {
+        jdbcTemplate.update(
+            "UPDATE ai_configs SET service_status = ?, last_status_change_at = datetime('now', 'localtime'), updated_at = datetime('now', 'localtime') WHERE user_id = ?",
+            status, userId
+        );
     }
 }

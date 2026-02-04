@@ -18,6 +18,9 @@ spring:
 server:
   port: 8080
 
+application:
+  version: 1.0.0
+
 rss:
   timezone: GMT+8
   fetch:

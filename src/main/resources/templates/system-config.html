@@ -910,21 +910,8 @@
                     const range = data.userStats.range;
                     
                     // 根据时间范围显示不同的用户数
-                    let userDisplayValue = '-';
-                    let userDisplayLabel = '总用户数';
-                    if (range === 'year') {
-                        userDisplayValue = totalUsers.toLocaleString('zh-CN');
-                        userDisplayLabel = '累计用户';
-                    } else {
-                        userDisplayValue = currentPeriodUsers.toLocaleString('zh-CN');
-                        if (range === 'today') {
-                            userDisplayLabel = '今日用户';
-                        } else if (range === 'week') {
-                            userDisplayLabel = '本周用户';
-                        } else if (range === 'month') {
-                            userDisplayLabel = '本月用户';
-                        }
-                    }
+                    let userDisplayValue = totalUsers.toLocaleString('zh-CN');
+                    let userDisplayLabel = '全部用户';
                     
                     document.getElementById('totalUsers').textContent = userDisplayValue;
                     

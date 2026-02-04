@@ -85,6 +85,26 @@
         </div>
     </div>
 
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/>
+                </svg>
+                <span class="footer-brand">AI RSS Hub</span>
+                <span class="footer-version" th:text="'v' + ${appVersion}">v1.0.0</span>
+                <span class="footer-divider">|</span>
+                <span class="footer-copyright">版权所有 &copy; <span th:text="${#dates.year(#dates.createNow())}">2024</span> AI RSS Hub</span>
+                <span class="footer-divider">|</span>
+                <span class="footer-slogan">让信息获取更智能</span>
+            </div>
+            
+            <div class="footer-right">
+                <a href="https://github.com/My-Search/ai-rss-hub" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </footer>
+
     <script th:inline="javascript">
         document.addEventListener('DOMContentLoaded', function() {
             const today = new Date().toISOString().split('T')[0];

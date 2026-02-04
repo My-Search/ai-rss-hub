@@ -39,6 +39,7 @@ public class RssFetchService {
     private final KeywordSubscriptionService keywordSubscriptionService;
     private final EmailService emailService;
     private final KeywordMatchNotificationMapper keywordMatchNotificationMapper;
+    private final SystemConfigService systemConfigService;
     
     public RssFetchService(RssSourceMapper rssSourceMapper,
                            RssItemMapper rssItemMapper,
@@ -48,7 +49,8 @@ public class RssFetchService {
                            UserMapper userMapper,
                            KeywordSubscriptionService keywordSubscriptionService,
                            EmailService emailService,
-                           KeywordMatchNotificationMapper keywordMatchNotificationMapper) {
+                           KeywordMatchNotificationMapper keywordMatchNotificationMapper,
+                           SystemConfigService systemConfigService) {
         this.httpClient = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -66,6 +68,7 @@ public class RssFetchService {
         this.keywordSubscriptionService = keywordSubscriptionService;
         this.emailService = emailService;
         this.keywordMatchNotificationMapper = keywordMatchNotificationMapper;
+        this.systemConfigService = systemConfigService;
     }
 
 
@@ -209,6 +212,7 @@ public class RssFetchService {
             // 更新AI过滤结果
             int passedCount = 0;
             int rejectedCount = 0;
+            int aiServiceFailureCount = 0; // 统计AI服务失败的数量
 
             for (int i = 0; i < rssItemsToProcess.size(); i++) {
                 RssItem item = rssItemsToProcess.get(i);
@@ -216,16 +220,23 @@ public class RssFetchService {
                 String aiRawResponse = rawResponses.getOrDefault(i, "未找到响应");
                 boolean filtered = aiReason.startsWith("通过");
                 
+                // 判断是否为AI服务不可用
+                boolean isServiceUnavailable = false;
                 if (filtered) {
                     passedCount++;
                 } else {
                     rejectedCount++;
+                    isServiceUnavailable = isAiServiceUnavailable(aiReason, aiRawResponse);
+                    if (isServiceUnavailable) {
+                        aiServiceFailureCount++;
+                    }
                 }
                 
                 logger.info("消息 #{}: {} - {}", i + 1, item.getTitle(), aiReason);
                 
                 item.setAiFiltered(filtered);
                 item.setAiReason(aiReason);
+                item.setNeedsRetry(isServiceUnavailable); // 设置是否需要重试
                 rssItemMapper.update(item);
 
                 // 保存筛选日志
@@ -240,6 +251,10 @@ public class RssFetchService {
                     source.getName()
                 );
             }
+
+            // 检查是否需要发送AI服务异常告警
+            checkAndSendAiServiceAlert(source.getUserId(), source.getName(), aiConfig, 
+                    aiServiceFailureCount, rssItemsToProcess.size(), passedCount);
 
             logger.info("========================================");
             logger.info("抓取完成: {}", source.getName());
@@ -353,5 +368,215 @@ public class RssFetchService {
         }
 
         return new ArrayList<>(uniqueEntries.values());
+    }
+
+    /**
+     * 判断是否为AI服务不可用
+     * 通过分析AI返回的原因和原始响应来判断
+     */
+    private boolean isAiServiceUnavailable(String aiReason, String aiRawResponse) {
+        if (aiReason == null && aiRawResponse == null) {
+            return false;
+        }
+
+        // 检查aiReason中的关键词
+        if (aiReason != null) {
+            String reason = aiReason.toLowerCase();
+            if (reason.contains("ai服务不可用") || 
+                reason.contains("处理失败") ||
+                reason.contains("服务异常") ||
+                reason.contains("连接失败") ||
+                reason.contains("超时")) {
+                return true;
+            }
+        }
+
+        // 检查aiRawResponse中的关键词
+        if (aiRawResponse != null) {
+            String response = aiRawResponse.toLowerCase();
+            if (response.contains("ai服务不可用") ||
+                response.contains("connection") ||
+                response.contains("timeout") ||
+                response.contains("http") ||
+                response.contains("error") ||
+                response.contains("failed") ||
+                response.contains("exception")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 检查并发送AI服务异常告警
+     * 只有当所有条目都因AI服务不可用而失败时才发送告警
+     */
+    private void checkAndSendAiServiceAlert(Long userId, String sourceName, AiConfig aiConfig,
+                                           int aiServiceFailureCount, int totalCount, int passedCount) {
+        try {
+            // 如果有任何条目通过了筛选，说明AI服务正常
+            if (passedCount > 0) {
+                Integer currentStatus = aiConfig.getServiceStatus();
+                // 如果之前是异常状态，现在恢复了，发送恢复通知并重新处理受影响的条目
+                if (currentStatus != null && currentStatus == 1) {
+                    logger.info("AI服务已恢复正常，开始重新处理受影响的条目 - 用户: {}", userId);
+                    
+                    // 重新处理故障期间受影响的条目
+                    int reprocessedCount = reprocessAffectedItems(userId, aiConfig);
+                    
+                    // 检查用户是否配置了邮箱
+                    User user = userMapper.findById(userId);
+                    if (user != null && user.getEmail() != null && !user.getEmail().trim().isEmpty()) {
+                        // 检查管理员是否配置了邮箱
+                        String adminEmail = systemConfigService.getConfigValue("email.username", "");
+                        if (adminEmail != null && !adminEmail.trim().isEmpty()) {
+                            logger.info("发送AI服务恢复通知邮件 - 用户: {}, 邮箱: {}, 重新处理条目数: {}", 
+                                    userId, user.getEmail(), reprocessedCount);
+                            emailService.sendAiServiceRecovery(
+                                user.getEmail(),
+                                sourceName,
+                                aiConfig.getModel(),
+                                aiConfig.getBaseUrl(),
+                                aiConfig.getLastStatusChangeAt(),
+                                reprocessedCount
+                            );
+                        }
+                    }
+                    
+                    // 更新状态为正常
+                    aiConfigMapper.updateServiceStatus(userId, 0);
+                    logger.info("已更新AI服务状态为正常 - 用户: {}, 重新处理了 {} 条受影响的条目", userId, reprocessedCount);
+                }
+                return;
+            }
+
+            // 只有当所有条目都未通过，且都是因为AI服务不可用时才触发告警
+            if (totalCount > 0 && aiServiceFailureCount == totalCount) {
+                Integer currentStatus = aiConfig.getServiceStatus();
+                
+                // 如果当前状态不是异常（0或null），则需要发送告警并更新状态
+                if (currentStatus == null || currentStatus == 0) {
+                    logger.warn("检测到AI服务异常 - 用户: {}, RSS源: {}, AI服务失败数: {}/{}", 
+                            userId, sourceName, aiServiceFailureCount, totalCount);
+                    
+                    // 检查用户是否配置了邮箱
+                    User user = userMapper.findById(userId);
+                    if (user != null && user.getEmail() != null && !user.getEmail().trim().isEmpty()) {
+                        // 检查管理员是否配置了邮箱
+                        String adminEmail = systemConfigService.getConfigValue("email.username", "");
+                        if (adminEmail != null && !adminEmail.trim().isEmpty()) {
+                            logger.info("发送AI服务异常告警邮件 - 用户: {}, 邮箱: {}", userId, user.getEmail());
+                            emailService.sendAiServiceAlert(
+                                user.getEmail(),
+                                sourceName,
+                                aiConfig.getModel(),
+                                aiConfig.getBaseUrl()
+                            );
+                            
+                            // 更新AI配置状态为异常
+                            aiConfigMapper.updateServiceStatus(userId, 1);
+                            logger.info("已更新AI服务状态为异常 - 用户: {}", userId);
+                        } else {
+                            logger.info("管理员未配置邮箱，跳过发送AI服务异常告警 - 用户: {}", userId);
+                        }
+                    } else {
+                        logger.info("用户未配置邮箱，跳过发送AI服务异常告警 - 用户: {}", userId);
+                    }
+                } else {
+                    logger.debug("AI服务状态已为异常，跳过重复告警 - 用户: {}", userId);
+                }
+            } else if (aiServiceFailureCount > 0) {
+                // 记录部分失败的情况，但不触发告警
+                logger.info("检测到部分AI服务失败 - 用户: {}, RSS源: {}, AI服务失败数: {}/{}, 未达到告警阈值", 
+                        userId, sourceName, aiServiceFailureCount, totalCount);
+            }
+        } catch (Exception e) {
+            logger.error("检查AI服务状态时发生异常 - 用户: {}", userId, e);
+        }
+    }
+
+    /**
+     * 重新处理故障期间受影响的RSS条目
+     * @param userId 用户ID
+     * @param aiConfig AI配置
+     * @return 重新处理的条目数量
+     */
+    private int reprocessAffectedItems(Long userId, AiConfig aiConfig) {
+        try {
+            // 查询需要重试的条目（通过 needs_retry 字段标记）
+            List<RssItem> affectedItems = rssItemMapper.findItemsNeedingRetry(userId);
+            
+            if (affectedItems.isEmpty()) {
+                logger.info("没有需要重新处理的条目 - 用户: {}", userId);
+                return 0;
+            }
+
+            logger.info("开始重新处理需要重试的条目 - 用户: {}, 条目数: {}", userId, affectedItems.size());
+
+            // 准备批量筛选数据
+            List<AiService.RssItemData> itemsToFilter = new ArrayList<>();
+            for (RssItem item : affectedItems) {
+                itemsToFilter.add(new AiService.RssItemData(item.getTitle(), item.getDescription()));
+            }
+
+            // 批量AI筛选
+            AiService.BatchFilterResult filterResult = aiService.filterRssItemsBatchWithRawResponse(
+                aiConfig, itemsToFilter, "故障恢复重新处理"
+            );
+            Map<Integer, String> filterResults = filterResult.getFilterResults();
+            Map<Integer, String> rawResponses = filterResult.getRawResponses();
+
+            // 更新AI过滤结果
+            int updatedCount = 0;
+            int passedCount = 0;
+            
+            for (int i = 0; i < affectedItems.size(); i++) {
+                RssItem item = affectedItems.get(i);
+                String aiReason = filterResults.getOrDefault(i, "未通过 - 重新处理失败");
+                String aiRawResponse = rawResponses.getOrDefault(i, "未找到响应");
+                boolean filtered = aiReason.startsWith("通过");
+                
+                // 判断是否仍然是AI服务不可用
+                boolean stillNeedsRetry = !filtered && isAiServiceUnavailable(aiReason, aiRawResponse);
+                
+                // 更新条目
+                item.setAiFiltered(filtered);
+                item.setAiReason(aiReason);
+                item.setNeedsRetry(stillNeedsRetry); // 如果仍然失败，保持需要重试状态
+                rssItemMapper.update(item);
+                updatedCount++;
+                
+                if (filtered) {
+                    passedCount++;
+                }
+                
+                logger.info("重新处理条目 #{}: {} - 结果: {}, 需要重试: {}", 
+                        i + 1, item.getTitle(), 
+                        filtered ? "通过" : "未通过",
+                        stillNeedsRetry);
+                
+                // 保存筛选日志
+                filterLogService.saveFilterLog(
+                    userId,
+                    item.getId(),
+                    item.getTitle(),
+                    item.getLink(),
+                    filtered,
+                    aiReason + " (故障恢复重新处理)",
+                    aiRawResponse,
+                    "故障恢复重新处理"
+                );
+            }
+
+            logger.info("重新处理完成 - 用户: {}, 总数: {}, 更新: {}, 新通过: {}", 
+                    userId, affectedItems.size(), updatedCount, passedCount);
+            
+            return affectedItems.size();
+            
+        } catch (Exception e) {
+            logger.error("重新处理受影响条目时发生异常 - 用户: {}", userId, e);
+            return 0;
+        }
     }
 }

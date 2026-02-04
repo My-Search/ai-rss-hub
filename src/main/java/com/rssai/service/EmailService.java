@@ -159,7 +159,7 @@ public class EmailService {
                 plainTextItem.setAiReason(item.getAiReason());
                 plainTextItem.setCreatedAt(item.getCreatedAt());
                 if (item.getDescription() != null && !item.getDescription().trim().isEmpty()) {
-                    plainTextItem.setDescription(HtmlUtils.stripHtmlTags(item.getDescription(), 150));
+                    plainTextItem.setDescription(HtmlUtils.stripHtmlTags(item.getDescription()));
                 }
                 if (item.getContent() != null && !item.getContent().trim().isEmpty()) {
                     plainTextItem.setContent(HtmlUtils.stripHtmlTags(item.getContent()));
@@ -232,5 +232,96 @@ public class EmailService {
 
         mailSender.send(message);
         logger.info("[EmailService] 邮箱修改验证码邮件发送成功，目标邮箱: {}", toEmail);
+    }
+
+    /**
+     * 发送AI服务异常告警邮件
+     */
+    @Async("emailExecutor")
+    public void sendAiServiceAlert(String toEmail, String sourceName, String model, String baseUrl) throws UnsupportedEncodingException {
+        logger.info("[EmailService] 开始发送AI服务异常告警邮件，目标邮箱: {}", toEmail);
+
+        updateMailSenderConfig();
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(getFromEmail(), getFromAlias());
+            helper.setTo(toEmail);
+            helper.setSubject("AI服务异常告警 - AI RSS Hub");
+
+            Context context = new Context();
+            context.setVariable("date", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日")));
+            context.setVariable("sourceName", sourceName);
+            context.setVariable("model", model);
+            context.setVariable("baseUrl", baseUrl);
+            context.setVariable("detectionTime", java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+            String htmlContent = templateEngine.process("email-ai-service-alert", context);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            logger.info("[EmailService] AI服务异常告警邮件发送成功，目标邮箱: {}", toEmail);
+        } catch (MessagingException e) {
+            logger.error("[EmailService] 发送AI服务异常告警邮件失败，目标邮箱: {}", toEmail, e);
+        }
+    }
+
+    /**
+     * 发送AI服务恢复通知邮件
+     */
+    @Async("emailExecutor")
+    public void sendAiServiceRecovery(String toEmail, String sourceName, String model, String baseUrl, 
+                                     java.time.LocalDateTime failureTime, int reprocessedCount) throws UnsupportedEncodingException {
+        logger.info("[EmailService] 开始发送AI服务恢复通知邮件，目标邮箱: {}", toEmail);
+
+        updateMailSenderConfig();
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(getFromEmail(), getFromAlias());
+            helper.setTo(toEmail);
+            helper.setSubject("AI服务已恢复正常 - AI RSS Hub");
+
+            Context context = new Context();
+            context.setVariable("date", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日")));
+            context.setVariable("sourceName", sourceName);
+            context.setVariable("model", model);
+            context.setVariable("baseUrl", baseUrl);
+            context.setVariable("reprocessedCount", reprocessedCount);
+            
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            context.setVariable("recoveryTime", now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            
+            if (failureTime != null) {
+                context.setVariable("failureTime", failureTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                
+                // 计算故障时长
+                long minutes = java.time.Duration.between(failureTime, now).toMinutes();
+                String downtime;
+                if (minutes < 60) {
+                    downtime = minutes + " 分钟";
+                } else {
+                    long hours = minutes / 60;
+                    long remainingMinutes = minutes % 60;
+                    downtime = hours + " 小时 " + remainingMinutes + " 分钟";
+                }
+                context.setVariable("downtime", downtime);
+            } else {
+                context.setVariable("failureTime", null);
+                context.setVariable("downtime", null);
+            }
+
+            String htmlContent = templateEngine.process("email-ai-service-recovery", context);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            logger.info("[EmailService] AI服务恢复通知邮件发送成功，目标邮箱: {}", toEmail);
+        } catch (MessagingException e) {
+            logger.error("[EmailService] 发送AI服务恢复通知邮件失败，目标邮箱: {}", toEmail, e);
+        }
     }
 }

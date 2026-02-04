@@ -36,6 +36,19 @@ public class RssItemMapper {
         item.setAiFiltered(rs.getBoolean("ai_filtered"));
         item.setAiReason(rs.getString("ai_reason"));
         item.setCreatedAt(DateTimeUtils.parseDateTime(rs.getString("created_at")));
+        
+        // 解析 needs_retry 字段
+        try {
+            Object needsRetryObj = rs.getObject("needs_retry");
+            if (needsRetryObj instanceof Number) {
+                item.setNeedsRetry(((Number) needsRetryObj).intValue() == 1);
+            } else {
+                item.setNeedsRetry(false);
+            }
+        } catch (Exception e) {
+            item.setNeedsRetry(false);
+        }
+        
         return item;
     };
 
@@ -108,8 +121,10 @@ public class RssItemMapper {
 
         // 先尝试插入
         int affectedRows = jdbcTemplate.update(
-            "INSERT OR IGNORE INTO rss_items (source_id, title, link, description, content, pub_date, ai_filtered, ai_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, " + timeClause + ")",
-            item.getSourceId(), item.getTitle(), item.getLink(), item.getDescription(), item.getContent(), item.getPubDate(), item.getAiFiltered(), item.getAiReason());
+            "INSERT OR IGNORE INTO rss_items (source_id, title, link, description, content, pub_date, ai_filtered, ai_reason, needs_retry, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, " + timeClause + ")",
+            item.getSourceId(), item.getTitle(), item.getLink(), item.getDescription(), item.getContent(), 
+            item.getPubDate(), item.getAiFiltered(), item.getAiReason(), 
+            item.getNeedsRetry() != null && item.getNeedsRetry() ? 1 : 0);
 
         // 无论插入成功还是记录已存在，都通过 link 查询记录ID
         // 避免使用 last_insert_rowid()，因为在多线程环境下可能返回不正确的值
@@ -123,8 +138,10 @@ public class RssItemMapper {
     }
 
     public void update(RssItem item) {
-        jdbcTemplate.update("UPDATE rss_items SET ai_filtered = ?, ai_reason = ? WHERE id = ?",
-                item.getAiFiltered(), item.getAiReason(), item.getId());
+        jdbcTemplate.update("UPDATE rss_items SET ai_filtered = ?, ai_reason = ?, needs_retry = ? WHERE id = ?",
+                item.getAiFiltered(), item.getAiReason(), 
+                item.getNeedsRetry() != null && item.getNeedsRetry() ? 1 : 0, 
+                item.getId());
     }
 
     public List<RssItem> findTodayLatestItemsByUserId(Long userId, int limit) {
@@ -136,4 +153,20 @@ public class RssItemMapper {
                 "ORDER BY ri.pub_date DESC LIMIT ?",
                 rowMapper, userId, limit);
     }
+
+    /**
+     * 查询需要重试的RSS条目（AI服务不可用导致未通过筛选的条目）
+     * @param userId 用户ID
+     * @return 需要重试的RSS条目列表
+     */
+    public List<RssItem> findItemsNeedingRetry(Long userId) {
+        return jdbcTemplate.query(
+                "SELECT ri.* FROM rss_items ri " +
+                "JOIN rss_sources rs ON ri.source_id = rs.id " +
+                "WHERE rs.user_id = ? " +
+                "AND ri.needs_retry = 1 " +
+                "ORDER BY ri.created_at DESC",
+                rowMapper, userId);
+    }
 }
+

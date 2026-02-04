@@ -3,6 +3,7 @@ package com.rssai.config;
 import com.rssai.mapper.UserMapper;
 import com.rssai.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.ui.Model;
@@ -15,6 +16,9 @@ public class GlobalModelAttributeAdvice {
     @Autowired
     private UserMapper userMapper;
 
+    @Value("${application.version:1.0.0}")
+    private String appVersion;
+
     @ModelAttribute
     public void addAttributes(Model model) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -25,5 +29,6 @@ public class GlobalModelAttributeAdvice {
                 model.addAttribute("isCurrentUserAdmin", user.getIsAdmin() != null && user.getIsAdmin());
             }
         }
+        model.addAttribute("appVersion", appVersion);
     }
 }

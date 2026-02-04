@@ -91,6 +91,101 @@ body {
     text-shadow: 0 0 6px rgba(15, 76, 129, 0.25);
 }
 
+/* Dashboard Footer */
+.dashboard-footer {
+    margin-top: 3rem;
+    padding: 1.5rem 0;
+    background: var(--gray-50);
+    border-top: 1px solid var(--gray-200);
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    padding: 0 2rem;
+}
+
+.footer-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--gray-600);
+    font-size: 0.875rem;
+}
+
+.footer-left svg {
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+.footer-brand {
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.footer-version {
+    padding: 0.25rem 0.5rem;
+    background: var(--gray-200);
+    color: var(--gray-600);
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.footer-divider {
+    color: var(--gray-300);
+}
+
+.footer-copyright {
+    color: var(--gray-500);
+    font-size: 0.8125rem;
+}
+
+.footer-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.footer-right a {
+    color: var(--gray-600);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s ease;
+}
+
+.footer-right a:hover {
+    color: var(--primary);
+}
+
+/* 响应式页脚 */
+@media (max-width: 768px) {
+    .dashboard-footer {
+        padding: 1.25rem 1rem;
+    }
+
+    .footer-content {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .footer-left {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .footer-right {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem;
+    }
+}
+
 .nav-menu {
     display: flex;
     gap: 2rem;

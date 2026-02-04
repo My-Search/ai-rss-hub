@@ -17,6 +17,13 @@ public class RssItem {
     private String aiReason;
     private LocalDateTime createdAt;
     
+    /**
+     * 是否需要重试AI筛选
+     * true = 需要重试（因AI服务不可用导致筛选失败）
+     * false/null = 不需要重试
+     */
+    private Boolean needsRetry;
+    
     // 临时字段，用于前端显示
     private String imageUrl;
 }

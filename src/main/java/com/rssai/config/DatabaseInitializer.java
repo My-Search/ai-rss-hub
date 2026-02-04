@@ -53,7 +53,7 @@ public class DatabaseInitializer implements CommandLineRunner {
 
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_email_digest_time ON users(email_digest_time, email_subscription_enabled)");
 
-        // 创建表（包含 is_reasoning_model）
+        // 创建表（包含 is_reasoning_model, service_status, last_status_change_at）
         jdbcTemplate.execute(
                 "CREATE TABLE IF NOT EXISTS ai_configs (" +
                         "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -64,6 +64,8 @@ public class DatabaseInitializer implements CommandLineRunner {
                         "system_prompt TEXT, " +
                         "refresh_interval INTEGER DEFAULT 10, " +
                         "is_reasoning_model INTEGER DEFAULT NULL, " + // NULL=自动识别,1=思考,0=普通
+                        "service_status INTEGER DEFAULT 0, " + // 0=正常,1=异常
+                        "last_status_change_at TEXT, " +
                         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                         "FOREIGN KEY (user_id) REFERENCES users(id)" +
@@ -112,6 +114,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "pub_date TIMESTAMP, " +
                 "ai_filtered BOOLEAN DEFAULT 0, " +
                 "ai_reason TEXT, " +
+                "needs_retry INTEGER DEFAULT 0, " +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "FOREIGN KEY (source_id) REFERENCES rss_sources(id))");
 

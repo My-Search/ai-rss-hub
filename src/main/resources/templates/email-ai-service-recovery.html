@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 10px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            margin: -20px -20px 20px -20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #4CAF50;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .success-box h2 {
+            color: #155724;
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+        .success-box p {
+            margin: 5px 0;
+            color: #155724;
+        }
+        .info-section {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .info-section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        .info-item {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 4px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #666;
+            display: inline-block;
+            width: 120px;
+        }
+        .info-value {
+            color: #333;
+        }
+        .status-timeline {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .status-timeline h3 {
+            margin: 0 0 15px 0;
+            color: #2e7d32;
+            font-size: 16px;
+        }
+        .timeline-item {
+            margin: 10px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        .timeline-item:before {
+            content: "●";
+            position: absolute;
+            left: 0;
+            color: #4CAF50;
+            font-size: 20px;
+            line-height: 1;
+        }
+        .timeline-label {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .timeline-value {
+            color: #555;
+        }
+        .dashboard-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .dashboard-link:hover {
+            background-color: #45a049;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #999;
+            font-size: 12px;
+        }
+        .success-icon {
+            font-size: 48px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        @media only screen and (max-width: 600px) {
+            body {
+                padding: 5px;
+            }
+            .container {
+                padding: 15px;
+                border-radius: 0;
+            }
+            .header {
+                margin: -15px -15px 15px -15px;
+                padding: 15px;
+            }
+            .header h1 {
+                font-size: 20px;
+            }
+            .success-box, .info-section, .status-timeline {
+                padding: 15px;
+            }
+            .info-label {
+                width: 100px;
+                font-size: 14px;
+            }
+            .dashboard-link {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ AI服务已恢复正常</h1>
+            <p th:text="${date}"></p>
+        </div>
+
+        <div class="success-icon">
+            ✅
+        </div>
+
+        <div class="success-box">
+            <h2>🎉 好消息！您的AI服务已恢复正常</h2>
+            <p>系统检测到AI服务已经可以正常工作，RSS内容的智能筛选功能已恢复。</p>
+            <p><strong>恢复验证的RSS源：</strong><span th:text="${sourceName}"></span></p>
+            <p th:if="${reprocessedCount != null and reprocessedCount > 0}">
+                <strong>已自动重新处理：</strong><span th:text="${reprocessedCount}"></span> 条故障期间受影响的RSS条目
+            </p>
+        </div>
+
+        <div class="info-section">
+            <h3>📋 AI配置信息</h3>
+            <div class="info-item">
+                <span class="info-label">模型：</span>
+                <span class="info-value" th:text="${model}"></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">API地址：</span>
+                <span class="info-value" th:text="${baseUrl}"></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">恢复时间：</span>
+                <span class="info-value" th:text="${recoveryTime}"></span>
+            </div>
+        </div>
+
+        <div class="status-timeline" th:if="${failureTime != null}">
+            <h3>📊 服务状态时间线</h3>
+            <div class="timeline-item">
+                <span class="timeline-label">异常开始：</span>
+                <span class="timeline-value" th:text="${failureTime}"></span>
+            </div>
+            <div class="timeline-item">
+                <span class="timeline-label">恢复正常：</span>
+                <span class="timeline-value" th:text="${recoveryTime}"></span>
+            </div>
+            <div class="timeline-item" th:if="${downtime != null}">
+                <span class="timeline-label">故障时长：</span>
+                <span class="timeline-value" th:text="${downtime}"></span>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <a href="#" class="dashboard-link">查看控制台</a>
+        </div>
+
+        <div class="footer">
+            <p>此邮件由 AI RSS Hub 自动发送</p>
+            <p>您的RSS订阅服务现在已经完全恢复正常运行</p>
+        </div>
+    </div>
+</body>
+</html>
