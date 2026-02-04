@@ -3,11 +3,14 @@ package com.rssai.config;
 import com.rssai.service.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Component
 public class DatabaseInitializer implements CommandLineRunner {
@@ -15,6 +18,9 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private final JdbcTemplate jdbcTemplate;
     private final SystemConfigService systemConfigService;
+    
+    @Value("${spring.datasource.url}")
+    private String datasourceUrl;
 
     public DatabaseInitializer(JdbcTemplate jdbcTemplate, SystemConfigService systemConfigService) {
         this.jdbcTemplate = jdbcTemplate;
@@ -23,15 +29,71 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        ensureDataDirectory();
-        createTables();
+        ensureDatabaseFile();
+        ensureTables();
         initializeSystemConfigs();
     }
 
-    private void ensureDataDirectory() {
-        File dataDir = new File("data");
-        if (!dataDir.exists()) {
-            dataDir.mkdirs();
+    private void ensureDatabaseFile() {
+        try {
+            String dbFilePath = extractDbFilePathFromUrl(datasourceUrl);
+            if (dbFilePath == null) {
+                logger.warn("无法从数据源URL解析数据库文件路径: {}", datasourceUrl);
+                return;
+            }
+            
+            File dbFile = new File(dbFilePath);
+            if (!dbFile.exists()) {
+                File parentDir = dbFile.getParentFile();
+                if (parentDir != null && !parentDir.exists()) {
+                    boolean created = parentDir.mkdirs();
+                    if (created) {
+                        logger.info("创建数据库目录: {}", parentDir.getAbsolutePath());
+                    } else {
+                        logger.error("无法创建数据库目录: {}", parentDir.getAbsolutePath());
+                        return;
+                    }
+                }
+                logger.info("初始化数据库文件: {}", dbFile.getAbsolutePath());
+            } else {
+                logger.debug("数据库文件已存在: {}", dbFile.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            logger.error("确保数据库文件存在时发生错误", e);
+        }
+    }
+    
+    private void ensureTables() {
+        try {
+            createTables();
+            logger.info("数据库表结构检查完成");
+        } catch (Exception e) {
+            logger.error("创建数据库表时发生错误", e);
+            throw new RuntimeException("数据库初始化失败", e);
+        }
+    }
+    
+    private String extractDbFilePathFromUrl(String url) {
+        if (url == null || !url.startsWith("jdbc:sqlite:")) {
+            return null;
+        }
+        
+        // 移除 "jdbc:sqlite:" 前缀
+        String path = url.substring("jdbc:sqlite:".length());
+        
+        // 移除URL参数（如果有）
+        int queryIndex = path.indexOf('?');
+        if (queryIndex != -1) {
+            path = path.substring(0, queryIndex);
+        }
+        
+        // 规范化路径
+        try {
+            Path normalizedPath = Paths.get(path).normalize();
+            return normalizedPath.toString();
+        } catch (Exception e) {
+            logger.warn("路径规范化失败，使用原始路径: {}", path, e);
+            return path;
         }
     }
 
@@ -169,6 +231,11 @@ public class DatabaseInitializer implements CommandLineRunner {
     }
 
     private void initializeSystemConfigs() {
-        systemConfigService.initializeDefaultConfigs();
+        try {
+            systemConfigService.initializeDefaultConfigs();
+            logger.info("系统配置初始化完成");
+        } catch (Exception e) {
+            logger.error("初始化系统配置时发生错误", e);
+        }
     }
 }

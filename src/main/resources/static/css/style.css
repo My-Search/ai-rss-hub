@@ -791,6 +791,15 @@ html {
     font-size: 0.8125rem;
     color: var(--gray-600);
 }
+
+.source-name {
+    padding: 2px 8px 2px 0;
+    background: var(--gray-100);
+    color: var(--gray-700);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
 .add-keyword-subscribe-btn {
     margin: 10px 0px;
 }

@@ -55,7 +55,7 @@ public class MailConfig {
         try {
             return systemConfigService.getConfigValue(key, defaultValue);
         } catch (Exception e) {
-            logger.warn("获取配置 '{}' 失败，使用默认值: {}", key, defaultValue);
+            // logger.warn("获取配置 '{}' 失败，使用默认值: {}", key, defaultValue);
             return defaultValue;
         }
     }

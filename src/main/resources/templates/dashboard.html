@@ -61,13 +61,13 @@
                             <h3><a th:href="${item.link}" target="_blank" th:text="${item.title}"></a></h3>
                             <p class="item-desc" th:text="${item.description}"></p>
                             <div class="item-meta">
+                                <span th:if="${item.sourceName != null}" th:text="${item.sourceName}" class="source-name"></span>
                                 <span th:if="${item.pubDate != null}" th:text="${#temporals.format(item.pubDate, 'yyyy-MM-dd')}" class="pub-date" th:data-time="${#temporals.format(item.pubDate, 'HH:mm')}"></span>
                                 <span th:if="${item.pubDate == null}">未知时间</span>
-                                <span th:if="${item.sourceName != null}" th:text="${item.sourceName}" class="source-name" style="margin-left: 8px; color: #666;"></span>
                             </div>
                         </div>
                         <div class="rss-item-image" th:if="${item.imageUrl != null}">
-                            <img th:src="${item.imageUrl}" th:alt="${item.title}" />
+                            <img th:src="${item.imageUrl}" th:alt="${item.title}" onerror="this.style.display='none'; this.parentElement.style.display='none';" />
                         </div>
                     </div>
                     <div th:if="${#lists.isEmpty(items)}" class="empty-state">
@@ -144,8 +144,8 @@
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'rss-item';
                     
-                    const imageHtml = item.imageUrl 
-                        ? `<div class="rss-item-image"><img src="${item.imageUrl}" alt="${item.title}" /></div>` 
+                    const imageHtml = item.imageUrl
+                        ? `<div class="rss-item-image"><img src="${item.imageUrl}" alt="${item.title}" onerror="this.style.display='none'; this.parentElement.style.display='none';" /></div>`
                         : '';
                     
                     itemDiv.innerHTML = `
@@ -154,7 +154,7 @@
                             <p class="item-desc">${item.description}</p>
                             <div class="item-meta">
                                 ${item.pubDate ? `<span class="pub-date">${formatPubDate(item.pubDate)}</span>` : '<span>未知时间</span>'}
-                                ${item.sourceName ? `<span class="source-name" style="margin-left: 8px; color: #666;">${item.sourceName}</span>` : ''}
+                                ${item.sourceName ? `<span class="source-name">${item.sourceName}</span>` : ''}
                             </div>
                         </div>
                         ${imageHtml}
