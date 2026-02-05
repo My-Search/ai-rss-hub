@@ -130,7 +130,7 @@ public class EmailService {
     }
 
     @Async("emailExecutor")
-    public void sendKeywordMatchNotification(String toEmail, String keywords, List<RssItem> items) throws UnsupportedEncodingException {
+    public void sendKeywordMatchNotification(String toEmail, List<String> keywords, List<RssItem> items) throws UnsupportedEncodingException {
         if (items == null || items.isEmpty()) {
             logger.info("没有匹配的RSS条目需要发送关键词提醒邮件给 {}", toEmail);
             return;
@@ -145,7 +145,8 @@ public class EmailService {
             helper.setFrom(getFromEmail(), getFromAlias());
             helper.setTo(toEmail);
             
-            helper.setSubject("你订阅的关键字" + keywords + "有更新");
+            String keywordsSubject = String.join("、", keywords);
+            helper.setSubject("你订阅的关键字" + keywordsSubject + "有更新");
 
             List<RssItem> itemsWithPlainText = new ArrayList<>();
             for (RssItem item : items) {

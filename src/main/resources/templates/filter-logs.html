@@ -723,6 +723,10 @@
                 // Race condition protection - request versioning
                 this.requestId = 0;
 
+                // Request lock: prevent concurrent requests for the same page
+                this.requestLock = false;
+                this.requestedPages = new Set();
+
                 // DOM elements
                 this.elements = {
                     tbody: document.querySelector('#logs-tbody'),
@@ -907,19 +911,37 @@
 
             /**
              * Load more data - Law of Fail Fast
-             * Includes race condition protection via request versioning
+             * Includes race condition protection via request versioning and request lock
              */
             async loadMore() {
+                const currentPage = this.state.currentPage;
+
+                // Request lock check: if a request is in progress, block new requests
+                if (this.requestLock) {
+                    console.log('请求被拦截：当前有请求正在进行中');
+                    return;
+                }
+
+                // Check if this page has already been requested
+                if (this.requestedPages.has(currentPage)) {
+                    console.log('请求被拦截：页面 ' + currentPage + ' 已经在请求队列中');
+                    return;
+                }
+
                 // Early exit if already loading or no more data
                 if (this.state.isLoading || !this.state.hasMore) {
                     return;
                 }
 
+                // Acquire lock and mark page as requested
+                this.requestLock = true;
+                this.requestedPages.add(currentPage);
+
                 // Increment request ID for race condition protection
                 const currentRequestId = ++this.requestId;
 
                 // Determine if this is initial load or subsequent load
-                const isInitialLoad = this.state.currentPage === 1 &&
+                const isInitialLoad = currentPage === 1 &&
                     (!this.elements.tbody || this.elements.tbody.children.length === 0);
 
                 // Set loading state
@@ -934,7 +956,7 @@
                 }
 
                 try {
-                    const response = await fetch(this.buildApiUrl(this.state.currentPage));
+                    const response = await fetch(this.buildApiUrl(currentPage));
 
                     // Race condition check: discard outdated responses
                     if (currentRequestId !== this.requestId) {
@@ -965,7 +987,7 @@
 
                     // Update state
                     this.setState({
-                        currentPage: this.state.currentPage + 1,
+                        currentPage: currentPage + 1,
                         hasMore: data.hasMore,
                         totalPages: data.totalPages,
                         isLoading: false
@@ -987,12 +1009,18 @@
                         return;
                     }
 
+                    // Remove from requested pages on error to allow retry
+                    this.requestedPages.delete(currentPage);
+
                     // Fail loud - log and show error UI
                     console.error('Failed to load filter logs:', error);
                     this.setState({ isLoading: false });
                     this.hideSkeleton();
                     this.hideLoading();
                     this.showError();
+                } finally {
+                    // Release lock regardless of success or failure
+                    this.requestLock = false;
                 }
             }
 

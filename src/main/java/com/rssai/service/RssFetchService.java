@@ -385,11 +385,10 @@ public class RssFetchService {
                         userId, subscription.getKeywords(), item.getId(), item.getTitle());
             }
 
-            // 合并关键词，发送一封邮件
-            String combinedKeywords = String.join("、", keywords);
+            // 发送一封邮件，传递关键词列表
             List<RssItem> singleItemList = new ArrayList<>();
             singleItemList.add(item);
-            emailService.sendKeywordMatchNotification(user.getEmail(), combinedKeywords, singleItemList);
+            emailService.sendKeywordMatchNotification(user.getEmail(), keywords, singleItemList);
         }
     }
 

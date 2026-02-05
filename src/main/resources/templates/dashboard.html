@@ -77,6 +77,21 @@
             position: relative;
         }
 
+        .stat-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-header svg {
+            color: #6366f1;
+            flex-shrink: 0;
+        }
+
+        html[data-theme="dark"] .stat-header svg {
+            color: #818cf8;
+        }
+
         .corner-favorite {
             position: absolute;
             bottom: 22px;
@@ -164,11 +179,27 @@
 
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-value" th:text="${#lists.size(sources)}">0</div>
+                <div class="stat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 11a9 9 0 0 1 9 9"/>
+                        <path d="M4 4a16 16 0 0 1 16 16"/>
+                        <circle cx="5" cy="19" r="1"/>
+                    </svg>
+                    <div class="stat-value" th:text="${#lists.size(sources)}">0</div>
+                </div>
                 <div class="stat-label">RSS源</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" th:text="${totalItems}">0</div>
+                <div class="stat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    <div class="stat-value" th:text="${totalItems}">0</div>
+                </div>
                 <div class="stat-label">筛选文章</div>
             </div>
         </div>
@@ -258,6 +289,11 @@
             let isLoading = false;
             let hasMore = currentPage < totalPages;
 
+            // 请求锁：防止并发请求同一页数据
+            let requestLock = false;
+            let requestedPages = new Set();
+            let scrollTicking = false;
+
             const rssItemsContainer = document.getElementById('rss-items');
             const loadingEl = document.getElementById('loading');
             const noMoreEl = document.getElementById('no-more');
@@ -306,12 +342,30 @@
             }
 
             function loadMoreItems() {
+                const nextPage = currentPage + 1;
+
+                // 请求锁检查：如果当前有请求正在进行，直接返回
+                if (requestLock) {
+                    console.log('请求被拦截：当前有请求正在进行中');
+                    return;
+                }
+
+                // 检查是否已经请求过该页面
+                if (requestedPages.has(nextPage)) {
+                    console.log('请求被拦截：页面 ' + nextPage + ' 已经在请求队列中');
+                    return;
+                }
+
+                // 状态检查
                 if (isLoading || !hasMore) return;
 
+                // 加锁：标记请求开始
+                requestLock = true;
+                requestedPages.add(nextPage);
                 isLoading = true;
                 loadingEl.style.display = 'block';
 
-                fetch(`/dashboard/items?page=${currentPage + 1}&pageSize=${pageSize}`)
+                fetch(`/dashboard/items?page=${nextPage}&pageSize=${pageSize}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.items && data.items.length > 0) {
@@ -328,19 +382,32 @@
                     })
                     .catch(error => {
                         console.error('加载失败:', error);
+                        // 请求失败时，从已请求集合中移除，允许重试
+                        requestedPages.delete(nextPage);
                         isLoading = false;
                         loadingEl.style.display = 'none';
+                    })
+                    .finally(() => {
+                        // 解锁：请求结束，无论成功或失败
+                        requestLock = false;
                     });
             }
 
             function handleScroll() {
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                const windowHeight = window.innerHeight;
-                const documentHeight = document.documentElement.scrollHeight;
+                // 使用 requestAnimationFrame 节流 scroll 事件
+                if (scrollTicking) return;
 
-                if (scrollTop + windowHeight >= documentHeight - 200) {
-                    loadMoreItems();
-                }
+                scrollTicking = true;
+                requestAnimationFrame(() => {
+                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    const windowHeight = window.innerHeight;
+                    const documentHeight = document.documentElement.scrollHeight;
+
+                    if (scrollTop + windowHeight >= documentHeight - 200) {
+                        loadMoreItems();
+                    }
+                    scrollTicking = false;
+                });
             }
 
             window.addEventListener('scroll', handleScroll);

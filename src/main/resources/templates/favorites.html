@@ -281,6 +281,11 @@
             let isLoading = false;
             let hasMore = currentPage < totalPages;
 
+            // 请求锁：防止并发请求同一页数据
+            let requestLock = false;
+            let requestedPages = new Set();
+            let scrollTicking = false;
+
             const rssItemsContainer = document.getElementById('rss-items');
             const loadingEl = document.getElementById('loading');
             const noMoreEl = document.getElementById('no-more');
@@ -338,12 +343,30 @@
             }
 
             function loadMoreItems() {
+                const nextPage = currentPage + 1;
+
+                // 请求锁检查：如果当前有请求正在进行，直接返回
+                if (requestLock) {
+                    console.log('请求被拦截：当前有请求正在进行中');
+                    return;
+                }
+
+                // 检查是否已经请求过该页面
+                if (requestedPages.has(nextPage)) {
+                    console.log('请求被拦截：页面 ' + nextPage + ' 已经在请求队列中');
+                    return;
+                }
+
+                // 状态检查
                 if (isLoading || !hasMore) return;
 
+                // 加锁：标记请求开始
+                requestLock = true;
+                requestedPages.add(nextPage);
                 isLoading = true;
                 loadingEl.style.display = 'block';
 
-                fetch(`/favorites/items?page=${currentPage + 1}&pageSize=${pageSize}`)
+                fetch(`/favorites/items?page=${nextPage}&pageSize=${pageSize}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.favorites && data.favorites.length > 0) {
@@ -360,19 +383,32 @@
                     })
                     .catch(error => {
                         console.error('加载失败:', error);
+                        // 请求失败时，从已请求集合中移除，允许重试
+                        requestedPages.delete(nextPage);
                         isLoading = false;
                         loadingEl.style.display = 'none';
+                    })
+                    .finally(() => {
+                        // 解锁：请求结束，无论成功或失败
+                        requestLock = false;
                     });
             }
 
             function handleScroll() {
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                const windowHeight = window.innerHeight;
-                const documentHeight = document.documentElement.scrollHeight;
+                // 使用 requestAnimationFrame 节流 scroll 事件
+                if (scrollTicking) return;
 
-                if (scrollTop + windowHeight >= documentHeight - 200) {
-                    loadMoreItems();
-                }
+                scrollTicking = true;
+                requestAnimationFrame(() => {
+                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    const windowHeight = window.innerHeight;
+                    const documentHeight = document.documentElement.scrollHeight;
+
+                    if (scrollTop + windowHeight >= documentHeight - 200) {
+                        loadMoreItems();
+                    }
+                    scrollTicking = false;
+                });
             }
 
             window.addEventListener('scroll', handleScroll);

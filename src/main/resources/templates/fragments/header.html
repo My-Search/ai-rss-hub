@@ -48,7 +48,7 @@
     </style>
 </head>
 <body>
-    <nav th:fragment="header" class="navbar">
+    <nav th:fragment="header" class="navbar" ondblclick="scrollToTop()">
         <div class="nav-container">
             <a th:href="@{/dashboard}" class="nav-brand" style="display: flex; align-items: center;">
                 <img th:src="@{/favicon.svg}" alt="" style="height: 1em; width: auto; margin-right: 6px; display: inline-block;">
@@ -126,12 +126,16 @@
                 const menu = document.getElementById('navMenu');
                 const overlay = document.getElementById('navOverlay');
                 const hamburger = document.querySelector('.hamburger');
-                
+
                 menu.classList.toggle('active');
                 overlay.classList.toggle('active');
                 hamburger.classList.toggle('active');
-                
+
                 document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
+            }
+
+            function scrollToTop() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
             
             function toggleTheme() {

@@ -105,6 +105,11 @@
             border-radius: 3px;
             color: #f5576c;
             font-weight: bold;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .keyword-highlight:last-child {
+            margin-right: 0;
         }
         @media only screen and (max-width: 600px) {
             body {
@@ -148,7 +153,7 @@
         </div>
 
         <div class="notice">
-            你订阅的关键字 <span class="keyword-highlight" th:text="${keywords}"></span> 有 <strong th:text="${count}"></strong> 条更新
+            你订阅的关键字 <span th:each="kw : ${keywords}" class="keyword-highlight" th:text="${kw}"></span> 有 <strong th:text="${count}"></strong> 条更新
         </div>
 
         <div th:each="item : ${items}" class="item">
