@@ -19,3 +19,19 @@
 -- CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
 
 -- 在此添加你的增量SQL：
+
+-- VERSION:v1.2.0
+-- 添加用户已读条目表
+CREATE TABLE IF NOT EXISTS user_read_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    rss_item_id INTEGER NOT NULL,
+    read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (rss_item_id) REFERENCES rss_items(id),
+    UNIQUE(user_id, rss_item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_read_items_user_rss ON user_read_items(user_id, rss_item_id);
+CREATE INDEX IF NOT EXISTS idx_user_read_items_user_id ON user_read_items(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_read_items_rss_item_id ON user_read_items(rss_item_id);

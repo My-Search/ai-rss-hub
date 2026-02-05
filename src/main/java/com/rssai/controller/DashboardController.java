@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -80,7 +81,7 @@ public class DashboardController {
         User user = userMapper.findByUsername(auth.getName());
         int totalItems = rssItemMapper.countFilteredByUserId(user.getId());
         int totalPages = (int) Math.ceil((double) totalItems / pageSize);
-        
+
         List<RssItem> items = rssItemMapper.findFilteredByUserIdWithPagination(user.getId(), page, pageSize);
         for (RssItem item : items) {
             String cleanDesc = HtmlUtils.stripHtml(item.getDescription());
@@ -92,12 +93,32 @@ public class DashboardController {
             }
             item.setImageUrl(imageUrl);
         }
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("items", items);
         result.put("hasMore", page < totalPages);
         result.put("currentPage", page);
         result.put("totalPages", totalPages);
+        return result;
+    }
+
+    @GetMapping("/dashboard/read-ids")
+    @ResponseBody
+    public Map<String, Object> getReadItemIds(Authentication auth) {
+        User user = userMapper.findByUsername(auth.getName());
+        List<Long> readItemIds = rssItemMapper.findReadItemIds(user.getId());
+        Map<String, Object> result = new HashMap<>();
+        result.put("readIds", readItemIds);
+        return result;
+    }
+
+    @PostMapping("/dashboard/mark-read")
+    @ResponseBody
+    public Map<String, Object> markAsRead(Authentication auth, @RequestParam Long itemId) {
+        User user = userMapper.findByUsername(auth.getName());
+        rssItemMapper.markAsRead(user.getId(), itemId);
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
         return result;
     }
 }

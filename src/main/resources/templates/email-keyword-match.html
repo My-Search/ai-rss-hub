@@ -72,6 +72,20 @@
             color: #666;
             font-size: 14px;
             margin: 10px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .item-link {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+            margin-top: 10px;
         }
         .item-meta {
             color: #999;
@@ -163,6 +177,7 @@
             <div class="item-summary" th:if="${item.description != null and !item.description.isEmpty()}">
                 <span th:text="${item.description}"></span>
             </div>
+            <div class="item-link" th:text="${item.link}" th:if="${item.link != null and !item.link.isEmpty()}"></div>
             <div class="item-meta">
                 <span th:if="${item.pubDate != null}" th:text="'发布时间：' + ${#temporals.format(item.pubDate, 'yyyy-MM-dd HH:mm')}"></span>
             </div>

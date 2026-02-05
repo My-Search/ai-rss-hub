@@ -232,6 +232,20 @@ public class DatabaseInitializer implements CommandLineRunner {
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_user_favorites_rss_item_id ON user_favorites(rss_item_id)");
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_user_favorites_created_at ON user_favorites(created_at)");
 
+        // 用户已读条目表
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS user_read_items (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "user_id INTEGER NOT NULL, " +
+                "rss_item_id INTEGER NOT NULL, " +
+                "read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "FOREIGN KEY (user_id) REFERENCES users(id), " +
+                "FOREIGN KEY (rss_item_id) REFERENCES rss_items(id), " +
+                "UNIQUE(user_id, rss_item_id))");
+
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_user_read_items_user_rss ON user_read_items(user_id, rss_item_id)");
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_user_read_items_user_id ON user_read_items(user_id)");
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_user_read_items_rss_item_id ON user_read_items(rss_item_id)");
+
         // 持久化登录表（Spring Security Remember-Me）
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS persistent_logins (" +
                 "username VARCHAR(64) NOT NULL, " +

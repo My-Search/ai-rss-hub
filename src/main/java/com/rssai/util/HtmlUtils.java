@@ -17,6 +17,11 @@ public class HtmlUtils {
 
         String text = html;
 
+        // 先处理换行标签，将它们替换为换行符
+        text = text.replaceAll("(?i)<br\\s*/?\\s*>", "\n");
+        text = text.replaceAll("(?i)</?(p|div|li|h[1-6]|blockquote|pre)[^>]*>", "\n");
+
+        // 然后去除其他HTML标签
         text = HTML_TAG_PATTERN.matcher(text).replaceAll(" ");
 
         text = text.replace("&nbsp;", " ");
@@ -29,8 +34,9 @@ public class HtmlUtils {
         text = text.replace("&ndash;", "–");
         text = text.replace("&hellip;", "…");
 
+        // 压缩连续空格，但保留换行符
         text = MULTIPLE_SPACES_PATTERN.matcher(text).replaceAll(" ");
-
+        // 将多个换行符压缩为最多2个
         text = MULTIPLE_NEWLINES_PATTERN.matcher(text).replaceAll("\n\n");
 
         return text.trim();

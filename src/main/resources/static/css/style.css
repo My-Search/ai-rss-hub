@@ -5837,6 +5837,7 @@ html {
     animation: slideIn 0.3s ease-out;
     min-width: 300px;
     max-width: 400px;
+    color: var(--text-primary);
 }
 
 .toast.removing {
@@ -5930,22 +5931,43 @@ html {
     color: var(--info-dark);
 }
 
-/* Toast 深色主题 */
+/* Toast 深色主题 - 修复灰度变量使用问题 */
 [data-theme="dark"] .toast {
-    background: var(--gray-800);
-    border-color: var(--gray-600);
+    background: var(--gray-200);
+    border-color: var(--gray-300);
+}
+
+[data-theme="dark"] .toast-title {
+    color: var(--gray-900);
 }
 
 [data-theme="dark"] .toast-message {
-    color: var(--gray-400);
+    color: var(--gray-700);
 }
 
 [data-theme="dark"] .toast-close {
-    color: var(--gray-500);
+    color: var(--gray-600);
 }
 
 [data-theme="dark"] .toast-close:hover {
-    color: var(--gray-300);
+    color: var(--gray-800);
+}
+
+/* 深色主题下修复toast类型标题颜色 */
+[data-theme="dark"] .toast-success .toast-title {
+    color: var(--success);
+}
+
+[data-theme="dark"] .toast-error .toast-title {
+    color: var(--danger);
+}
+
+[data-theme="dark"] .toast-warning .toast-title {
+    color: var(--warning);
+}
+
+[data-theme="dark"] .toast-info .toast-title {
+    color: var(--info);
 }
 
 /* Toast 动画 */

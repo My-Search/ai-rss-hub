@@ -159,6 +159,37 @@
             stroke: #ef4444;
             opacity: 0.7;
         }
+
+        /* 已读标记样式 */
+        .read-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 12px;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+
+        html[data-theme="dark"] .read-indicator {
+            color: #34d399;
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        .read-indicator svg {
+            width: 10px;
+            height: 10px;
+        }
+
+        .rss-item[data-read="true"] .item-meta {
+            opacity: 0.6;
+        }
+
+        .rss-item[data-read="true"] .item-meta .source-name {
+            opacity: 0.6;
+        }
     </style>
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
@@ -211,9 +242,18 @@
             </div>
             <div class="card-body">
                 <div class="rss-items" id="rss-items">
-                    <div class="rss-item" th:each="item : ${items}" th:data-item-id="${item.id}">
+                    <div class="rss-item" th:each="item : ${items}" th:data-item-id="${item.id}" th:data-read="${item.isRead == true ? 'true' : 'false'}">
                         <div class="rss-item-content">
-                            <h3><a th:href="${item.link}" target="_blank" th:text="${item.title}"></a></h3>
+                            <h3>
+                                <a th:href="${item.link}" target="_blank" th:text="${item.title}"></a>
+                                <span th:if="${item.isRead == true}" class="read-indicator">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                    </svg>
+                                    已读
+                                </span>
+                            </h3>
                             <p class="item-desc" th:text="${item.description}"></p>
                             <div class="item-meta">
                                 <span th:if="${item.sourceName != null}" th:text="${item.sourceName}" class="source-name"></span>
@@ -268,6 +308,9 @@
     </footer>
 
     <script th:inline="javascript">
+        // 已读检测：存储每个条目的定时器
+        const readTimers = new Map();
+
         document.addEventListener('DOMContentLoaded', function() {
             const today = new Date().toISOString().split('T')[0];
             document.querySelectorAll('.pub-date').forEach(function(el) {
@@ -313,14 +356,25 @@
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'rss-item';
                     itemDiv.setAttribute('data-item-id', item.id);
+                    itemDiv.setAttribute('data-read', item.isRead ? 'true' : 'false');
 
                     const imageHtml = item.imageUrl
                         ? `<div class="rss-item-image"><img src="${item.imageUrl}" alt="${item.title}" onerror="this.style.display='none'; this.parentElement.style.display='none';" /></div>`
                         : '';
 
+                    const readIndicator = item.isRead
+                        ? `<span class="read-indicator">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                                已读
+                           </span>`
+                        : '';
+
                     itemDiv.innerHTML = `
                         <div class="rss-item-content">
-                            <h3><a href="${item.link}" target="_blank">${item.title}</a></h3>
+                            <h3><a href="${item.link}" target="_blank">${item.title}</a>${readIndicator}</h3>
                             <p class="item-desc">${item.description}</p>
                             <div class="item-meta">
                                 ${item.sourceName ? `<span class="source-name">${item.sourceName}</span>` : ''}
@@ -339,6 +393,8 @@
                 });
                 // 加载新添加项的收藏状态
                 loadFavoriteStatus();
+                // 启动已读检测
+                checkVisibleItems();
             }
 
             function loadMoreItems() {
@@ -406,6 +462,8 @@
                     if (scrollTop + windowHeight >= documentHeight - 200) {
                         loadMoreItems();
                     }
+                    // 检查可视区域内的条目
+                    checkVisibleItems();
                     scrollTicking = false;
                 });
             }
@@ -478,6 +536,110 @@
                 showToast('error', '操作失败，请重试');
             });
         }
+
+        // 检查元素是否在可视区域或在其上方
+        function isElementVisibleOrAbove(element) {
+            const rect = element.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+
+            // 元素顶部在可视区域内，或已经滚动到可视区域上方
+            return rect.top < windowHeight;
+        }
+
+        // 检查可视区域内的条目并启动/取消定时器
+        function checkVisibleItems() {
+            const items = document.querySelectorAll('.rss-item[data-item-id]');
+            const windowHeight = window.innerHeight;
+
+            items.forEach(function(item) {
+                const itemId = item.getAttribute('data-item-id');
+                const isRead = item.getAttribute('data-read') === 'true';
+
+                // 如果已读，跳过
+                if (isRead) return;
+
+                const rect = item.getBoundingClientRect();
+
+                // 判断是否在可视区域内或在其上方
+                if (rect.top < windowHeight) {
+                    // 如果还没有定时器，启动10秒定时器
+                    if (!readTimers.has(itemId)) {
+                        const timerId = setTimeout(() => {
+                            // 10秒后复核：仍然在可视区域内或在其上方
+                            const currentRect = item.getBoundingClientRect();
+                            if (currentRect.top < windowHeight) {
+                                markAsRead(item, itemId);
+                            }
+                            // 清除定时器
+                            readTimers.delete(itemId);
+                        }, 10000);
+
+                        readTimers.set(itemId, timerId);
+                    }
+                } else {
+                    // 条目已经完全在可视区域下方，取消定时器
+                    if (readTimers.has(itemId)) {
+                        clearTimeout(readTimers.get(itemId));
+                        readTimers.delete(itemId);
+                    }
+                }
+            });
+        }
+
+        // 标记条目为已读
+        function markAsRead(itemElement, itemId) {
+            // 服务器请求标记已读
+            fetch('/dashboard/mark-read?itemId=' + itemId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-XSRF-TOKEN': getCsrfToken()
+                }
+            })
+            .then(response => {
+                if (response.status === 403) {
+                    console.warn('会话已过期，无法标记已读');
+                    return null;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success) {
+                    // 更新UI显示已读状态
+                    itemElement.setAttribute('data-read', 'true');
+
+                    // 检查是否已有已读标记
+                    let readIndicator = itemElement.querySelector('.read-indicator');
+                    if (!readIndicator) {
+                        const h3 = itemElement.querySelector('h3');
+                        readIndicator = document.createElement('span');
+                        readIndicator.className = 'read-indicator';
+                        readIndicator.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            已读
+                        `;
+                        h3.appendChild(readIndicator);
+                    }
+
+                    // 清除该条目的定时器（如果有的话）
+                    if (readTimers.has(itemId)) {
+                        clearTimeout(readTimers.get(itemId));
+                        readTimers.delete(itemId);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('标记已读失败:', error);
+            });
+        }
+
+        // 页面加载完成后启动已读检测
+        window.addEventListener('load', function() {
+            setTimeout(checkVisibleItems, 500);
+        });
     </script>
 </body>
 </html>

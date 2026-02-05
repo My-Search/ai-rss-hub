@@ -56,7 +56,19 @@ public class RssItemMapper {
         } catch (Exception e) {
             item.setSourceName(null);
         }
-        
+
+        // 解析 is_read 字段（如果存在）
+        try {
+            Object isReadObj = rs.getObject("is_read");
+            if (isReadObj instanceof Number) {
+                item.setIsRead(((Number) isReadObj).intValue() == 1);
+            } else {
+                item.setIsRead(false);
+            }
+        } catch (Exception e) {
+            item.setIsRead(false);
+        }
+
         return item;
     };
 
@@ -75,8 +87,13 @@ public class RssItemMapper {
     public List<RssItem> findFilteredByUserIdWithPagination(Long userId, int page, int pageSize) {
         int offset = (page - 1) * pageSize;
         return jdbcTemplate.query(
-                "SELECT ri.*, rs.name as source_name FROM rss_items ri JOIN rss_sources rs ON ri.source_id = rs.id WHERE rs.user_id = ? AND ri.ai_filtered = 1 ORDER BY ri.pub_date DESC LIMIT ? OFFSET ?",
-                rowMapper, userId, pageSize, offset);
+                "SELECT ri.*, rs.name as source_name, EXISTS(SELECT 1 FROM user_read_items WHERE user_id = ? AND rss_item_id = ri.id) as is_read " +
+                "FROM rss_items ri " +
+                "JOIN rss_sources rs ON ri.source_id = rs.id " +
+                "WHERE rs.user_id = ? AND ri.ai_filtered = 1 " +
+                "ORDER BY ri.pub_date DESC " +
+                "LIMIT ? OFFSET ?",
+                rowMapper, userId, userId, pageSize, offset);
     }
 
     public int countFilteredByUserId(Long userId) {
@@ -175,6 +192,29 @@ public class RssItemMapper {
                 "AND ri.needs_retry = 1 " +
                 "ORDER BY ri.created_at DESC",
                 rowMapper, userId);
+    }
+
+    /**
+     * 标记条目为已读
+     * @param userId 用户ID
+     * @param rssItemId RSS条目ID
+     */
+    public void markAsRead(Long userId, Long rssItemId) {
+        jdbcTemplate.update(
+                "INSERT OR IGNORE INTO user_read_items (user_id, rss_item_id) VALUES (?, ?)",
+                userId, rssItemId);
+    }
+
+    /**
+     * 获取用户所有已读条目的ID列表
+     * @param userId 用户ID
+     * @return 已读条目ID列表
+     */
+    public List<Long> findReadItemIds(Long userId) {
+        return jdbcTemplate.query(
+                "SELECT rss_item_id FROM user_read_items WHERE user_id = ?",
+                (rs, rowNum) -> rs.getLong("rss_item_id"),
+                userId);
     }
 }
 

@@ -29,4 +29,7 @@ public class RssItem {
     
     // 源名称，用于前端显示
     private String sourceName;
+
+    // 是否已读，用于前端显示
+    private Boolean isRead;
 }
