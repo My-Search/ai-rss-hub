@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.SecureRandom;
 
 @Component
 public class DatabaseInitializer implements CommandLineRunner {
@@ -18,13 +19,16 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private final JdbcTemplate jdbcTemplate;
     private final SystemConfigService systemConfigService;
-    
+    private final SecurityKeyProvider securityKeyProvider;
+
     @Value("${spring.datasource.url}")
     private String datasourceUrl;
 
-    public DatabaseInitializer(JdbcTemplate jdbcTemplate, SystemConfigService systemConfigService) {
+    public DatabaseInitializer(JdbcTemplate jdbcTemplate, SystemConfigService systemConfigService,
+                             SecurityKeyProvider securityKeyProvider) {
         this.jdbcTemplate = jdbcTemplate;
         this.systemConfigService = systemConfigService;
+        this.securityKeyProvider = securityKeyProvider;
     }
 
     @Override
@@ -32,6 +36,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         ensureDatabaseFile();
         ensureTables();
         initializeSystemConfigs();
+        generateAndStoreSecurityKeys();
     }
 
     private void ensureDatabaseFile() {
@@ -250,6 +255,42 @@ public class DatabaseInitializer implements CommandLineRunner {
             logger.info("系统配置初始化完成");
         } catch (Exception e) {
             logger.error("初始化系统配置时发生错误", e);
+        }
+    }
+
+    /**
+     * 初始化安全密钥
+     * 将 SecurityKeyProvider 中已生成的密钥写入数据库
+     */
+    private void generateAndStoreSecurityKeys() {
+        try {
+            // 获取 SecurityKeyProvider 中已生成的密钥
+            String rememberMeKey = securityKeyProvider.getRememberMeKey();
+            String encryptionKey = securityKeyProvider.getEncryptionKey();
+
+            // 检查数据库是否已有密钥，没有则写入
+            String dbRememberMeKey = systemConfigService.getConfigValue("security.remember-me-key");
+            if (dbRememberMeKey == null || dbRememberMeKey.isEmpty()) {
+                systemConfigService.updateConfig("security.remember-me-key", rememberMeKey,
+                        "Remember-Me会话密钥（用于持久化登录）");
+                logger.info("Remember-Me密钥已存储到数据库");
+            } else {
+                logger.info("数据库已存在Remember-Me密钥，使用数据库中的密钥");
+            }
+
+            String dbEncryptionKey = systemConfigService.getConfigValue("security.encryption-key");
+            if (dbEncryptionKey == null || dbEncryptionKey.isEmpty()) {
+                systemConfigService.updateConfig("security.encryption-key", encryptionKey,
+                        "数据加密密钥（用于敏感数据加密）");
+                logger.info("加密密钥已存储到数据库");
+            } else {
+                logger.info("数据库已存在加密密钥，使用数据库中的密钥");
+            }
+
+            logger.info("安全密钥初始化完成");
+        } catch (Exception e) {
+            logger.error("初始化安全密钥时发生错误", e);
+            throw new RuntimeException("安全密钥初始化失败", e);
         }
     }
 }

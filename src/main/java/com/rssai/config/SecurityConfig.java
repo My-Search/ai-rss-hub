@@ -3,7 +3,6 @@ package com.rssai.config;
 import com.rssai.constant.RssConstants;
 import com.rssai.security.CustomPersistentTokenBasedRememberMeServices;
 import com.rssai.security.JdbcTokenRepositoryImpl;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,18 +29,18 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
     private final CustomAuthenticationFailureHandler authenticationFailureHandler;
-
-    @Value("${security.remember-me-key:rss-ai-hub-remember-me-key}")
-    private String rememberMeKey;
+    private final SecurityKeyProvider securityKeyProvider;
 
     public SecurityConfig(JdbcTokenRepositoryImpl tokenRepository,
                           UserDetailsService userDetailsService,
                           CustomAuthenticationSuccessHandler authenticationSuccessHandler,
-                          CustomAuthenticationFailureHandler authenticationFailureHandler) {
+                          CustomAuthenticationFailureHandler authenticationFailureHandler,
+                          SecurityKeyProvider securityKeyProvider) {
         this.tokenRepository = tokenRepository;
         this.userDetailsService = userDetailsService;
         this.authenticationSuccessHandler = authenticationSuccessHandler;
         this.authenticationFailureHandler = authenticationFailureHandler;
+        this.securityKeyProvider = securityKeyProvider;
     }
 
     @Bean
@@ -95,7 +94,7 @@ public class SecurityConfig {
     @Bean
     public PersistentTokenBasedRememberMeServices rememberMeServices() {
         CustomPersistentTokenBasedRememberMeServices services = new CustomPersistentTokenBasedRememberMeServices(
-                rememberMeKey,
+                securityKeyProvider.getRememberMeKey(),
                 userDetailsService,
                 tokenRepository
         );

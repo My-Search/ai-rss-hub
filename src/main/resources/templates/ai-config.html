@@ -121,13 +121,45 @@
                 <h2>💡 配置说明</h2>
             </div>
             <div class="card-body">
-                <ul class="help-list">
-                    <li><strong>API Base URL:</strong> 支持OpenAI官方API或兼容的第三方服务</li>
-                    <li><strong>模型选择:</strong> 推荐使用gpt-3.5-turbo以获得更好的性价比</li>
-                    <li><strong>模型类型:</strong> 思考模型（o1, deepseek-r1等）会进行深度推理，响应较慢但质量更高</li>
-                    <li><strong>刷新频率:</strong> 建议设置10-60分钟，避免过于频繁的请求</li>
-                    <li><strong>系统提示词:</strong> 详细描述你的筛选需求，AI会根据此规则过滤内容</li>
-                </ul>
+                <div class="help-grid">
+                    <div class="help-item">
+                        <div class="help-icon">
+                            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                            </svg>
+                        </div>
+                        <div class="help-content">
+                            <h4>API Base URL</h4>
+                            <p>支持 OpenAI 官方 API 或兼容的第三方服务</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <div class="help-icon">
+                            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                                <line x1="4" y1="22" x2="4" y2="15"/>
+                            </svg>
+                        </div>
+                        <div class="help-content">
+                            <h4>模型选择</h4>
+                            <p>不需要很好的，普通模型即可</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <div class="help-icon">
+                            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <div class="help-content">
+                            <h4>刷新频率</h4>
+                            <p>建议设置 10-60 分钟，避免过于频繁的请求</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

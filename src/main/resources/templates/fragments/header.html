@@ -121,6 +121,7 @@
             </div>
         </div>
         <div class="nav-overlay" id="navOverlay" onclick="toggleMenu()"></div>
+        <div class="toast-container" id="toastContainer"></div>
         <script>
             function toggleMenu() {
                 const menu = document.getElementById('navMenu');
@@ -188,6 +189,64 @@
                     moonIcon.style.display = 'block';
                 }
             });
+
+            // Toast 通知函数
+            function showToast(type, message, duration = 3000) {
+                const container = document.getElementById('toastContainer');
+                if (!container) {
+                    console.warn('Toast container not found');
+                    return;
+                }
+
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+
+                let icon = '';
+                let title = '';
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+                switch (type) {
+                    case 'success':
+                        icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><path d="M22 4L12 14.01l-3-3"></path></svg>';
+                        title = '成功';
+                        break;
+                    case 'error':
+                        icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M15 9l-6 6"></path><path d="M9 9l6 6"></path></svg>';
+                        title = '错误';
+                        break;
+                    case 'warning':
+                        icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+                        title = '警告';
+                        break;
+                    case 'info':
+                    default:
+                        icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+                        title = '提示';
+                }
+
+                toast.innerHTML = `
+                    <div class="toast-icon">${icon}</div>
+                    <div class="toast-content">
+                        <div class="toast-title">${title}</div>
+                        <div class="toast-message">${message}</div>
+                    </div>
+                    <button class="toast-close" onclick="this.parentElement.remove()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                `;
+
+                container.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.classList.add('removing');
+                    toast.addEventListener('animationend', () => {
+                        toast.remove();
+                    });
+                }, duration);
+            }
         </script>
     </nav>
 </body>

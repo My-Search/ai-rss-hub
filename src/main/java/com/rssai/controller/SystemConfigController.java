@@ -87,6 +87,7 @@ public class SystemConfigController {
         model.addAttribute("emailFromAlias", configMap.getOrDefault("email.from-alias", ""));
         model.addAttribute("allowRegister", configMap.getOrDefault("system-config.allow-register", "true"));
         model.addAttribute("requireEmailVerification", configMap.getOrDefault("system-config.require-email-verification", "false"));
+        model.addAttribute("allowedEmailDomains", configMap.getOrDefault("system-config.allowed-email-domains", ""));
 
         return "system-config";
     }
@@ -133,7 +134,8 @@ public class SystemConfigController {
     @ResponseBody
     public Map<String, Object> updateRegisterConfig(Authentication auth,
                                                     @RequestParam boolean allowRegister,
-                                                    @RequestParam boolean requireEmailVerification) {
+                                                    @RequestParam boolean requireEmailVerification,
+                                                    @RequestParam(required = false) String allowedEmailDomains) {
         Map<String, Object> result = new HashMap<>();
 
         User user = userMapper.findByUsername(auth.getName());
@@ -146,6 +148,7 @@ public class SystemConfigController {
         try {
             systemConfigService.updateConfig("system-config.allow-register", String.valueOf(allowRegister));
             systemConfigService.updateConfig("system-config.require-email-verification", String.valueOf(requireEmailVerification));
+            systemConfigService.updateConfig("system-config.allowed-email-domains", allowedEmailDomains != null ? allowedEmailDomains.trim() : "");
 
             result.put("success", true);
             result.put("message", "注册配置已保存");

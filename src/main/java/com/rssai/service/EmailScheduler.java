@@ -40,13 +40,13 @@ public class EmailScheduler {
 
     @Scheduled(cron = "${email.schedule.cron:0 * * * * ?}")
     public void sendDailyDigest() {
-        logger.info("开始执行每日摘要邮件发送任务");
+        logger.debug("开始执行每日摘要邮件发送任务");
 
         LocalTime now = LocalTime.now();
         LocalTime previousMinute = now.minusMinutes(1);
         String timeToCheck = previousMinute.format(DateTimeFormatter.ofPattern("HH:mm"));
 
-        logger.info("检查时间：{} (当前时间：{})", timeToCheck, now.format(DateTimeFormatter.ofPattern("HH:mm")));
+        logger.debug("检查时间：{} (当前时间：{})", timeToCheck, now.format(DateTimeFormatter.ofPattern("HH:mm")));
 
         int offset = 0;
         int totalUsersProcessed = 0;
@@ -76,7 +76,11 @@ public class EmailScheduler {
             }
         }
 
-        logger.info("每日摘要邮件发送任务完成，共处理{}个用户", totalUsersProcessed);
+        if (totalUsersProcessed > 0) {
+            logger.info("每日摘要邮件发送任务完成，共处理{}个用户", totalUsersProcessed);
+        } else {
+            logger.debug("每日摘要邮件发送任务执行完成，无需发送邮件");
+        }
     }
 
     private void sendDigestToUser(User user) throws UnsupportedEncodingException {

@@ -1146,6 +1146,9 @@
                 // Invalidate any in-flight requests by incrementing request ID
                 this.requestId++;
 
+                // Clear requested pages to allow fresh requests
+                this.requestedPages.clear();
+
                 // Update filter state
                 this.setState({
                     filters: {

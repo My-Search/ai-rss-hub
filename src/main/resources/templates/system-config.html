@@ -488,6 +488,24 @@
                                 </div>
                             </div>
 
+                            <div class="form-group email-domain-group" style="margin-top: 24px;">
+                                <label for="allowedEmailDomainsInput" class="email-domain-label">
+                                    允许注册的邮箱域名
+                                </label>
+                                <div class="tag-input-wrapper">
+                                    <div class="tag-input-container" id="emailDomainInputContainer">
+                                        <div id="emailDomainTags" class="email-domain-tags"></div>
+                                        <input type="text" id="allowedEmailDomainsInput" class="email-domain-input" placeholder="输入 @ 选择常用邮箱或自定义域名" autocomplete="off">
+                                    </div>
+                                    <div class="email-domain-suggestions" id="emailDomainSuggestions" style="display: none;">
+                                        <div class="suggestions-header">常用邮箱域名</div>
+                                        <div class="suggestions-list" id="suggestionsList"></div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="allowedEmailDomains" name="allowedEmailDomains" th:value="${allowedEmailDomains}">
+                                <small class="email-domain-hint">多个域名用逗号分隔，留空表示不限制任何邮箱</small>
+                            </div>
+
                             <div class="form-actions">
                                 <button type="button" class="btn btn-primary" onclick="saveRegisterConfig()">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -838,13 +856,13 @@
             })
             .then(data => {
                 if (data.success) {
-                    alert(data.message || '保存成功');
+                    showToast('success', data.message || '保存成功');
                 } else {
-                    alert('保存失败: ' + (data.message || '未知错误'));
+                    showToast('error', '保存失败: ' + (data.message || '未知错误'));
                 }
             })
             .catch(error => {
-                alert('请求失败: ' + error.message);
+                showToast('error', '请求失败: ' + error.message);
             });
         }
         
@@ -862,22 +880,23 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
+                    showToast('success', data.message);
                 } else {
-                    alert('发送失败: ' + data.message);
+                    showToast('error', '发送失败: ' + data.message);
                 }
             })
             .catch(error => {
-                alert('请求失败: ' + error.message);
+                showToast('error', '请求失败: ' + error.message);
             });
         }
         
         function saveRegisterConfig() {
             const formData = {
                 allowRegister: document.getElementById('allowRegister').checked,
-                requireEmailVerification: document.getElementById('requireEmailVerification').checked
+                requireEmailVerification: document.getElementById('requireEmailVerification').checked,
+                allowedEmailDomains: document.getElementById('allowedEmailDomains').value
             };
-            
+
             fetch('/system-config/register', {
                 method: 'POST',
                 headers: createHeaders(),
@@ -886,14 +905,257 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
+                    showToast('success', data.message);
                 } else {
-                    alert('保存失败: ' + data.message);
+                    showToast('error', '保存失败: ' + data.message);
                 }
             })
             .catch(error => {
-                alert('请求失败: ' + error.message);
+                showToast('error', '请求失败: ' + error.message);
             });
+        }
+
+        // 邮箱域名标签输入框
+        function initEmailDomainPreview() {
+            const container = document.getElementById('emailDomainInputContainer');
+            const input = document.getElementById('allowedEmailDomainsInput');
+            const tagsContainer = document.getElementById('emailDomainTags');
+            const hiddenInput = document.getElementById('allowedEmailDomains');
+            const suggestions = document.getElementById('emailDomainSuggestions');
+            const suggestionsList = document.getElementById('suggestionsList');
+
+            if (!container || !input || !tagsContainer || !hiddenInput) return;
+
+            let domains = [];
+            let selectedIndex = -1;
+
+            // 常见邮箱域名列表
+            const commonDomains = [
+                { domain: 'qq.com', icon: 'Q', color: '#12B7F5' },
+                { domain: '163.com', icon: '邮', color: '#D84646' },
+                { domain: '126.com', icon: '邮', color: '#D84646' },
+                { domain: 'gmail.com', icon: 'G', color: '#EA4335' },
+                { domain: 'outlook.com', icon: 'O', color: '#0078D4' },
+                { domain: 'hotmail.com', icon: 'H', color: '#0078D4' },
+                { domain: 'live.com', icon: 'L', color: '#0078D4' },
+                { domain: 'yahoo.com', icon: 'Y', color: '#6001D2' },
+                { domain: 'foxmail.com', icon: 'F', color: '#12B7F5' },
+                { domain: 'sina.com', icon: 'S', color: '#E6162D' },
+                { domain: 'sohu.com', icon: '搜', color: '#FF6B00' },
+                { domain: 'aliyun.com', icon: 'A', color: '#FF6A00' },
+                { domain: 'icloud.com', icon: 'i', color: '#007AFF' },
+                { domain: 'protonmail.com', icon: 'P', color: '#6D4AFF' }
+            ];
+
+            // 从隐藏输入框初始化域名列表
+            function initDomains() {
+                const value = hiddenInput.value.trim();
+                if (value) {
+                    domains = value.split(',').map(d => {
+                        d = d.trim();
+                        // 确保以 @ 开头
+                        if (d && !d.startsWith('@')) {
+                            d = '@' + d;
+                        }
+                        return d;
+                    }).filter(d => d);
+                }
+                renderTags();
+            }
+
+            // 渲染标签
+            function renderTags() {
+                tagsContainer.innerHTML = domains.map((domain, index) => {
+                    // 移除 @ 用于显示（因为标签里已经有 @ 样式了）
+                    const displayDomain = domain.replace(/^@/, '');
+                    return `<span class="email-domain-tag">
+                        <span class="email-domain-at">@</span>
+                        <span class="email-domain-text">${escapeHtml(displayDomain)}</span>
+                        <button type="button" class="email-domain-remove" onclick="removeEmailDomain(${index})" aria-label="删除 ${escapeHtml(domain)}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </span>`;
+                }).join('');
+                // 更新隐藏输入框的值（保留 @）
+                hiddenInput.value = domains.join(',');
+            }
+
+            // 添加域名
+            function addDomain(domain) {
+                domain = domain.trim().toLowerCase();
+                if (!domain) return;
+                // 验证域名格式（简单验证）
+                if (!domain.includes('.') || domain.includes(' ')) {
+                    return;
+                }
+                // 确保以 @ 开头
+                if (!domain.startsWith('@')) {
+                    domain = '@' + domain;
+                }
+                if (!domains.includes(domain)) {
+                    domains.push(domain);
+                    renderTags();
+                }
+            }
+
+            // 显示建议列表
+            function showSuggestions(filter = '') {
+                const filtered = filter 
+                    ? commonDomains.filter(d => d.domain.includes(filter) && !domains.includes('@' + d.domain))
+                    : commonDomains.filter(d => !domains.includes('@' + d.domain));
+                
+                if (filtered.length === 0) {
+                    hideSuggestions();
+                    return;
+                }
+
+                suggestionsList.innerHTML = filtered.map((item, index) => `
+                    <div class="suggestion-item ${index === selectedIndex ? 'selected' : ''}" data-domain="${item.domain}" data-index="${index}">
+                        <span class="suggestion-icon" style="background: ${item.color}">${item.icon}</span>
+                        <span class="suggestion-domain">@${item.domain}</span>
+                    </div>
+                `).join('');
+
+                suggestions.style.display = 'block';
+                selectedIndex = -1;
+
+                // 绑定点击事件
+                suggestionsList.querySelectorAll('.suggestion-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const domain = this.getAttribute('data-domain');
+                        addDomain(domain);
+                        input.value = '';
+                        hideSuggestions();
+                        input.focus();
+                    });
+                });
+            }
+
+            // 隐藏建议列表
+            function hideSuggestions() {
+                suggestions.style.display = 'none';
+                selectedIndex = -1;
+            }
+
+            // 更新选中状态
+            function updateSelection() {
+                const items = suggestionsList.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    item.classList.toggle('selected', index === selectedIndex);
+                });
+                if (selectedIndex >= 0 && items[selectedIndex]) {
+                    items[selectedIndex].scrollIntoView({ block: 'nearest' });
+                }
+            }
+
+            // 点击容器聚焦输入框
+            container.addEventListener('click', function(e) {
+                if (e.target === container || e.target === tagsContainer) {
+                    input.focus();
+                }
+            });
+
+            // 输入框事件
+            input.addEventListener('keydown', function(e) {
+                const items = suggestionsList.querySelectorAll('.suggestion-item');
+                
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && items[selectedIndex]) {
+                        // 选择当前高亮的建议
+                        const domain = items[selectedIndex].getAttribute('data-domain');
+                        addDomain(domain);
+                        input.value = '';
+                        hideSuggestions();
+                    } else {
+                        // 直接添加输入的内容
+                        const value = input.value.trim();
+                        if (value) {
+                            addDomain(value.replace(/,$/, ''));
+                            input.value = '';
+                            hideSuggestions();
+                        }
+                    }
+                } else if (e.key === ',') {
+                    e.preventDefault();
+                    const value = input.value.trim();
+                    if (value) {
+                        addDomain(value.replace(/,$/, ''));
+                        input.value = '';
+                        hideSuggestions();
+                    }
+                } else if (e.key === 'Backspace' && input.value === '' && domains.length > 0) {
+                    // 删除最后一个标签
+                    domains.pop();
+                    renderTags();
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (suggestions.style.display === 'none') {
+                        showSuggestions(input.value.replace(/^@/, ''));
+                    } else {
+                        selectedIndex = (selectedIndex + 1) % items.length;
+                        updateSelection();
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (suggestions.style.display !== 'none') {
+                        selectedIndex = selectedIndex <= 0 ? items.length - 1 : selectedIndex - 1;
+                        updateSelection();
+                    }
+                } else if (e.key === 'Escape') {
+                    hideSuggestions();
+                }
+            });
+
+            // 输入事件 - 检测 @ 符号
+            input.addEventListener('input', function() {
+                const value = input.value;
+                if (value.includes('@')) {
+                    const filter = value.replace(/^@/, '').toLowerCase();
+                    showSuggestions(filter);
+                } else if (value === '') {
+                    hideSuggestions();
+                }
+            });
+
+            // 失去焦点时延迟隐藏（允许点击建议项）
+            input.addEventListener('blur', function() {
+                setTimeout(() => {
+                    const value = input.value.trim();
+                    if (value && !suggestions.matches(':hover')) {
+                        addDomain(value.replace(/,$/, ''));
+                        input.value = '';
+                    }
+                    hideSuggestions();
+                }, 200);
+            });
+
+            // 粘贴事件
+            input.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                const pastedDomains = paste.split(/[,，\n]/).map(d => d.trim()).filter(d => d);
+                pastedDomains.forEach(addDomain);
+            });
+
+            // 点击外部隐藏建议
+            document.addEventListener('click', function(e) {
+                if (!container.contains(e.target) && !suggestions.contains(e.target)) {
+                    hideSuggestions();
+                }
+            });
+
+            // 全局删除函数
+            window.removeEmailDomain = function(index) {
+                domains.splice(index, 1);
+                renderTags();
+            };
+
+            // 初始化
+            initDomains();
         }
 
         // 当前选中的时间范围
@@ -1269,6 +1531,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             initMobileNavScroll();
             initTimeRangeSelector();
+            initEmailDomainPreview();
         });
 
         // ========== 用户管理功能 ==========
@@ -1416,14 +1679,14 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
+                    showToast('success', data.message);
                     refreshUsers();
                 } else {
-                    alert('操作失败: ' + (data.message || '未知错误'));
+                    showToast('error', '操作失败: ' + (data.message || '未知错误'));
                 }
             })
             .catch(error => {
-                alert('请求失败: ' + error.message);
+                showToast('error', '请求失败: ' + error.message);
             });
         }
 

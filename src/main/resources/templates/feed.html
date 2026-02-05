@@ -243,11 +243,11 @@
         function sendEmailChangeCode() {
             const newEmail = document.getElementById('newEmailInput').value.trim();
             if (!newEmail) {
-                alert('请输入新邮箱地址');
+                showToast('warning', '请输入新邮箱地址');
                 return;
             }
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-                alert('请输入有效的邮箱地址');
+                showToast('warning', '请输入有效的邮箱地址');
                 return;
             }
 
@@ -264,21 +264,21 @@
                     currentNewEmail = newEmail;
                     document.getElementById('changeEmailStep1').style.display = 'none';
                     document.getElementById('changeEmailStep2').style.display = 'block';
-                    alert(data.message);
+                    showToast('success', data.message);
                 } else {
-                    alert(data.message || '发送验证码失败');
+                    showToast('error', data.message || '发送验证码失败');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('发送验证码失败: ' + error.message);
+                showToast('error', '发送验证码失败: ' + error.message);
             });
         }
 
         function verifyAndChangeEmail() {
             const verificationCode = document.getElementById('verificationCodeInput').value.trim();
             if (!verificationCode) {
-                alert('请输入验证码');
+                showToast('warning', '请输入验证码');
                 return;
             }
 
@@ -293,23 +293,23 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
+                    showToast('success', data.message);
                     hideChangeEmailModal();
                     window.location.reload();
                 } else {
-                    alert(data.message || '验证失败');
+                    showToast('error', data.message || '验证失败');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('验证失败: ' + error.message);
+                showToast('error', '验证失败: ' + error.message);
             });
         }
 
         function copyToClipboard() {
             const text = document.querySelector('.rss-url-box code').textContent;
             navigator.clipboard.writeText(text).then(() => {
-                alert('已复制到剪贴板');
+                showToast('success', '已复制到剪贴板');
             });
         }
 
@@ -352,7 +352,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('更新失败: ' + error.message);
+                showToast('error', '更新失败: ' + error.message);
                 saveBtn.disabled = false;
                 saveBtn.style.opacity = '1';
                 saveBtn.style.cursor = 'pointer';
@@ -368,12 +368,12 @@
                 if (!data.success) {
                     throw new Error(data.message || '发送失败');
                 }
-                alert(data.message);
+                showToast('success', data.message);
                 window.location.reload();
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('发送失败: ' + error.message);
+                showToast('error', '发送失败: ' + error.message);
             });
         }
 

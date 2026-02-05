@@ -9,6 +9,7 @@ import com.rssai.security.JdbcTokenRepositoryImpl;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -28,6 +29,7 @@ public class UserService {
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public User register(String username, String password, String email) {
         User existingUser = userMapper.findByUsername(username);
         if (existingUser != null) {
@@ -93,6 +95,7 @@ public class UserService {
         userMapper.updatePassword(userId, passwordEncoder.encode(newPassword));
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void updatePasswordAndClearForceChange(Long userId, String newPassword) {
         updatePassword(userId, newPassword);
         userMapper.updateForcePasswordChange(userId, false);

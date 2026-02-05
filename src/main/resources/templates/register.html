@@ -322,6 +322,85 @@
             color: var(--auth-input-focus);
         }
 
+        /* 邮箱下拉选择 */
+        .email-input-wrapper {
+            position: relative;
+        }
+
+        .email-suffix-trigger {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem;
+            color: var(--auth-text-muted);
+            transition: color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .email-suffix-trigger:hover {
+            color: var(--auth-input-focus);
+        }
+
+        .email-suffix-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 0.25rem;
+            background: var(--auth-card-bg);
+            border: 1px solid var(--auth-input-border);
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .email-suffix-dropdown.show {
+            display: block;
+        }
+
+        .email-suffix-item {
+            padding: 0.625rem 1rem;
+            cursor: pointer;
+            font-size: 0.9375rem;
+            color: var(--auth-text-primary);
+            transition: background 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0;
+        }
+
+        .email-suffix-item:first-child {
+            border-radius: 10px 10px 0 0;
+        }
+
+        .email-suffix-item:last-child {
+            border-radius: 0 0 10px 10px;
+        }
+
+        .email-suffix-item:hover,
+        .email-suffix-item.selected {
+            background: var(--auth-input-bg);
+        }
+
+        .email-suffix-item .prefix {
+            color: var(--auth-text-primary);
+        }
+
+        .email-suffix-item .domain {
+            color: var(--auth-text-primary);
+            font-weight: 500;
+        }
+
         /* 验证码输入组 */
         .verify-group {
             display: flex;
@@ -560,9 +639,9 @@
 
                 <div class="form-field" th:if="${requireEmailVerification}">
                     <label for="email" class="form-label">邮箱</label>
-                    <div class="form-input-wrapper">
+                    <div class="form-input-wrapper email-input-wrapper">
                         <input
-                            type="email"
+                            type="text"
                             id="email"
                             name="email"
                             th:value="${email}"
@@ -576,6 +655,12 @@
                             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                             <polyline points="22,6 12,13 2,6"/>
                         </svg>
+                        <button type="button" class="email-suffix-trigger" id="emailSuffixTrigger" title="选择邮箱后缀">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="email-suffix-dropdown" id="emailSuffixDropdown"></div>
                     </div>
                 </div>
 
@@ -666,9 +751,161 @@
     </div>
 
     <script th:src="@{/js/jquery-3.6.0.min.js}"></script>
-    <script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
         let countdown = 0;
         let countdownTimer = null;
+
+        // 支持的邮箱域名列表（仅从后端获取配置）
+        var emailDomains = [[${allowedEmailDomains}]];
+        var domainsToShow = emailDomains;
+        /*]]>*/
+
+        // 邮箱下拉选择功能
+        const emailInput = document.getElementById('email');
+        const emailSuffixTrigger = document.getElementById('emailSuffixTrigger');
+        const emailSuffixDropdown = document.getElementById('emailSuffixDropdown');
+        let selectedIndex = -1;
+
+        // 只有在邮箱验证开启且元素存在时才初始化邮箱下拉功能
+        if (emailInput && emailSuffixTrigger && emailSuffixDropdown) {
+            // 如果没有配置允许的邮箱域名，则不显示后缀选择按钮
+            if (domainsToShow.length === 0) {
+                emailSuffixTrigger.style.display = 'none';
+            }
+
+// 渲染下拉选项
+        function renderEmailOptions(prefix) {
+            const trimmedPrefix = prefix.replace(/@.*$/, ''); // 移除已输入的@及后面内容
+            emailSuffixDropdown.innerHTML = '';
+
+            // 如果没有配置允许的邮箱，显示提示信息
+            if (domainsToShow.length === 0) {
+                const emptyItem = document.createElement('div');
+                emptyItem.className = 'email-suffix-item';
+                emptyItem.style.cursor = 'default';
+                emptyItem.innerHTML = `
+                    <span style="color: var(--auth-text-muted); font-size: 0.875rem;">
+                        请联系管理员配置邮箱类型
+                    </span>
+                `;
+                emailSuffixDropdown.appendChild(emptyItem);
+                return;
+            }
+
+            domainsToShow.forEach((domain, index) => {
+                const item = document.createElement('div');
+                item.className = 'email-suffix-item';
+                item.dataset.index = index;
+                // 确保域名以 @ 开头显示
+                const displayDomain = domain.startsWith('@') ? domain : '@' + domain;
+                item.innerHTML = `
+                    <span class="prefix">${trimmedPrefix}</span>
+                    <span class="domain">${displayDomain}</span>
+                `;
+                item.addEventListener('click', function() {
+                    emailInput.value = trimmedPrefix + displayDomain;
+                    hideDropdown();
+                    emailInput.focus();
+                });
+                emailSuffixDropdown.appendChild(item);
+            });
+        }
+
+        // 显示下拉框
+        function showDropdown() {
+            const prefix = emailInput.value || '';
+            renderEmailOptions(prefix);
+            emailSuffixDropdown.classList.add('show');
+            selectedIndex = -1;
+        }
+
+        // 隐藏下拉框
+        function hideDropdown() {
+            emailSuffixDropdown.classList.remove('show');
+            selectedIndex = -1;
+        }
+
+        // 更新选中状态
+        function updateSelection() {
+            const items = emailSuffixDropdown.querySelectorAll('.email-suffix-item');
+            items.forEach((item, index) => {
+                if (index === selectedIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        // 触发按钮点击事件
+        emailSuffixTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (emailSuffixDropdown.classList.contains('show')) {
+                hideDropdown();
+            } else {
+                showDropdown();
+            }
+        });
+
+        // 输入框输入事件
+        emailInput.addEventListener('input', function() {
+            const value = this.value;
+            if (value && !value.includes('@')) {
+                showDropdown();
+            } else {
+                hideDropdown();
+            }
+        });
+
+        // 输入框键盘事件
+        emailInput.addEventListener('keydown', function(e) {
+            if (!emailSuffixDropdown.classList.contains('show')) {
+                return;
+            }
+
+            const items = emailSuffixDropdown.querySelectorAll('.email-suffix-item');
+
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = (selectedIndex + 1) % items.length;
+                    updateSelection();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = selectedIndex <= 0 ? items.length - 1 : selectedIndex - 1;
+                    updateSelection();
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && items[selectedIndex]) {
+                        items[selectedIndex].click();
+                    }
+                    break;
+                case 'Escape':
+                    hideDropdown();
+                    break;
+            }
+        });
+
+        // 输入框获得焦点时显示下拉
+        emailInput.addEventListener('focus', function() {
+            const value = this.value;
+            if (value && !value.includes('@')) {
+                showDropdown();
+            }
+        });
+
+        // 点击外部关闭下拉
+        document.addEventListener('click', function(e) {
+            if (!emailInput.closest('.email-input-wrapper').contains(e.target)) {
+                hideDropdown();
+            }
+        });
+        }
 
         function sendVerificationCode() {
             const email = document.getElementById('email').value;

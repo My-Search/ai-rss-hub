@@ -451,7 +451,7 @@
             })
             .then(response => {
                 if (response.status === 403) {
-                    alert('会话已过期，请刷新页面重试');
+                    showToast('error', '会话已过期，请刷新页面重试');
                     return null;
                 }
                 return response.json();
@@ -475,7 +475,7 @@
             })
             .catch(error => {
                 console.error('收藏操作失败:', error);
-                alert('操作失败，请重试');
+                showToast('error', '操作失败，请重试');
             });
         }
     </script>

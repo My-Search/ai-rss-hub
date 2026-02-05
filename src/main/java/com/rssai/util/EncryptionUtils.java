@@ -1,8 +1,8 @@
 package com.rssai.util;
 
+import com.rssai.config.SecurityKeyProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -15,19 +15,22 @@ import java.util.Base64;
 public class EncryptionUtils {
     private static final Logger logger = LoggerFactory.getLogger(EncryptionUtils.class);
     private static final String ALGORITHM = "AES";
-    
-    @Value("${security.encryption-key:ai-rss-hub-default-key}")
-    private String encryptionKey;
-    
+
+    private final SecurityKeyProvider securityKeyProvider;
+
     private static volatile String staticEncryptionKey;
     private static volatile boolean initialized = false;
-    
+
     // 静态初始化块：确保密钥在类加载时就正确处理为16字节
     static {
         String defaultKey = "ai-rss-hub-default-key";
         staticEncryptionKey = processKey(defaultKey);
     }
-    
+
+    public EncryptionUtils(SecurityKeyProvider securityKeyProvider) {
+        this.securityKeyProvider = securityKeyProvider;
+    }
+
     /**
      * 处理密钥长度，确保为16字节（AES-128）
      */
@@ -43,12 +46,12 @@ public class EncryptionUtils {
         }
         return key;
     }
-    
+
     @PostConstruct
     public void init() {
-        initializeKey(encryptionKey);
+        initializeKey(securityKeyProvider.getEncryptionKey());
     }
-    
+
     /**
      * 初始化加密密钥（用于测试或外部配置）
      */
