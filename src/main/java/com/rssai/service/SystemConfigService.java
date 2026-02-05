@@ -107,7 +107,8 @@ public class SystemConfigService {
             "email.password||邮箱密码",
             "email.from-alias|AI RSS HUB|系统邮件发件人别名",
             "system-config.allow-register|true|是否允许用户注册",
-            "system-config.require-email-verification|false|注册时是否需要邮箱验证"
+            "system-config.require-email-verification|false|注册时是否需要邮箱验证",
+            "system-config.allowed-email-domains||允许注册的邮箱域名，多个用逗号分隔，为空则不限制"
         };
 
         for (String configStr : defaultConfigs) {
@@ -121,6 +122,39 @@ public class SystemConfigService {
                 }
             }
         }
+    }
+
+    /**
+     * 获取允许注册的邮箱域名列表
+     */
+    public java.util.List<String> getAllowedEmailDomains() {
+        String domains = getConfigValue("system-config.allowed-email-domains", "");
+        if (domains == null || domains.trim().isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return java.util.Arrays.stream(domains.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(s -> s.toLowerCase())
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * 检查邮箱域名是否允许注册
+     */
+    public boolean isEmailDomainAllowed(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        java.util.List<String> allowedDomains = getAllowedEmailDomains();
+        // 如果没有配置限制，则允许所有
+        if (allowedDomains.isEmpty()) {
+            return true;
+        }
+        String domain = email.substring(email.lastIndexOf("@") + 1).toLowerCase();
+        // 支持带 @ 和不带 @ 的域名格式
+        return allowedDomains.contains(domain) || allowedDomains.contains("@" + domain);
     }
     
     /**

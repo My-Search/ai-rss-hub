@@ -163,6 +163,20 @@ public class EmailController {
             return ResponseEntity.badRequest().body(response);
         }
 
+        // 检查邮箱域名是否允许
+        if (!systemConfigService.isEmailDomainAllowed(newEmail)) {
+            java.util.List<String> allowedDomains = systemConfigService.getAllowedEmailDomains();
+            String errorMsg;
+            if (allowedDomains.isEmpty()) {
+                errorMsg = "该邮箱类型不允许使用";
+            } else {
+                errorMsg = "只允许使用以下邮箱: " + String.join(", ", allowedDomains);
+            }
+            response.put("success", false);
+            response.put("message", errorMsg);
+            return ResponseEntity.badRequest().body(response);
+        }
+
         User existingUser = userMapper.findByEmail(newEmail);
         if (existingUser != null && !existingUser.getId().equals(user.getId())) {
             response.put("success", false);

@@ -63,11 +63,16 @@ public class AuthController {
         }
         boolean requireEmailVerification = systemConfigService.getBooleanConfig("system-config.require-email-verification", false);
         model.addAttribute("requireEmailVerification", requireEmailVerification);
-        
+
         // 检查是否为第一个用户
         Long userCount = userService.getTotalUserCount();
         model.addAttribute("isFirstUser", userCount == 0);
-        
+
+        // 获取允许的邮箱域名列表（已经是解析后的数组）
+        java.util.List<String> allowedDomains = systemConfigService.getAllowedEmailDomains();
+        logger.info("注册页面加载 - 允许的邮箱域名: {}", allowedDomains);
+        model.addAttribute("allowedEmailDomains", allowedDomains);
+
         return "register";
     }
     
@@ -123,6 +128,21 @@ public class AuthController {
                     return "register";
                 }
                 
+                // 检查邮箱域名是否允许注册
+                if (!systemConfigService.isEmailDomainAllowed(email)) {
+                    java.util.List<String> allowedDomains = systemConfigService.getAllowedEmailDomains();
+                    String errorMsg;
+                    if (allowedDomains.isEmpty()) {
+                        errorMsg = "该邮箱类型不允许注册";
+                    } else {
+                        errorMsg = "只允许使用以下邮箱注册: " + String.join(", ", allowedDomains);
+                    }
+                    model.addAttribute("error", errorMsg);
+                    model.addAttribute("username", username);
+                    model.addAttribute("email", email);
+                    return "register";
+                }
+                
                 if (verificationCode == null || verificationCode.trim().isEmpty()) {
                     model.addAttribute("error", "请输入验证码");
                     model.addAttribute("username", username);
@@ -175,6 +195,20 @@ public class AuthController {
         if (!allowRegister) {
             result.put("success", false);
             result.put("message", "注册功能已关闭");
+            return result;
+        }
+        
+        // 检查邮箱域名是否允许注册
+        if (!systemConfigService.isEmailDomainAllowed(email)) {
+            java.util.List<String> allowedDomains = systemConfigService.getAllowedEmailDomains();
+            String errorMsg;
+            if (allowedDomains.isEmpty()) {
+                errorMsg = "该邮箱类型不允许注册";
+            } else {
+                errorMsg = "只允许使用以下邮箱注册: " + String.join(", ", allowedDomains);
+            }
+            result.put("success", false);
+            result.put("message", errorMsg);
             return result;
         }
         
