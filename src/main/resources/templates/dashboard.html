@@ -634,13 +634,15 @@
             });
         }
 
-        // 检查元素是否在可视区域或在其上方
+        // 检查元素是否在可视区域上方（已滚动过去）或可见区上方3/5区域内
         function isElementVisibleOrAbove(element) {
             const rect = element.getBoundingClientRect();
             const windowHeight = window.innerHeight;
 
-            // 元素顶部在可视区域内，或已经滚动到可视区域上方
-            return rect.top < windowHeight;
+            // 元素顶部在可见区上方（占可见区3/5）即视为已读
+            // rect.top < 0 表示元素已经滚动到可见区上方
+            // rect.top < windowHeight * 3/5 表示元素顶部在可见区上方的3/5区域内
+            return rect.top < windowHeight * 3 / 5;
         }
 
         // 检查可视区域内的条目并启动/取消定时器
@@ -657,14 +659,14 @@
 
                 const rect = item.getBoundingClientRect();
 
-                // 判断是否在可视区域内或在其上方
-                if (rect.top < windowHeight) {
-                    // 如果还没有定时器，启动48秒定时器
+                // 判断是否在可见区上方（占可见区3/5）或已经滚动过去
+                if (rect.top < windowHeight * 3 / 5) {
+                    // 如果还没有定时器，启动32秒定时器
                     if (!readTimers.has(itemId)) {
                         const timerId = setTimeout(() => {
-                            // 48秒后复核：仍然在可视区域内或在其上方
+                            // 32秒后复核：仍然在可见区上方（占可见区3/5）或已经滚动过去
                             const currentRect = item.getBoundingClientRect();
-                            if (currentRect.top < windowHeight) {
+                            if (currentRect.top < windowHeight * 3 / 5) {
                                 markAsRead(item, itemId);
                             }
                             // 清除定时器
@@ -674,7 +676,7 @@
                         readTimers.set(itemId, timerId);
                     }
                 } else {
-                    // 条目已经完全在可视区域下方，取消定时器
+                    // 条目已经完全在可见区下方（超过3/5区域），取消定时器
                     if (readTimers.has(itemId)) {
                         clearTimeout(readTimers.get(itemId));
                         readTimers.delete(itemId);
