@@ -160,10 +160,10 @@ public class EmailService {
                 plainTextItem.setAiReason(item.getAiReason());
                 plainTextItem.setCreatedAt(item.getCreatedAt());
                 if (item.getDescription() != null && !item.getDescription().trim().isEmpty()) {
-                    plainTextItem.setDescription(HtmlUtils.stripHtmlTags(item.getDescription()));
+                    plainTextItem.setDescription(HtmlUtils.stripHtmlTags(item.getDescription()).trim());
                 }
                 if (item.getContent() != null && !item.getContent().trim().isEmpty()) {
-                    plainTextItem.setContent(HtmlUtils.stripHtmlTags(item.getContent()));
+                    plainTextItem.setContent(HtmlUtils.stripHtmlTags(item.getContent()).trim());
                 }
                 itemsWithPlainText.add(plainTextItem);
             }
