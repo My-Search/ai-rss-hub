@@ -160,22 +160,23 @@
             opacity: 0.7;
         }
 
-        /* 已读标记样式 */
+        /* 已读标记样式 - 低调显示 */
         .read-indicator {
             display: inline-flex;
             align-items: center;
             gap: 3px;
-            font-size: 12px;
-            color: #10b981;
-            background: rgba(16, 185, 129, 0.1);
-            padding: 2px 8px;
-            border-radius: 4px;
+            font-size: 11px;
+            color: #94a3b8;
+            background: transparent;
+            padding: 0;
             margin-left: 8px;
+            opacity: 0.5;
+            vertical-align: middle;
         }
 
         html[data-theme="dark"] .read-indicator {
-            color: #34d399;
-            background: rgba(16, 185, 129, 0.2);
+            color: #64748b;
+            background: transparent;
         }
 
         .read-indicator svg {
@@ -189,6 +190,70 @@
 
         .rss-item[data-read="true"] .item-meta .source-name {
             opacity: 0.6;
+        }
+
+        /* 查看已读按钮样式 */
+        .toggle-read-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: auto;
+            opacity: 0.4;
+        }
+
+        .toggle-read-btn:hover {
+            background: rgba(99, 102, 241, 0.1);
+            opacity: 0.6;
+        }
+
+        .toggle-read-btn.active {
+            opacity: 1;
+        }
+
+        .toggle-read-btn.active:hover {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .toggle-read-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .toggle-read-btn svg path {
+            fill: #757575;
+        }
+
+        .toggle-read-btn.active svg path {
+            fill: #10b981;
+        }
+
+        html[data-theme="dark"] .toggle-read-btn svg path {
+            fill: #9ca3af;
+        }
+
+        html[data-theme="dark"] .toggle-read-btn.active svg path {
+            fill: #34d399;
+        }
+
+
+
+        /* 卡片头部布局 */
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .card-header h2 {
+            margin: 0;
         }
     </style>
     <link rel="stylesheet" th:href="@{/css/style.css}">
@@ -239,13 +304,18 @@
         <div class="card">
             <div class="card-header">
                 <h2>最新筛选文章</h2>
+                <button class="toggle-read-btn" id="toggleReadBtn" onclick="toggleReadFilter()" title="切换显示已读文章">
+                    <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+                        <path d="M859.5 290c9.7-0.5 19.1 2.9 26.3 9.4 13.6 12.3 15.8 32.5 5.9 47.3l-3.3 4.3-335.2 371c-8.8 9.7-22 14-34.8 11.2-3.1-0.7-6.1-1.7-8.8-3.1l-7.2-4.2-3.1-2.2-169.9-133.4c-16-12.6-18.8-35.9-6.2-51.9 11.5-14.6 31.7-18.2 47.4-9.3l4.5 3.1L522 647.5 834.2 302c5.2-5.7 12.1-9.7 19.5-11.2l5.8-0.8zM176.1 526.7l5.4 2.5 4.5 3.1 146.9 115.3 0.2-0.2 57.8 45.1-26.8 29.5c-8.8 9.7-22 14-34.8 11.2-3.1-0.7-6.1-1.7-8.8-3.1l-7.2-4.2-3.1-2.2-170-133.4c-16-12.6-18.8-35.9-6.2-51.9 10.3-12.9 27.4-17.2 42.1-11.7zM670.4 290c9.7-0.5 19.1 2.9 26.3 9.4 13.6 12.3 15.8 32.5 5.9 47.3l-3.3 4.3L494 578.1 436.3 533l208.8-231c5.2-5.7 12.1-9.7 19.5-11.2l5.8-0.8z"></path>
+                    </svg>
+                </button>
             </div>
             <div class="card-body">
                 <div class="rss-items" id="rss-items">
                     <div class="rss-item" th:each="item : ${items}" th:data-item-id="${item.id}" th:data-read="${item.isRead == true ? 'true' : 'false'}">
                         <div class="rss-item-content">
                             <h3>
-                                <a th:href="${item.link}" target="_blank" th:text="${item.title}"></a>
+                                <a th:href="${item.link}" target="_blank" th:text="${item.title}" th:data-item-id="${item.id}" onclick="markAsReadByClick(this)"></a>
                                 <span th:if="${item.isRead == true}" class="read-indicator">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -311,6 +381,23 @@
         // 已读检测：存储每个条目的定时器
         const readTimers = new Map();
 
+        // 全局状态
+        let currentPage = /*[[${currentPage}]]*/ 1;
+        let totalPages = /*[[${totalPages}]]*/ 1;
+        const pageSize = /*[[${pageSize}]]*/ 20;
+        let isLoading = false;
+        let hasMore = currentPage < totalPages;
+        let showReadArticles = /*[[${isReadFilter != null ? isReadFilter : false}]]*/ false;
+
+        // 请求锁：防止并发请求同一页数据
+        let requestLock = false;
+        let requestedPages = new Set();
+        let scrollTicking = false;
+
+        const rssItemsContainer = document.getElementById('rss-items');
+        const loadingEl = document.getElementById('loading');
+        const noMoreEl = document.getElementById('no-more');
+
         document.addEventListener('DOMContentLoaded', function() {
             const today = new Date().toISOString().split('T')[0];
             document.querySelectorAll('.pub-date').forEach(function(el) {
@@ -326,150 +413,160 @@
             // 加载用户收藏状态
             loadFavoriteStatus();
 
-            let currentPage = /*[[${currentPage}]]*/ 1;
-            const totalPages = /*[[${totalPages}]]*/ 1;
-            const pageSize = /*[[${pageSize}]]*/ 20;
-            let isLoading = false;
-            let hasMore = currentPage < totalPages;
-
-            // 请求锁：防止并发请求同一页数据
-            let requestLock = false;
-            let requestedPages = new Set();
-            let scrollTicking = false;
-
-            const rssItemsContainer = document.getElementById('rss-items');
-            const loadingEl = document.getElementById('loading');
-            const noMoreEl = document.getElementById('no-more');
-
-            function formatPubDate(pubDate) {
-                const date = new Date(pubDate);
-                const dateStr = date.toISOString().split('T')[0];
-                const timeStr = date.toTimeString().split(' ')[0].substring(0, 5);
-                if (dateStr === today) {
-                    return dateStr + '(今天) ' + timeStr;
-                }
-                return dateStr + ' ' + timeStr;
-            }
-
-            function appendItems(items) {
-                items.forEach(function(item) {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'rss-item';
-                    itemDiv.setAttribute('data-item-id', item.id);
-                    itemDiv.setAttribute('data-read', item.isRead ? 'true' : 'false');
-
-                    const imageHtml = item.imageUrl
-                        ? `<div class="rss-item-image"><img src="${item.imageUrl}" alt="${item.title}" onerror="this.style.display='none'; this.parentElement.style.display='none';" /></div>`
-                        : '';
-
-                    const readIndicator = item.isRead
-                        ? `<span class="read-indicator">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                </svg>
-                                已读
-                           </span>`
-                        : '';
-
-                    itemDiv.innerHTML = `
-                        <div class="rss-item-content">
-                            <h3><a href="${item.link}" target="_blank">${item.title}</a>${readIndicator}</h3>
-                            <p class="item-desc">${item.description}</p>
-                            <div class="item-meta">
-                                ${item.sourceName ? `<span class="source-name">${item.sourceName}</span>` : ''}
-                                ${item.pubDate ? `<span class="pub-date">${formatPubDate(item.pubDate)}</span>` : '<span>未知时间</span>'}
-                                <button class="favorite-btn-inline" data-item-id="${item.id}" onclick="toggleFavorite(this)">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                                    </svg>
-                                    <span class="favorite-text">收藏</span>
-                                </button>
-                            </div>
-                        </div>
-                        ${imageHtml}
-                    `;
-                    rssItemsContainer.appendChild(itemDiv);
-                });
-                // 加载新添加项的收藏状态
-                loadFavoriteStatus();
-                // 启动已读检测
-                checkVisibleItems();
-            }
-
-            function loadMoreItems() {
-                const nextPage = currentPage + 1;
-
-                // 请求锁检查：如果当前有请求正在进行，直接返回
-                if (requestLock) {
-                    console.log('请求被拦截：当前有请求正在进行中');
-                    return;
-                }
-
-                // 检查是否已经请求过该页面
-                if (requestedPages.has(nextPage)) {
-                    console.log('请求被拦截：页面 ' + nextPage + ' 已经在请求队列中');
-                    return;
-                }
-
-                // 状态检查
-                if (isLoading || !hasMore) return;
-
-                // 加锁：标记请求开始
-                requestLock = true;
-                requestedPages.add(nextPage);
-                isLoading = true;
-                loadingEl.style.display = 'block';
-
-                fetch(`/dashboard/items?page=${nextPage}&pageSize=${pageSize}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.items && data.items.length > 0) {
-                            appendItems(data.items);
-                        }
-                        currentPage = data.currentPage;
-                        hasMore = data.hasMore;
-                        isLoading = false;
-                        loadingEl.style.display = 'none';
-
-                        if (!hasMore) {
-                            noMoreEl.style.display = 'block';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('加载失败:', error);
-                        // 请求失败时，从已请求集合中移除，允许重试
-                        requestedPages.delete(nextPage);
-                        isLoading = false;
-                        loadingEl.style.display = 'none';
-                    })
-                    .finally(() => {
-                        // 解锁：请求结束，无论成功或失败
-                        requestLock = false;
-                    });
-            }
-
-            function handleScroll() {
-                // 使用 requestAnimationFrame 节流 scroll 事件
-                if (scrollTicking) return;
-
-                scrollTicking = true;
-                requestAnimationFrame(() => {
-                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                    const windowHeight = window.innerHeight;
-                    const documentHeight = document.documentElement.scrollHeight;
-
-                    if (scrollTop + windowHeight >= documentHeight - 200) {
-                        loadMoreItems();
-                    }
-                    // 检查可视区域内的条目
-                    checkVisibleItems();
-                    scrollTicking = false;
-                });
-            }
+            // 初始化按钮状态
+            updateToggleButtonState();
 
             window.addEventListener('scroll', handleScroll);
         });
+
+        function formatPubDate(pubDate) {
+            const today = new Date().toISOString().split('T')[0];
+            const date = new Date(pubDate);
+            const dateStr = date.toISOString().split('T')[0];
+            const timeStr = date.toTimeString().split(' ')[0].substring(0, 5);
+            if (dateStr === today) {
+                return dateStr + '(今天) ' + timeStr;
+            }
+            return dateStr + ' ' + timeStr;
+        }
+
+        function renderItems(items, clearExisting) {
+            if (clearExisting) {
+                rssItemsContainer.innerHTML = '';
+            }
+
+            if (items.length === 0) {
+                rssItemsContainer.innerHTML = '<div class="empty-state"><p>暂无筛选文章</p></div>';
+                return;
+            }
+
+            items.forEach(function(item) {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'rss-item';
+                itemDiv.setAttribute('data-item-id', item.id);
+                itemDiv.setAttribute('data-read', item.isRead ? 'true' : 'false');
+
+                const imageHtml = item.imageUrl
+                    ? `<div class="rss-item-image"><img src="${item.imageUrl}" alt="${item.title}" onerror="this.style.display='none'; this.parentElement.style.display='none';" /></div>`
+                    : '';
+
+                const readIndicator = item.isRead
+                    ? `<span class="read-indicator">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            已读
+                       </span>`
+                    : '';
+
+                itemDiv.innerHTML = `
+                    <div class="rss-item-content">
+                        <h3><a href="${item.link}" target="_blank" data-item-id="${item.id}" onclick="markAsReadByClick(this)">${item.title}</a>${readIndicator}</h3>
+                        <p class="item-desc">${item.description}</p>
+                        <div class="item-meta">
+                            ${item.sourceName ? `<span class="source-name">${item.sourceName}</span>` : ''}
+                            ${item.pubDate ? `<span class="pub-date">${formatPubDate(item.pubDate)}</span>` : '<span>未知时间</span>'}
+                            <button class="favorite-btn-inline" data-item-id="${item.id}" onclick="toggleFavorite(this)">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                </svg>
+                                <span class="favorite-text">收藏</span>
+                            </button>
+                        </div>
+                    </div>
+                    ${imageHtml}
+                `;
+                rssItemsContainer.appendChild(itemDiv);
+            });
+            // 加载新添加项的收藏状态
+            loadFavoriteStatus();
+            // 启动已读检测
+            checkVisibleItems();
+        }
+
+        function loadMoreItems() {
+            const nextPage = currentPage + 1;
+
+            // 请求锁检查：如果当前有请求正在进行，直接返回
+            if (requestLock) {
+                console.log('请求被拦截：当前有请求正在进行中');
+                return;
+            }
+
+            // 检查是否已经请求过该页面
+            if (requestedPages.has(nextPage)) {
+                console.log('请求被拦截：页面 ' + nextPage + ' 已经在请求队列中');
+                return;
+            }
+
+            // 状态检查
+            if (isLoading || !hasMore) return;
+
+            // 加锁：标记请求开始
+            requestLock = true;
+            requestedPages.add(nextPage);
+            isLoading = true;
+            loadingEl.style.display = 'block';
+
+            const isReadParam = showReadArticles ? 'isRead=true' : 'isRead=false';
+            fetch(`/dashboard/items?page=${nextPage}&pageSize=${pageSize}&${isReadParam}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.items && data.items.length > 0) {
+                        renderItems(data.items, false);
+                    }
+                    currentPage = data.currentPage;
+                    hasMore = data.hasMore;
+                    isLoading = false;
+                    loadingEl.style.display = 'none';
+
+                    if (!hasMore) {
+                        noMoreEl.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('加载失败:', error);
+                    // 请求失败时，从已请求集合中移除，允许重试
+                    requestedPages.delete(nextPage);
+                    isLoading = false;
+                    loadingEl.style.display = 'none';
+                })
+                .finally(() => {
+                    // 解锁：请求结束，无论成功或失败
+                    requestLock = false;
+                });
+        }
+
+        function handleScroll() {
+            // 使用 requestAnimationFrame 节流 scroll 事件
+            if (scrollTicking) return;
+
+            scrollTicking = true;
+            requestAnimationFrame(() => {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const windowHeight = window.innerHeight;
+                const documentHeight = document.documentElement.scrollHeight;
+
+                if (scrollTop + windowHeight >= documentHeight - 200) {
+                    loadMoreItems();
+                }
+                // 检查可视区域内的条目
+                checkVisibleItems();
+                scrollTicking = false;
+            });
+        }
+
+        function updateToggleButtonState() {
+            const toggleBtn = document.getElementById('toggleReadBtn');
+            if (showReadArticles) {
+                toggleBtn.classList.add('active');
+                toggleBtn.title = '显示未读文章';
+            } else {
+                toggleBtn.classList.remove('active');
+                toggleBtn.title = '只显示已读文章';
+            }
+        }
 
         // 加载用户收藏状态
         function loadFavoriteStatus() {
@@ -562,17 +659,17 @@
 
                 // 判断是否在可视区域内或在其上方
                 if (rect.top < windowHeight) {
-                    // 如果还没有定时器，启动10秒定时器
+                    // 如果还没有定时器，启动48秒定时器
                     if (!readTimers.has(itemId)) {
                         const timerId = setTimeout(() => {
-                            // 10秒后复核：仍然在可视区域内或在其上方
+                            // 48秒后复核：仍然在可视区域内或在其上方
                             const currentRect = item.getBoundingClientRect();
                             if (currentRect.top < windowHeight) {
                                 markAsRead(item, itemId);
                             }
                             // 清除定时器
                             readTimers.delete(itemId);
-                        }, 10000);
+                        }, 60000);
 
                         readTimers.set(itemId, timerId);
                     }
@@ -640,6 +737,59 @@
         window.addEventListener('load', function() {
             setTimeout(checkVisibleItems, 500);
         });
+
+        // 点击链接时标记为已读
+        function markAsReadByClick(linkElement) {
+            const itemId = linkElement.getAttribute('data-item-id');
+            if (!itemId) return;
+
+            // 找到对应的 rss-item 元素
+            const itemElement = linkElement.closest('.rss-item');
+            if (!itemElement) return;
+
+            // 立即标记为已读（不等待48秒）
+            markAsRead(itemElement, itemId);
+        }
+
+        // 切换已读文章筛选并重新加载数据
+        function toggleReadFilter() {
+            showReadArticles = !showReadArticles;
+
+            // 重置状态
+            currentPage = 1;
+            hasMore = true;
+            requestedPages.clear();
+            requestLock = false;
+            noMoreEl.style.display = 'none';
+
+            // 更新按钮状态
+            updateToggleButtonState();
+
+            // 显示加载中
+            isLoading = true;
+            loadingEl.style.display = 'block';
+
+            // 重新请求数据
+            const isReadParam = showReadArticles ? 'isRead=true' : 'isRead=false';
+            fetch(`/dashboard/items?page=1&pageSize=${pageSize}&${isReadParam}`)
+                .then(response => response.json())
+                .then(data => {
+                    renderItems(data.items || [], true);
+                    currentPage = data.currentPage;
+                    hasMore = data.hasMore;
+                    isLoading = false;
+                    loadingEl.style.display = 'none';
+
+                    if (!hasMore) {
+                        noMoreEl.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('加载失败:', error);
+                    isLoading = false;
+                    loadingEl.style.display = 'none';
+                });
+        }
     </script>
 </body>
 </html>

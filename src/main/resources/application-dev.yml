@@ -12,3 +12,6 @@ rss:
     batch-size: 100
     check-interval-seconds: 10
 
+security:
+  remember-me-key: dev-remember-me-key
+  encryption-key: dev-encryption-key

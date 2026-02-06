@@ -3,6 +3,7 @@ package com.rssai.config;
 import com.rssai.service.SystemConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
@@ -10,6 +11,8 @@ import java.security.SecureRandom;
 /**
  * 安全密钥提供者
  * 统一管理Remember-Me密钥和加密密钥的获取
+ * 优先级：YML配置 > 数据库配置 > 自动生成
+ * 支持运行时动态更新密钥
  */
 @Component
 public class SecurityKeyProvider {
@@ -17,7 +20,10 @@ public class SecurityKeyProvider {
 
     private final SystemConfigService systemConfigService;
 
+    @Value("${security.remember-me-key:}")
     private String rememberMeKey;
+
+    @Value("${security.encryption-key:}")
     private String encryptionKey;
 
     public SecurityKeyProvider(SystemConfigService systemConfigService) {
@@ -26,9 +32,10 @@ public class SecurityKeyProvider {
 
     /**
      * 获取Remember-Me密钥
+     * 优先级：YML配置 > 数据库配置 > 自动生成
      */
     public String getRememberMeKey() {
-        if (rememberMeKey == null) {
+        if (rememberMeKey == null || rememberMeKey.isEmpty()) {
             rememberMeKey = getRememberMeKeyFromDbOrGenerate();
         }
         return rememberMeKey;
@@ -36,9 +43,10 @@ public class SecurityKeyProvider {
 
     /**
      * 获取加密密钥
+     * 优先级：YML配置 > 数据库配置 > 自动生成
      */
     public String getEncryptionKey() {
-        if (encryptionKey == null) {
+        if (encryptionKey == null || encryptionKey.isEmpty()) {
             encryptionKey = getEncryptionKeyFromDbOrGenerate();
         }
         return encryptionKey;
@@ -48,6 +56,7 @@ public class SecurityKeyProvider {
      * 从数据库获取或生成Remember-Me密钥
      */
     private String getRememberMeKeyFromDbOrGenerate() {
+        // 1. 从数据库读取
         try {
             String dbKey = systemConfigService.getConfigValue("security.remember-me-key");
             if (dbKey != null && !dbKey.isEmpty()) {
@@ -57,7 +66,8 @@ public class SecurityKeyProvider {
         } catch (Exception e) {
             logger.debug("数据库未就绪，生成Remember-Me密钥");
         }
-        // 自动生成（32字节，转为64位十六进制字符串）
+
+        // 2. 自动生成（32字节，转为64位十六进制字符串）
         String generatedKey = generateRandomKey(32);
         logger.info("已自动生成Remember-Me密钥");
         return generatedKey;
@@ -67,6 +77,7 @@ public class SecurityKeyProvider {
      * 从数据库获取或生成加密密钥
      */
     private String getEncryptionKeyFromDbOrGenerate() {
+        // 1. 从数据库读取
         try {
             String dbKey = systemConfigService.getConfigValue("security.encryption-key");
             if (dbKey != null && !dbKey.isEmpty()) {
@@ -76,7 +87,8 @@ public class SecurityKeyProvider {
         } catch (Exception e) {
             logger.debug("数据库未就绪，生成加密密钥");
         }
-        // 自动生成（16字节，转为32位十六进制字符串，符合AES-128要求）
+
+        // 2. 自动生成（16字节，转为32位十六进制字符串，符合AES-128要求）
         String generatedKey = generateRandomKey(16);
         logger.info("已自动生成加密密钥");
         return generatedKey;

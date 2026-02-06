@@ -44,15 +44,19 @@ public class DashboardController {
     @GetMapping("/dashboard")
     public String dashboard(Authentication auth, Model model,
                             @RequestParam(defaultValue = "1") int page,
-                            @RequestParam(defaultValue = "20") int pageSize) {
+                            @RequestParam(defaultValue = "20") int pageSize,
+                            @RequestParam(required = false) Boolean isRead) {
         User user = userMapper.findByUsername(auth.getName());
         model.addAttribute("user", user);
         model.addAttribute("sources", rssSourceMapper.findByUserId(user.getId()));
         
-        int totalItems = rssItemMapper.countFilteredByUserId(user.getId());
+        // 默认只显示未读文章
+        Boolean effectiveIsRead = isRead != null ? isRead : false;
+        
+        int totalItems = rssItemMapper.countFilteredByUserId(user.getId(), effectiveIsRead);
         int totalPages = (int) Math.ceil((double) totalItems / pageSize);
         
-        List<RssItem> items = rssItemMapper.findFilteredByUserIdWithPagination(user.getId(), page, pageSize);
+        List<RssItem> items = rssItemMapper.findFilteredByUserIdWithPagination(user.getId(), page, pageSize, effectiveIsRead);
         for (RssItem item : items) {
             String cleanDesc = HtmlUtils.stripHtml(item.getDescription());
             item.setDescription(HtmlUtils.truncate(cleanDesc, 200));
@@ -70,6 +74,7 @@ public class DashboardController {
         model.addAttribute("pageSize", pageSize);
         model.addAttribute("totalItems", totalItems);
         model.addAttribute("totalPages", totalPages);
+        model.addAttribute("isReadFilter", effectiveIsRead);
         return "dashboard";
     }
 
@@ -77,12 +82,15 @@ public class DashboardController {
     @ResponseBody
     public Map<String, Object> loadMoreItems(Authentication auth,
                                              @RequestParam int page,
-                                             @RequestParam(defaultValue = "20") int pageSize) {
+                                             @RequestParam(defaultValue = "20") int pageSize,
+                                             @RequestParam(required = false) Boolean isRead) {
         User user = userMapper.findByUsername(auth.getName());
-        int totalItems = rssItemMapper.countFilteredByUserId(user.getId());
+        // 默认只显示未读文章
+        Boolean effectiveIsRead = isRead != null ? isRead : false;
+        int totalItems = rssItemMapper.countFilteredByUserId(user.getId(), effectiveIsRead);
         int totalPages = (int) Math.ceil((double) totalItems / pageSize);
 
-        List<RssItem> items = rssItemMapper.findFilteredByUserIdWithPagination(user.getId(), page, pageSize);
+        List<RssItem> items = rssItemMapper.findFilteredByUserIdWithPagination(user.getId(), page, pageSize, effectiveIsRead);
         for (RssItem item : items) {
             String cleanDesc = HtmlUtils.stripHtml(item.getDescription());
             item.setDescription(HtmlUtils.truncate(cleanDesc, 200));

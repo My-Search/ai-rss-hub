@@ -174,13 +174,21 @@ public class AiResponseParser {
     
     /**
      * 从批量响应中提取特定条目的AI原始响应
+     * 使用与parseBatchFilterResponse相同的正则表达式来确保一致性
      */
     public String extractItemResponse(String content, int itemNumber) {
         String[] lines = content.split("\n");
         for (String line : lines) {
             line = line.trim();
-            if (line.startsWith("[" + itemNumber + "]")) {
-                return line;
+            if (line.isEmpty()) continue;
+
+            // 使用与parseBatchFilterResponse相同的正则表达式来匹配序号
+            Matcher matcher = BATCH_YES_NO_PATTERN.matcher(line);
+            if (matcher.find()) {
+                int foundNumber = Integer.parseInt(matcher.group(1));
+                if (foundNumber == itemNumber) {
+                    return line;
+                }
             }
         }
         return "未找到响应";

@@ -1,7 +1,9 @@
 spring:
   datasource:
     url: jdbc:sqlite:data/rss.db?date_string_format=yyyy-MM-dd HH:mm:ss&busy_timeout=30000&journal_mode=DELETE&synchronous=NORMAL
-
+  profiles:
+    # 不arg覆盖指定，默认开发环境
+    active: dev
 rss:
   timezone: GMT+8
 

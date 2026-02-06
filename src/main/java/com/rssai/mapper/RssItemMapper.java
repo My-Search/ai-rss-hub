@@ -85,22 +85,57 @@ public class RssItemMapper {
     }
 
     public List<RssItem> findFilteredByUserIdWithPagination(Long userId, int page, int pageSize) {
+        return findFilteredByUserIdWithPagination(userId, page, pageSize, null);
+    }
+
+    public List<RssItem> findFilteredByUserIdWithPagination(Long userId, int page, int pageSize, Boolean isRead) {
         int offset = (page - 1) * pageSize;
-        return jdbcTemplate.query(
+        StringBuilder sql = new StringBuilder(
                 "SELECT ri.*, rs.name as source_name, EXISTS(SELECT 1 FROM user_read_items WHERE user_id = ? AND rss_item_id = ri.id) as is_read " +
                 "FROM rss_items ri " +
                 "JOIN rss_sources rs ON ri.source_id = rs.id " +
-                "WHERE rs.user_id = ? AND ri.ai_filtered = 1 " +
-                "ORDER BY ri.pub_date DESC " +
-                "LIMIT ? OFFSET ?",
-                rowMapper, userId, userId, pageSize, offset);
+                "WHERE rs.user_id = ? AND ri.ai_filtered = 1 ");
+
+        if (isRead != null) {
+            if (isRead) {
+                sql.append("AND EXISTS(SELECT 1 FROM user_read_items WHERE user_id = ? AND rss_item_id = ri.id) ");
+            } else {
+                sql.append("AND NOT EXISTS(SELECT 1 FROM user_read_items WHERE user_id = ? AND rss_item_id = ri.id) ");
+            }
+        }
+
+        sql.append("ORDER BY ri.pub_date DESC LIMIT ? OFFSET ?");
+
+        if (isRead != null) {
+            return jdbcTemplate.query(sql.toString(), rowMapper, userId, userId, userId, pageSize, offset);
+        } else {
+            return jdbcTemplate.query(sql.toString(), rowMapper, userId, userId, pageSize, offset);
+        }
     }
 
     public int countFilteredByUserId(Long userId) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM rss_items ri JOIN rss_sources rs ON ri.source_id = rs.id WHERE rs.user_id = ? AND ri.ai_filtered = 1",
-                Integer.class, userId);
-        return count != null ? count : 0;
+        return countFilteredByUserId(userId, null);
+    }
+
+    public int countFilteredByUserId(Long userId, Boolean isRead) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT COUNT(*) FROM rss_items ri JOIN rss_sources rs ON ri.source_id = rs.id WHERE rs.user_id = ? AND ri.ai_filtered = 1 ");
+
+        if (isRead != null) {
+            if (isRead) {
+                sql.append("AND EXISTS(SELECT 1 FROM user_read_items WHERE user_id = ? AND rss_item_id = ri.id) ");
+            } else {
+                sql.append("AND NOT EXISTS(SELECT 1 FROM user_read_items WHERE user_id = ? AND rss_item_id = ri.id) ");
+            }
+        }
+
+        if (isRead != null) {
+            Integer count = jdbcTemplate.queryForObject(sql.toString(), Integer.class, userId, userId);
+            return count != null ? count : 0;
+        } else {
+            Integer count = jdbcTemplate.queryForObject(sql.toString(), Integer.class, userId);
+            return count != null ? count : 0;
+        }
     }
 
     public boolean existsByLink(String link) {
