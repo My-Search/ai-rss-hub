@@ -312,10 +312,10 @@
             </div>
             <div class="card-body">
                 <div class="rss-items" id="rss-items">
-                    <div class="rss-item" th:each="item : ${items}" th:data-item-id="${item.id}" th:data-read="${item.isRead == true ? 'true' : 'false'}">
+                    <div class="rss-item" th:each="item : ${items}" th:data-item-id="${item.id}" th:data-read="${item.isRead == true ? 'true' : 'false'}" th:data-special-attention="${item.sourceSpecialAttention == true ? 'true' : 'false'}">
                         <div class="rss-item-content">
                             <h3>
-                                <a th:href="${item.link}" target="_blank" th:text="${item.title}" th:data-item-id="${item.id}" onclick="markAsReadByClick(this)"></a>
+                                <a th:href="${item.link}" target="_blank" th:text="${item.title}" th:data-item-id="${item.id}" th:style="${item.sourceSpecialAttention == true} ? 'color: #e74c3c;' : ''" onclick="markAsReadByClick(this)"></a>
                                 <span th:if="${item.isRead == true}" class="read-indicator">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -445,6 +445,7 @@
                 itemDiv.className = 'rss-item';
                 itemDiv.setAttribute('data-item-id', item.id);
                 itemDiv.setAttribute('data-read', item.isRead ? 'true' : 'false');
+                itemDiv.setAttribute('data-special-attention', item.sourceSpecialAttention ? 'true' : 'false');
 
                 const imageHtml = item.imageUrl
                     ? `<div class="rss-item-image"><img src="${item.imageUrl}" alt="${item.title}" onerror="this.style.display='none'; this.parentElement.style.display='none';" /></div>`
@@ -460,9 +461,11 @@
                        </span>`
                     : '';
 
+                const titleStyle = item.sourceSpecialAttention ? 'style="color: #e74c3c;"' : '';
+
                 itemDiv.innerHTML = `
                     <div class="rss-item-content">
-                        <h3><a href="${item.link}" target="_blank" data-item-id="${item.id}" onclick="markAsReadByClick(this)">${item.title}</a>${readIndicator}</h3>
+                        <h3><a href="${item.link}" target="_blank" data-item-id="${item.id}" ${titleStyle} onclick="markAsReadByClick(this)">${item.title}</a>${readIndicator}</h3>
                         <p class="item-desc">${item.description}</p>
                         <div class="item-meta">
                             ${item.sourceName ? `<span class="source-name">${item.sourceName}</span>` : ''}

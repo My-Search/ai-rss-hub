@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特别关注RSS源更新通知</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e74c3c;
+        }
+        .header h1 {
+            color: #e74c3c;
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            color: #666;
+            margin: 10px 0 0 0;
+        }
+        .source-info {
+            background-color: #fdf2f2;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .source-info h2 {
+            margin: 0 0 10px 0;
+            color: #c0392b;
+            font-size: 18px;
+        }
+        .source-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .article-list {
+            margin-top: 20px;
+        }
+        .article-item {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 3px solid #3498db;
+        }
+        .article-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+        }
+        .article-title a {
+            color: #2c3e50;
+            text-decoration: none;
+        }
+        .article-title a:hover {
+            color: #3498db;
+            text-decoration: underline;
+        }
+        .article-meta {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin: 0;
+        }
+        .article-description {
+            font-size: 14px;
+            color: #555;
+            margin: 10px 0 0 0;
+            line-height: 1.5;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 12px;
+        }
+        .highlight {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 特别关注RSS源更新</h1>
+            <p th:text="${date}">2024年01月01日</p>
+        </div>
+        
+        <div class="source-info">
+            <h2 th:text="'特别关注-' + ${sourceName}">特别关注-示例RSS源</h2>
+            <p>您关注的RSS源有新的文章更新，共 <span class="highlight" th:text="${articleCount}">3</span> 篇新文章</p>
+        </div>
+        
+        <div class="article-list">
+            <h3 style="color: #2c3e50; margin-bottom: 15px;">最新文章</h3>
+            <div th:each="item : ${items}" class="article-item">
+                <h4 class="article-title">
+                    <a th:href="${item.link}" th:text="${item.title}" target="_blank">文章标题</a>
+                </h4>
+                <p class="article-meta" th:if="${item.pubDate != null}" 
+                   th:text="${#temporals.format(item.pubDate, 'yyyy-MM-dd HH:mm')}">2024-01-01 12:00</p>
+                <p class="article-description" th:if="${item.description != null}" 
+                   th:text="${#strings.abbreviate(item.description, 150)}">文章摘要...</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>此邮件由 AI RSS Hub 自动发送</p>
+            <p>如您不希望接收此类通知，请在RSS源管理中取消"特别关注"选项</p>
+        </div>
+    </div>
+</body>
+</html>

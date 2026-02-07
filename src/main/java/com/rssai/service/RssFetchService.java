@@ -74,6 +74,12 @@ public class RssFetchService {
         logger.info("开始抓取RSS源: {} (ID: {})", source.getName(), source.getId());
         logger.info("RSS URL: {}", source.getUrl());
         
+        // 判断是否是第一次抓取（根据lastFetchTime是否为null）
+        boolean isFirstFetch = source.getLastFetchTime() == null;
+        if (isFirstFetch) {
+            logger.info("这是RSS源 {} 的首次抓取", source.getName());
+        }
+        
         try {
             Request request = new Request.Builder()
                 .url(source.getUrl())
@@ -191,6 +197,11 @@ public class RssFetchService {
 
             // 进行关键词匹配和邮件通知（在AI过滤之前）
             processKeywordMatches(source.getUserId(), rssItemsToProcess);
+            
+            // 处理特别关注RSS源的邮件通知（非首次抓取时）
+            if (!isFirstFetch && Boolean.TRUE.equals(source.getSpecialAttention())) {
+                processSpecialAttentionNotification(source, rssItemsToProcess);
+            }
 
             // 检查该RSS源是否启用了AI过滤
             Boolean aiFilterEnabled = source.getAiFilterEnabled();
@@ -389,6 +400,46 @@ public class RssFetchService {
             List<RssItem> singleItemList = new ArrayList<>();
             singleItemList.add(item);
             emailService.sendKeywordMatchNotification(user.getEmail(), keywords, singleItemList);
+        }
+    }
+
+    /**
+     * 处理特别关注RSS源的邮件通知
+     * @param source RSS源
+     * @param newRssItems 新抓取的文章列表
+     */
+    private void processSpecialAttentionNotification(RssSource source, List<RssItem> newRssItems) {
+        if (newRssItems == null || newRssItems.isEmpty()) {
+            return;
+        }
+
+        try {
+            User user = userMapper.findById(source.getUserId());
+            if (user == null) {
+                logger.warn("用户 {} 不存在，跳过特别关注通知", source.getUserId());
+                return;
+            }
+
+            if (!user.getEmailSubscriptionEnabled() || user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+                logger.info("用户 {} 未启用邮件订阅或邮箱为空，跳过特别关注通知", source.getUserId());
+                return;
+            }
+
+            // 检查管理员是否配置了邮箱
+            String adminEmail = systemConfigService.getConfigValue("email.username", "");
+            if (adminEmail == null || adminEmail.trim().isEmpty()) {
+                logger.info("管理员未配置邮箱，跳过特别关注通知 - 用户: {}", source.getUserId());
+                return;
+            }
+
+            logger.info("发送特别关注通知邮件 - 用户: {}, RSS源: {}, 文章数: {}", 
+                    source.getUserId(), source.getName(), newRssItems.size());
+            
+            emailService.sendSpecialAttentionNotification(user.getEmail(), source.getName(), newRssItems);
+            
+        } catch (Exception e) {
+            logger.error("处理特别关注通知时发生异常 - 用户: {}, RSS源: {}", 
+                    source.getUserId(), source.getName(), e);
         }
     }
 

@@ -58,6 +58,7 @@ public class RssSourceController {
                            @RequestParam String url,
                            @RequestParam(required = false) Integer refreshInterval,
                            @RequestParam(required = false) Boolean aiFilterEnabled,
+                           @RequestParam(required = false) Boolean specialAttention,
                            Model model) {
         User user = userMapper.findByUsername(auth.getName());
         RssSource source = new RssSource();
@@ -71,6 +72,8 @@ public class RssSourceController {
         // 默认开启AI过滤
         boolean aiFilterEnabledValue = aiFilterEnabled != null ? aiFilterEnabled : true;
         source.setAiFilterEnabled(aiFilterEnabledValue);
+        // 特别关注默认关闭
+        source.setSpecialAttention(specialAttention != null ? specialAttention : false);
 
         // 如果没有指定刷新间隔，使用用户默认配置
         AiConfig aiConfig = aiConfigMapper.findByUserId(user.getId());
@@ -137,6 +140,7 @@ public class RssSourceController {
                               @RequestParam String url,
                               @RequestParam(required = false) Integer refreshInterval,
                               @RequestParam(required = false) Boolean aiFilterEnabled,
+                              @RequestParam(required = false) Boolean specialAttention,
                               Model model) {
         User user = userMapper.findByUsername(auth.getName());
         RssSource source = rssSourceMapper.findById(id, user.getId());
@@ -160,6 +164,9 @@ public class RssSourceController {
             // 注意：HTML表单中未选中的checkbox不会提交，所以当aiFilterEnabled为null时表示用户取消了勾选
             boolean aiFilterEnabledValue = aiFilterEnabled != null ? aiFilterEnabled : false;
             source.setAiFilterEnabled(aiFilterEnabledValue);
+
+            // 更新特别关注设置
+            source.setSpecialAttention(specialAttention != null ? specialAttention : false);
 
             rssSourceMapper.update(source);
             

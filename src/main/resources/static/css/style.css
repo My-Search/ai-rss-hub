@@ -422,8 +422,9 @@ html {
     text-decoration: none;
 }
 .table td:last-child .btn {
-    margin-bottom: 0.3rem;
-    margin-right: 0.5rem;
+    /*margin-bottom: 0.3rem;*/
+    /*margin-right: 0.5rem;*/
+    margin: 0 0.1rem;
 }
 
 .badge {

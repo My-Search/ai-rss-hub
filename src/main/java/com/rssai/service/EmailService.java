@@ -353,4 +353,61 @@ public class EmailService {
             logger.error("[EmailService] 发送AI服务恢复通知邮件失败，目标邮箱: {}", toEmail, e);
         }
     }
+
+    /**
+     * 发送特别关注RSS源更新通知邮件
+     */
+    @Async("emailExecutor")
+    public void sendSpecialAttentionNotification(String toEmail, String sourceName, List<RssItem> items) throws UnsupportedEncodingException {
+        if (items == null || items.isEmpty()) {
+            logger.info("没有文章需要发送特别关注通知邮件给 {}", toEmail);
+            return;
+        }
+
+        updateMailSenderConfig();
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(getFromEmail(), getFromAlias());
+            helper.setTo(toEmail);
+            helper.setSubject("特别关注-" + sourceName + "已更新");
+
+            // 处理文章内容，去除HTML标签
+            List<RssItem> itemsWithPlainText = new ArrayList<>();
+            for (RssItem item : items) {
+                RssItem plainTextItem = new RssItem();
+                plainTextItem.setId(item.getId());
+                plainTextItem.setSourceId(item.getSourceId());
+                plainTextItem.setTitle(item.getTitle());
+                plainTextItem.setLink(item.getLink());
+                plainTextItem.setPubDate(item.getPubDate());
+                plainTextItem.setAiFiltered(item.getAiFiltered());
+                plainTextItem.setAiReason(item.getAiReason());
+                plainTextItem.setCreatedAt(item.getCreatedAt());
+                if (item.getDescription() != null && !item.getDescription().trim().isEmpty()) {
+                    plainTextItem.setDescription(HtmlUtils.stripHtmlTags(item.getDescription()).trim());
+                }
+                if (item.getContent() != null && !item.getContent().trim().isEmpty()) {
+                    plainTextItem.setContent(HtmlUtils.stripHtmlTags(item.getContent()).trim());
+                }
+                itemsWithPlainText.add(plainTextItem);
+            }
+
+            Context context = new Context();
+            context.setVariable("date", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日")));
+            context.setVariable("sourceName", sourceName);
+            context.setVariable("items", itemsWithPlainText);
+            context.setVariable("articleCount", itemsWithPlainText.size());
+
+            String htmlContent = templateEngine.process("email-special-attention", context);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            logger.info("成功发送特别关注通知邮件给 {}，RSS源: {}, 共{}篇文章", toEmail, sourceName, items.size());
+        } catch (MessagingException e) {
+            logger.error("发送特别关注通知邮件失败给 {}", toEmail, e);
+        }
+    }
 }

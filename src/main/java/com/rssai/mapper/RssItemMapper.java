@@ -36,7 +36,7 @@ public class RssItemMapper {
         item.setAiFiltered(rs.getBoolean("ai_filtered"));
         item.setAiReason(rs.getString("ai_reason"));
         item.setCreatedAt(DateTimeUtils.parseDateTime(rs.getString("created_at")));
-        
+
         // 解析 needs_retry 字段
         try {
             Object needsRetryObj = rs.getObject("needs_retry");
@@ -48,7 +48,7 @@ public class RssItemMapper {
         } catch (Exception e) {
             item.setNeedsRetry(false);
         }
-        
+
         // 解析 source_name 字段（如果存在）
         try {
             String sourceName = rs.getString("source_name");
@@ -67,6 +67,18 @@ public class RssItemMapper {
             }
         } catch (Exception e) {
             item.setIsRead(false);
+        }
+
+        // 解析 source_special_attention 字段（如果存在）
+        try {
+            Object specialAttentionObj = rs.getObject("source_special_attention");
+            if (specialAttentionObj instanceof Number) {
+                item.setSourceSpecialAttention(((Number) specialAttentionObj).intValue() == 1);
+            } else {
+                item.setSourceSpecialAttention(false);
+            }
+        } catch (Exception e) {
+            item.setSourceSpecialAttention(false);
         }
 
         return item;
@@ -91,7 +103,7 @@ public class RssItemMapper {
     public List<RssItem> findFilteredByUserIdWithPagination(Long userId, int page, int pageSize, Boolean isRead) {
         int offset = (page - 1) * pageSize;
         StringBuilder sql = new StringBuilder(
-                "SELECT ri.*, rs.name as source_name, EXISTS(SELECT 1 FROM user_read_items WHERE user_id = ? AND rss_item_id = ri.id) as is_read " +
+                "SELECT ri.*, rs.name as source_name, rs.special_attention as source_special_attention, EXISTS(SELECT 1 FROM user_read_items WHERE user_id = ? AND rss_item_id = ri.id) as is_read " +
                 "FROM rss_items ri " +
                 "JOIN rss_sources rs ON ri.source_id = rs.id " +
                 "WHERE rs.user_id = ? AND ri.ai_filtered = 1 ");

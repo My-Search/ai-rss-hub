@@ -146,6 +146,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "enabled BOOLEAN DEFAULT 1, " +
                 "refresh_interval INTEGER DEFAULT 60, " +
                 "ai_filter_enabled BOOLEAN DEFAULT 1, " +
+                "special_attention BOOLEAN DEFAULT 0, " +
                 "last_fetch_time TIMESTAMP, " +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +

@@ -20,6 +20,122 @@
         html[data-theme="dark"] { background-color: #272727; color: #f1f5f9; }
         body { background-color: #f8fafc; margin: 0; }
         html[data-theme="dark"] body { background-color: #272727; color: #f1f5f9; }
+
+        /* RSS源表格固定操作列样式 - 使用更高优先级 */
+        body.rss-sources-page .rss-sources-table-container {
+            overflow-x: auto;
+            position: relative;
+            max-width: 100%;
+            display: block !important;
+            /* 隐藏滚动条但保留滚动功能 */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE 10+ */
+        }
+
+        /* 隐藏Webkit浏览器的滚动条 */
+        body.rss-sources-page .rss-sources-table-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        body.rss-sources-page .rss-sources-table {
+            table-layout: auto;
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            min-width: 900px;
+        }
+
+        body.rss-sources-page .rss-sources-table th,
+        body.rss-sources-page .rss-sources-table td {
+            white-space: nowrap;
+        }
+
+        /* 操作列固定样式 - 使用固定颜色确保生效 */
+        body.rss-sources-page .rss-sources-table td.col-actions {
+            position: sticky !important;
+            right: 0 !important;
+            background-color: #ffffff !important;
+            z-index: 10 !important;
+            box-shadow: -4px 0 8px rgba(0, 0, 0, 0.15) !important;
+            min-width: 260px !important;
+        }
+
+        body.rss-sources-page .rss-sources-table th.col-actions {
+            position: sticky !important;
+            right: 0 !important;
+            background-color: #f8fafc !important;
+            z-index: 11 !important;
+            box-shadow: -4px 0 8px rgba(0, 0, 0, 0.15) !important;
+            min-width: 260px !important;
+        }
+
+        /* 暗色主题适配 */
+        html[data-theme="dark"] body.rss-sources-page .rss-sources-table td.col-actions {
+            background-color: #171616 !important;
+            box-shadow: -4px 0 8px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        html[data-theme="dark"] body.rss-sources-page .rss-sources-table th.col-actions {
+            background-color: #272727 !important;
+            box-shadow: -4px 0 8px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        /* 确保桌面端显示表格，移动端隐藏 */
+        @media (min-width: 769px) {
+            body.rss-sources-page .rss-sources-table-container {
+                display: block !important;
+            }
+        }
+
+        /* 移动端隐藏PC端表格，显示卡片布局 */
+        @media (max-width: 768px) {
+            body.rss-sources-page .rss-sources-table-container {
+                display: none !important;
+            }
+
+            body.rss-sources-page .rss-source-cards {
+                display: block !important;
+            }
+        }
+
+        /* 操作列按钮不换行 */
+        body.rss-sources-page .rss-sources-table .col-actions .actions-wrapper {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        body.rss-sources-page .rss-sources-table .col-actions .btn {
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        /* 各列宽度设置 */
+        body.rss-sources-page .rss-sources-table .col-name {
+            min-width: 150px;
+        }
+
+        body.rss-sources-page .rss-sources-table .col-url {
+            min-width: 200px;
+        }
+
+        body.rss-sources-page .rss-sources-table .col-interval {
+            min-width: 100px;
+        }
+
+        body.rss-sources-page .rss-sources-table .col-status,
+        body.rss-sources-page .rss-sources-table .col-ai {
+            min-width: 70px;
+        }
+
+        body.rss-sources-page .rss-sources-table .col-last-fetch {
+            min-width: 120px;
+        }
     </style>
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
@@ -40,73 +156,83 @@
         <div class="card">
             <div class="card-body">
                 <!-- 桌面端表格 -->
-                <div class="table-container">
-                    <table class="table">
+                <div class="table-container rss-sources-table-container">
+                    <table class="table rss-sources-table">
                         <thead>
                             <tr>
-                                <th>名称</th>
-                                <th>URL</th>
-                                <th>刷新频率(分钟)</th>
-                                <th>状态</th>
-                                <th>AI过滤</th>
-                                <th>最后抓取</th>
-                                <th>操作</th>
+                                <th class="col-name">名称</th>
+                                <th class="col-url">URL</th>
+                                <th class="col-interval">刷新频率(分钟)</th>
+                                <th class="col-status">状态</th>
+                                <th class="col-ai">AI过滤</th>
+                                <th class="col-last-fetch">最后抓取</th>
+                                <th class="col-actions">操作</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="source : ${sources}">
-                                <td th:text="${source.name}"></td>
-                                <td class="table-url"><a th:href="${source.url}" target="_blank" th:text="${source.url}"></a></td>
-                                <td th:text="${source.refreshInterval}"></td>
-                                <td>
+                                <td class="col-name">
+                                   <span th:if="${source.specialAttention}" class="badge badge-danger" style="margin-left: 8px; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background-color: #e74c3c; color: white; box-shadow: 0 1px 2px rgba(231, 76, 60, 0.3);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 2px; vertical-align: middle;">
+                                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                        </svg>
+                                        特别关注
+                                    </span>
+                                    <span th:text="${source.name}"></span>
+                                </td>
+                                <td class="col-url table-url"><a th:href="${source.url}" target="_blank" th:text="${source.url}"></a></td>
+                                <td class="col-interval" th:text="${source.refreshInterval}"></td>
+                                <td class="col-status">
                                     <span class="badge" th:classappend="${source.enabled} ? 'badge-success' : 'badge-secondary'"
                                           th:text="${source.enabled} ? '启用' : '禁用'"></span>
                                 </td>
-                                <td>
+                                <td class="col-ai">
                                     <span class="badge" th:classappend="${source.aiFilterEnabled} ? 'badge-success' : 'badge-secondary'"
                                           th:text="${source.aiFilterEnabled} ? '开启' : '关闭'"></span>
                                 </td>
-                                <td th:text="${source.lastFetchTime != null ? #temporals.format(source.lastFetchTime, 'yyyy-MM-dd HH:mm') : '未抓取'}"></td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary"
-                                            th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval},data-ai-filter=${source.aiFilterEnabled}"
-                                            onclick="showEditModalFromData(this)" style="display: inline-flex; align-items: center; gap: 4px;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                        编辑
-                                    </button>
-                                    <form th:action="@{/rss-sources/{id}/toggle(id=${source.id})}" method="post" style="display:inline;">
-                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                        <button type="submit" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px;">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;" th:if="${source.enabled}">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;" th:if="${!source.enabled}">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span th:text="${source.enabled} ? '禁用' : '启用'"></span>
-                                        </button>
-                                    </form>
-                                    <form th:action="@{/rss-sources/{id}/fetch(id=${source.id})}" method="post" style="display:inline;" th:if="${source.enabled}">
-                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                        <button type="submit" class="btn btn-sm btn-primary" style="display: inline-flex; align-items: center; gap: 4px;">
+                                <td class="col-last-fetch" th:text="${source.lastFetchTime != null ? #temporals.format(source.lastFetchTime, 'yyyy-MM-dd HH:mm') : '未抓取'}"></td>
+                                <td class="col-actions">
+                                    <div class="actions-wrapper">
+                                        <button class="btn btn-sm btn-primary"
+                                                th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval},data-ai-filter=${source.aiFilterEnabled},data-special-attention=${source.specialAttention}"
+                                                onclick="showEditModalFromData(this)">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                             </svg>
-                                            立即抓取
+                                            编辑
                                         </button>
-                                    </form>
-                                    <form th:action="@{/rss-sources/{id}/delete(id=${source.id})}" method="post" style="display:inline;">
-                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除?')" style="display: inline-flex; align-items: center; gap: 4px;">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                            删除
-                                        </button>
-                                    </form>
+                                        <form th:action="@{/rss-sources/{id}/toggle(id=${source.id})}" method="post" style="display:inline;">
+                                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                            <button type="submit" class="btn btn-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;" th:if="${source.enabled}">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;" th:if="${!source.enabled}">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span th:text="${source.enabled} ? '禁用' : '启用'"></span>
+                                            </button>
+                                        </form>
+                                        <form th:action="@{/rss-sources/{id}/fetch(id=${source.id})}" method="post" style="display:inline;" th:if="${source.enabled}">
+                                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                            <button type="submit" class="btn btn-sm btn-primary">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                </svg>
+                                                抓取
+                                            </button>
+                                        </form>
+                                        <form th:action="@{/rss-sources/{id}/delete(id=${source.id})}" method="post" style="display:inline;">
+                                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除?')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                删除
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -117,8 +243,16 @@
                     <div th:each="source : ${sources}" class="source-card">
                         <div class="source-card-header">
                             <span class="source-card-title" th:text="${source.name}"></span>
-                            <span class="badge" th:classappend="${source.enabled} ? 'badge-success' : 'badge-secondary'"
-                                  th:text="${source.enabled} ? '启用' : '禁用'"></span>
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <span th:if="${source.specialAttention}" class="badge badge-danger" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background-color: #e74c3c; color: white; box-shadow: 0 1px 2px rgba(231, 76, 60, 0.3); display: inline-flex; align-items: center; gap: 2px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                    </svg>
+                                    特别关注
+                                </span>
+                                <span class="badge" th:classappend="${source.enabled} ? 'badge-success' : 'badge-secondary'"
+                                      th:text="${source.enabled} ? '启用' : '禁用'"></span>
+                            </span>
                         </div>
                         <div class="source-card-body">
                             <div class="source-card-row">
@@ -145,7 +279,7 @@
                         </div>
                         <div class="source-card-actions">
                             <button class="btn btn-sm btn-primary"
-                                    th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval},data-ai-filter=${source.aiFilterEnabled}"
+                                    th:attr="data-id=${source.id},data-name=${source.name},data-url=${source.url},data-interval=${source.refreshInterval},data-ai-filter=${source.aiFilterEnabled},data-special-attention=${source.specialAttention}"
                                     onclick="showEditModalFromData(this)" style="display: inline-flex; align-items: center; gap: 4px;">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -218,6 +352,13 @@
                     </label>
                     <small class="form-hint">开启后，该RSS源的文章将通过AI进行智能筛选</small>
                 </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="specialAttention" value="true">
+                        <span>特别关注</span>
+                    </label>
+                    <small class="form-hint">开启后，该RSS源更新时会发送邮件通知，文章标题会显示为红色</small>
+                </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">添加</button>
                     <button type="button" class="btn" onclick="hideAddModal()">取消</button>
@@ -251,6 +392,13 @@
                         <span>启用AI过滤</span>
                     </label>
                     <small class="form-hint">开启后，该RSS源的文章将通过AI进行智能筛选</small>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="editSpecialAttention" name="specialAttention" value="true">
+                        <span>特别关注</span>
+                    </label>
+                    <small class="form-hint">开启后，该RSS源更新时会发送邮件通知，文章标题会显示为红色</small>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">保存</button>
@@ -292,15 +440,17 @@
             var url = btn.getAttribute('data-url');
             var interval = btn.getAttribute('data-interval');
             var aiFilter = btn.getAttribute('data-ai-filter');
-            showEditModal(id, name, url, interval, aiFilter);
+            var specialAttention = btn.getAttribute('data-special-attention');
+            showEditModal(id, name, url, interval, aiFilter, specialAttention);
         }
 
-        function showEditModal(id, name, url, interval, aiFilter) {
+        function showEditModal(id, name, url, interval, aiFilter, specialAttention) {
             document.getElementById('editId').value = id;
             document.getElementById('editName').value = name;
             document.getElementById('editUrl').value = url;
             document.getElementById('editRefreshInterval').value = interval || 60;
             document.getElementById('editAiFilterEnabled').checked = aiFilter !== 'false';
+            document.getElementById('editSpecialAttention').checked = specialAttention === 'true';
             document.getElementById('editForm').action = '/rss-sources/' + id + '/update';
             document.getElementById('editModal').style.display = 'flex';
         }

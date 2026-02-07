@@ -32,4 +32,7 @@ public class RssItem {
 
     // 是否已读，用于前端显示
     private Boolean isRead;
+
+    // 源是否特别关注，用于前端显示
+    private Boolean sourceSpecialAttention;
 }

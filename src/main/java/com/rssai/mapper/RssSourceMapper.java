@@ -25,6 +25,7 @@ public class RssSourceMapper {
         source.setEnabled(rs.getBoolean("enabled"));
         source.setRefreshInterval(rs.getInt("refresh_interval"));
         source.setAiFilterEnabled(rs.getBoolean("ai_filter_enabled"));
+        source.setSpecialAttention(rs.getBoolean("special_attention"));
         source.setLastFetchTime(DateTimeUtils.parseDateTime(rs.getString("last_fetch_time")));
         source.setCreatedAt(DateTimeUtils.parseDateTime(rs.getString("created_at")));
         source.setUpdatedAt(DateTimeUtils.parseDateTime(rs.getString("updated_at")));
@@ -50,15 +51,16 @@ public class RssSourceMapper {
     }
 
     public void insert(RssSource source) {
-        jdbcTemplate.update("INSERT INTO rss_sources (user_id, name, url, enabled, refresh_interval, ai_filter_enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))",
+        jdbcTemplate.update("INSERT INTO rss_sources (user_id, name, url, enabled, refresh_interval, ai_filter_enabled, special_attention, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))",
                 source.getUserId(), source.getName(), source.getUrl(), source.getEnabled(), source.getRefreshInterval(),
-                source.getAiFilterEnabled() != null ? source.getAiFilterEnabled() : true);
+                source.getAiFilterEnabled() != null ? source.getAiFilterEnabled() : true,
+                source.getSpecialAttention() != null ? source.getSpecialAttention() : false);
     }
 
     public void update(RssSource source) {
-        jdbcTemplate.update("UPDATE rss_sources SET name = ?, url = ?, enabled = ?, refresh_interval = ?, ai_filter_enabled = ?, updated_at = datetime('now', 'localtime') WHERE id = ? AND user_id = ?",
+        jdbcTemplate.update("UPDATE rss_sources SET name = ?, url = ?, enabled = ?, refresh_interval = ?, ai_filter_enabled = ?, special_attention = ?, updated_at = datetime('now', 'localtime') WHERE id = ? AND user_id = ?",
                 source.getName(), source.getUrl(), source.getEnabled(), source.getRefreshInterval(),
-                source.getAiFilterEnabled(), source.getId(), source.getUserId());
+                source.getAiFilterEnabled(), source.getSpecialAttention(), source.getId(), source.getUserId());
     }
 
     public void updateLastFetchTime(Long id) {

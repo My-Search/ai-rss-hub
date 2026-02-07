@@ -35,3 +35,7 @@ CREATE TABLE IF NOT EXISTS user_read_items (
 CREATE INDEX IF NOT EXISTS idx_user_read_items_user_rss ON user_read_items(user_id, rss_item_id);
 CREATE INDEX IF NOT EXISTS idx_user_read_items_user_id ON user_read_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_read_items_rss_item_id ON user_read_items(rss_item_id);
+
+-- VERSION:v1.3.0
+-- 添加RSS源特别关注字段
+ALTER TABLE rss_sources ADD COLUMN special_attention BOOLEAN DEFAULT 0;
