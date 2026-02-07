@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.rememberme.CookieTheftException;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
+import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -30,10 +31,9 @@ public class CustomPersistentTokenBasedRememberMeServices extends PersistentToke
         try {
             return super.processAutoLoginCookie(cookieTokens, request, response);
         } catch (CookieTheftException e) {
-            // 令牌不匹配（可能是服务器重启后数据不一致），清除cookie并返回null
             logger.warn("Remember-me token不匹配，可能是服务器重启导致的数据不一致，清除cookie - 错误: {}", e.getMessage());
             cancelCookie(request, response);
-            return null;
+            throw new RememberMeAuthenticationException("Remember-me token不匹配，可能是服务器重启导致的数据不一致", e);
         }
     }
 

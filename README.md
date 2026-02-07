@@ -64,29 +64,6 @@ java -jar target/ai-rss-hub-1.0.0.jar
 3. 访问应用
 打开浏览器访问 http://localhost:8080
 
-### Docker 部署
-
-1. 构建镜像
-```bash
-docker build -t ai-rss-hub:latest .
-```
-
-2. 运行容器
-```bash
-docker run -d \
-  --name ai-rss-hub \
-  -p 2799:8080 \
-  -v $(pwd)/data:/app/data \
-  -e SPRING_PROFILES_ACTIVE=prod \
-  --restart unless-stopped \
-  ai-rss-hub:latest
-```
-
-或使用 Docker Compose：
-```bash
-docker-compose up -d
-```
-
 ## 配置说明
 
 ### AI 配置

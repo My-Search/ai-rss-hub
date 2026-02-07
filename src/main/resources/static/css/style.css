@@ -780,6 +780,8 @@ html {
 .rss-item h3 a {
     color: var(--gray-900);
     text-decoration: none;
+    word-break: break-all;
+    overflow-wrap: break-word;
 }
 
 .rss-item h3 a:hover {
@@ -816,6 +818,10 @@ html {
     padding: 1rem;
     border-radius: 6px;
     margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    line-height: 1;
 }
 
 .alert-success {
@@ -1137,8 +1143,8 @@ html {
     transform: rotate(-45deg) translate(5px, -5px);
 }
 
-/* 移动端导航菜单 */
-@media (max-width: 1200px) {
+/* 移动端导航菜单 - 使用768px作为断点，覆盖平板和手机 */
+@media (max-width: 768px) {
     .hamburger {
         display: flex;
     }
@@ -2277,8 +2283,8 @@ html {
     color: var(--gray-800);
 }
 
-/* 移动端适配 */
-@media (max-width: 1200px) {
+/* 移动端适配 - 使用768px作为断点 */
+@media (max-width: 768px) {
     .input-with-checkbox {
         flex-direction: row;
         align-items: center;
@@ -2412,7 +2418,8 @@ html {
 }
 
 .config-sidebar {
-    width: 280px;
+    min-width: 240px;
+    max-width: 320px;
     background: white;
     border-right: 1px solid var(--gray-200);
     display: flex;
@@ -2468,6 +2475,9 @@ html {
     cursor: pointer;
     transition: all 0.2s ease;
     border-left: 3px solid transparent;
+    flex-wrap: wrap;
+    word-break: break-all;
+    overflow-wrap: break-word;
 }
 
 .nav-item:hover {
@@ -2670,7 +2680,7 @@ html {
 
 .alert {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.75rem;
     padding: 1rem 1.25rem;
     border-radius: 8px;
@@ -2686,8 +2696,8 @@ html {
     flex: 1;
 }
 
-/* 系统管理页面响应式设计 */
-@media (max-width: 1200px) {
+/* 系统管理页面响应式设计 - 使用768px作为断点 */
+@media (max-width: 768px) {
     .system-config-layout {
         flex-direction: column;
     }
@@ -3220,8 +3230,8 @@ html {
     color: var(--primary);
 }
 
-/* 深色模式下侧边栏在移动端 */
-@media (max-width: 1200px) {
+/* 深色模式下侧边栏在移动端 - 使用768px作为断点 */
+@media (max-width: 768px) {
     [data-theme="dark"] .config-sidebar {
         border-bottom-color: var(--gray-300);
         background: linear-gradient(180deg, var(--gray-100) 0%, var(--gray-50) 100%);
@@ -3699,8 +3709,8 @@ html {
     background: #ef4444;
 }
 
-/* 响应式优化 */
-@media (max-width: 1200px) {
+/* 响应式优化 - 使用768px作为断点 */
+@media (max-width: 768px) {
     .stats-toolbar {
         flex-direction: column;
         gap: 1rem;
@@ -4374,8 +4384,8 @@ html {
     color: var(--gray-900);
 }
 
-/* 响应式优化 */
-@media (max-width: 1200px) {
+/* 响应式优化 - 使用768px作为断点 */
+@media (max-width: 768px) {
     .stats-overview {
         grid-template-columns: repeat(2, 1fr);
         gap: 1rem;

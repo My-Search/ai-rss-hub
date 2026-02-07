@@ -30,17 +30,20 @@ public class SecurityConfig {
     private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
     private final CustomAuthenticationFailureHandler authenticationFailureHandler;
     private final SecurityKeyProvider securityKeyProvider;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
     public SecurityConfig(JdbcTokenRepositoryImpl tokenRepository,
                           UserDetailsService userDetailsService,
                           CustomAuthenticationSuccessHandler authenticationSuccessHandler,
                           CustomAuthenticationFailureHandler authenticationFailureHandler,
-                          SecurityKeyProvider securityKeyProvider) {
+                          SecurityKeyProvider securityKeyProvider,
+                          CustomAuthenticationEntryPoint authenticationEntryPoint) {
         this.tokenRepository = tokenRepository;
         this.userDetailsService = userDetailsService;
         this.authenticationSuccessHandler = authenticationSuccessHandler;
         this.authenticationFailureHandler = authenticationFailureHandler;
         this.securityKeyProvider = securityKeyProvider;
+        this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
     @Bean
@@ -67,6 +70,9 @@ public class SecurityConfig {
                 .successHandler(authenticationSuccessHandler)
                 .failureHandler(authenticationFailureHandler)
                 .permitAll()
+            )
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(authenticationEntryPoint)
             )
             .rememberMe(remember -> remember
                 .rememberMeServices(rememberMeServices())

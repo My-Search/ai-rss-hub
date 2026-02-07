@@ -157,10 +157,9 @@ public class RssSourceController {
             }
 
             // 更新AI过滤设置
+            // 注意：HTML表单中未选中的checkbox不会提交，所以当aiFilterEnabled为null时表示用户取消了勾选
             boolean aiFilterEnabledValue = aiFilterEnabled != null ? aiFilterEnabled : false;
-            if (aiFilterEnabled != null) {
-                source.setAiFilterEnabled(aiFilterEnabledValue);
-            }
+            source.setAiFilterEnabled(aiFilterEnabledValue);
 
             rssSourceMapper.update(source);
             

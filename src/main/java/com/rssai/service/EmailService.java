@@ -1,6 +1,7 @@
 package com.rssai.service;
 
 import com.rssai.config.MailConfig;
+import com.rssai.config.TimezoneConfig;
 import com.rssai.model.RssItem;
 import com.rssai.util.HtmlUtils;
 import org.slf4j.Logger;
@@ -19,6 +20,8 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +35,7 @@ public class EmailService {
     private final TemplateEngine templateEngine;
     private final SystemConfigService systemConfigService;
     private final MailConfig mailConfig;
+    private final TimezoneConfig timezoneConfig;
 
     @Value("${email.max-items:50}")
     private int maxItems;
@@ -39,11 +43,13 @@ public class EmailService {
     public EmailService(JavaMailSender mailSender,
                         TemplateEngine templateEngine,
                         SystemConfigService systemConfigService,
-                        MailConfig mailConfig) {
+                        MailConfig mailConfig,
+                        TimezoneConfig timezoneConfig) {
         this.mailSender = mailSender;
         this.templateEngine = templateEngine;
         this.systemConfigService = systemConfigService;
         this.mailConfig = mailConfig;
+        this.timezoneConfig = timezoneConfig;
     }
 
     private String getFromEmail() {
@@ -60,6 +66,29 @@ public class EmailService {
         }
 
         mailConfig.updateMailSenderConfig((JavaMailSenderImpl) mailSender);
+    }
+
+    /**
+     * 获取当前时区的 LocalDateTime
+     */
+    private LocalDateTime getCurrentTimeInConfiguredTimezone() {
+        if (timezoneConfig == null) {
+            logger.warn("TimezoneConfig 未初始化，使用默认时区 GMT+8");
+            return LocalDateTime.now(ZoneId.ofOffset("GMT", java.time.ZoneOffset.ofHours(8)));
+        }
+        
+        String timezone = timezoneConfig.getTimezone();
+        if (timezone != null && (timezone.startsWith("GMT") || timezone.startsWith("UTC"))) {
+            String offset = timezone.substring(3);
+            try {
+                int hours = Integer.parseInt(offset);
+                ZoneId zoneId = ZoneId.ofOffset("GMT", java.time.ZoneOffset.ofHours(hours));
+                return LocalDateTime.now(zoneId);
+            } catch (NumberFormatException e) {
+                return LocalDateTime.now(ZoneId.ofOffset("GMT", java.time.ZoneOffset.ofHours(8)));
+            }
+        }
+        return LocalDateTime.now(ZoneId.ofOffset("GMT", java.time.ZoneOffset.ofHours(8)));
     }
 
     @Async("emailExecutor")
@@ -257,7 +286,7 @@ public class EmailService {
             context.setVariable("sourceName", sourceName);
             context.setVariable("model", model);
             context.setVariable("baseUrl", baseUrl);
-            context.setVariable("detectionTime", java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            context.setVariable("detectionTime", getCurrentTimeInConfiguredTimezone().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
             String htmlContent = templateEngine.process("email-ai-service-alert", context);
             helper.setText(htmlContent, true);
@@ -294,13 +323,12 @@ public class EmailService {
             context.setVariable("baseUrl", baseUrl);
             context.setVariable("reprocessedCount", reprocessedCount);
             
-            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            LocalDateTime now = getCurrentTimeInConfiguredTimezone();
             context.setVariable("recoveryTime", now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             
             if (failureTime != null) {
                 context.setVariable("failureTime", failureTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                 
-                // 计算故障时长
                 long minutes = java.time.Duration.between(failureTime, now).toMinutes();
                 String downtime;
                 if (minutes < 60) {
