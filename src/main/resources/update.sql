@@ -38,4 +38,5 @@ CREATE INDEX IF NOT EXISTS idx_user_read_items_rss_item_id ON user_read_items(rs
 
 -- VERSION:v1.3.0
 -- 添加RSS源特别关注字段
-ALTER TABLE rss_sources ADD COLUMN special_attention BOOLEAN DEFAULT 0;
+-- 注意：该字段已在 DatabaseInitializer.java 中创建，此处保留空版本以保持版本连续性
+-- ALTER TABLE rss_sources ADD COLUMN special_attention BOOLEAN DEFAULT 0;

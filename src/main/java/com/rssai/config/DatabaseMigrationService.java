@@ -2,6 +2,7 @@ package com.rssai.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,9 @@ public class DatabaseMigrationService {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseMigrationService.class);
 
     private final JdbcTemplate jdbcTemplate;
+
+    @Value("${application.version:0.0.0}")
+    private String applicationVersion;
 
     // 匹配版本标记的正则表达式: -- VERSION:v{数字}.{数字}.{数字}
     private static final Pattern VERSION_PATTERN = Pattern.compile("--\\s*VERSION:v(\\d+)\\.(\\d+)\\.(\\d+)");
@@ -75,6 +79,7 @@ public class DatabaseMigrationService {
 
     /**
      * 获取当前数据库版本
+     * 首次部署时返回 application.version 作为初始版本
      */
     private String getCurrentVersion() {
         try {
@@ -82,14 +87,14 @@ public class DatabaseMigrationService {
                 "SELECT version FROM schema_version ORDER BY sortable_version DESC LIMIT 1",
                 String.class
             );
-            return version != null ? version : "0.0.0";
+            return version != null ? version : applicationVersion;
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
-            // 表为空是正常情况（第一次部署）
-            logger.debug("版本表为空，首次部署时正常");
-            return "0.0.0";
+            // 表为空是正常情况（第一次部署），使用 application.version 作为初始版本
+            logger.info("首次部署，使用应用版本作为初始数据库版本: v{}", applicationVersion);
+            return applicationVersion;
         } catch (Exception e) {
-            logger.warn("获取当前版本失败，返回版本0.0.0", e);
-            return "0.0.0";
+            logger.warn("获取当前版本失败，返回应用版本: v{}", applicationVersion, e);
+            return applicationVersion;
         }
     }
 

@@ -96,8 +96,18 @@
                     </div>
                     
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">💾 保存配置</button>
-                        <a th:href="@{/dashboard}" class="btn">取消</a>
+                        <button type="submit" class="btn btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 16px; height: 16px; margin-right: 4px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            保存配置
+                        </button>
+                        <a th:href="@{/dashboard}" class="btn" style="display: inline-flex; align-items: center; gap: 4px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 16px; height: 16px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            取消
+                        </a>
                     </div>
                 </form>
             </div>

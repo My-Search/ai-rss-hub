@@ -150,7 +150,12 @@
         
         <div class="page-header">
             <h1>RSS源管理</h1>
-            <button class="btn btn-primary" onclick="showAddModal()">添加RSS源</button>
+            <button class="btn btn-primary" onclick="showAddModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 16px; height: 16px; margin-right: 4px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                添加RSS源
+            </button>
         </div>
         
         <div class="card">
@@ -417,8 +422,18 @@
                 没有AI配置，RSS源将无法进行智能筛选。
             </p>
             <div class="form-actions">
-                <button type="button" class="btn" onclick="hideAiConfigPrompt()">稍后配置</button>
-                <a th:href="@{/ai-config}" class="btn btn-primary" style="text-decoration: none;">立即配置AI</a>
+                <button type="button" class="btn" onclick="hideAiConfigPrompt()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px; margin-right: 4px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    稍后配置
+                </button>
+                <a th:href="@{/ai-config}" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    立即配置AI
+                </a>
             </div>
         </div>
     </div>
